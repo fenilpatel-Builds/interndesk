@@ -19,10 +19,12 @@ export async function sendEmailOtp(email: string): Promise<AuthResponse> {
   }
 
   const supabase = await createServerSupabaseClient();
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
       shouldCreateUser: true,
+      emailRedirectTo: `${siteUrl}/auth/callback`,
     },
   });
 
