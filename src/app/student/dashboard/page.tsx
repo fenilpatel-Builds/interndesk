@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import {
   Clock,
@@ -16,45 +16,10 @@ import {
 import { StudentTopbar } from "@/components/student/topbar";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { WorkSessionWidget } from "@/components/student/work-session-widget";
 
 export default function StudentDashboardPage() {
-  const [sessionState, setSessionState] = useState<"WORKING" | "ON_BREAK" | "COMPLETED">("WORKING");
-  const [elapsedSeconds, setElapsedSeconds] = useState<number>(16320); // 04h 32m initial
-  const [message, setMessage] = useState<string | null>(null);
-
-  // Timer loop when WORKING
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (sessionState === "WORKING") {
-      interval = setInterval(() => {
-        setElapsedSeconds((prev) => prev + 1);
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [sessionState]);
-
-  const formatHoursMinutes = (sec: number) => {
-    const hrs = Math.floor(sec / 3600);
-    const mins = Math.floor((sec % 3600) / 60);
-    return `${hrs.toString().padStart(2, "0")}h ${mins.toString().padStart(2, "0")}m`;
-  };
-
-  const handleClockOut = () => {
-    setSessionState("COMPLETED");
-    setMessage("Shift clocked out. Productive hours saved to server.");
-  };
-
-  const handleTakeBreak = () => {
-    if (sessionState === "WORKING") {
-      setSessionState("ON_BREAK");
-      setMessage("Session paused for break.");
-    } else {
-      setSessionState("WORKING");
-      setMessage("Resumed working.");
-    }
-  };
+  const [message] = useState<string | null>(null);
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
@@ -129,55 +94,8 @@ export default function StudentDashboardPage() {
 
         {/* 3 Middle Cards Grid matching Image 2 Screen 4 */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Card 1: Current Work Session */}
-          <Card className="border-slate-200/90 shadow-xs flex flex-col justify-between p-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700">Current Work Session</span>
-                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                  sessionState === "WORKING"
-                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                    : sessionState === "ON_BREAK"
-                    ? "bg-amber-50 text-amber-700 border border-amber-200"
-                    : "bg-slate-100 text-slate-700 border border-slate-200"
-                }`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${
-                    sessionState === "WORKING"
-                      ? "bg-emerald-500 animate-pulse"
-                      : sessionState === "ON_BREAK"
-                      ? "bg-amber-500"
-                      : "bg-slate-400"
-                  }`} />
-                  {sessionState === "WORKING" ? "Working" : sessionState === "ON_BREAK" ? "On Break" : "Completed"}
-                </span>
-              </div>
-
-              <div>
-                <div className="text-3xl font-black text-slate-900 tracking-tight">
-                  {formatHoursMinutes(elapsedSeconds)}
-                </div>
-                <p className="text-xs text-slate-400 mt-0.5">Since 09:02 AM</p>
-              </div>
-            </div>
-
-            <div className="space-y-2 pt-6">
-              <Button
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl"
-                onClick={handleClockOut}
-                disabled={sessionState === "COMPLETED"}
-              >
-                Clock Out
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full border-slate-300 text-slate-700 font-bold rounded-xl hover:bg-slate-50"
-                onClick={handleTakeBreak}
-                disabled={sessionState === "COMPLETED"}
-              >
-                {sessionState === "ON_BREAK" ? "Resume Work" : "Take Break"}
-              </Button>
-            </div>
-          </Card>
+          {/* Card 1: GOAT Dynamic Work Session Widget */}
+          <WorkSessionWidget className="lg:col-span-1 h-full" compact={true} />
 
           {/* Card 2: Today's Schedule Timeline */}
           <Card className="border-slate-200/90 shadow-xs p-6">
