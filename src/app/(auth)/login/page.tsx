@@ -20,7 +20,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const [devOtpHint, setDevOtpHint] = useState<string | null>(null);
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,7 +55,6 @@ export default function LoginPage() {
     e.preventDefault();
     setErrorMessage("");
     setSuccessMessage("");
-    setDevOtpHint(null);
 
     if (!email || !email.includes("@")) {
       setErrorMessage("Please enter a valid email address.");
@@ -68,9 +66,6 @@ export default function LoginPage() {
       const res = await sendEmailOtp(email.toLowerCase().trim());
       if (res.success) {
         setSuccessMessage(res.message);
-        if (res.otpCode) {
-          setDevOtpHint(res.otpCode);
-        }
         setStep("OTP");
       } else {
         setErrorMessage(res.message);
@@ -281,18 +276,6 @@ export default function LoginPage() {
                     helperText={`Check your email (${email})`}
                   />
 
-                  {devOtpHint && (
-                    <div className="flex items-center justify-between p-2.5 rounded-lg bg-blue-50/80 border border-blue-200 text-xs text-blue-800">
-                      <span>Dev code: <strong className="font-mono tracking-wider">{devOtpHint}</strong></span>
-                      <button
-                        type="button"
-                        onClick={() => setOtp(devOtpHint)}
-                        className="text-xs font-bold text-blue-600 hover:underline"
-                      >
-                        Auto-fill
-                      </button>
-                    </div>
-                  )}
 
                   <Button
                     type="submit"

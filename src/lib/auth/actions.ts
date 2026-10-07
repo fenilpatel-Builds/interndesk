@@ -9,7 +9,6 @@ export interface AuthResponse {
   message: string;
   redirectTo?: string;
   error?: string;
-  otpCode?: string;
 }
 
 // In-memory OTP cache for active runtime
@@ -46,7 +45,7 @@ export async function sendEmailOtp(email: string): Promise<AuthResponse> {
   }
 
   // 3. Deliver branded 6-digit email via Resend REST API
-  const resendResult = await sendOtpEmail(cleanEmail, otpCode);
+  await sendOtpEmail(cleanEmail, otpCode);
 
   // 4. Also trigger Supabase native OTP / magic link
   try {
@@ -63,19 +62,9 @@ export async function sendEmailOtp(email: string): Promise<AuthResponse> {
     console.warn("Supabase auth notice:", supaErr);
   }
 
-  if (resendResult.success) {
-    return {
-      success: true,
-      message: `6-Digit verification code sent to ${cleanEmail}. Check your inbox!`,
-      otpCode: otpCode,
-    };
-  }
-
-  // If in sandbox mode and email is different from account owner
   return {
     success: true,
-    message: `Verification code generated! (Dev code: ${otpCode} or 123456). Note: Resend sandbox sends to huntking002@gmail.com.`,
-    otpCode: otpCode,
+    message: `6-Digit verification code sent to ${cleanEmail}. Check your inbox.`,
   };
 }
 
@@ -176,18 +165,14 @@ export async function verifyEmailOtp(
     profile = existingProfile;
   } else {
     // Create new profile with fallback phone
+    // ONLY fenil8918@gmail.com can ever have role ADMIN
     const { data: newProfile } = await adminClient
       .from("profiles")
       .insert({
-        full_name: cleanEmail.split("@")[0],
+        full_name: cleanEmail === "fenil8918@gmail.com" ? "Fenil Patel" : cleanEmail.split("@")[0],
         email: cleanEmail,
         mobile: "9876543210",
-        role:
-          cleanEmail.includes("admin") ||
-          cleanEmail === "huntking002@gmail.com" ||
-          cleanEmail === "fenil8918@gmail.com"
-            ? "ADMIN"
-            : "STUDENT",
+        role: cleanEmail === "fenil8918@gmail.com" ? "ADMIN" : "STUDENT",
         status: "ACTIVE",
       })
       .select()
@@ -220,8 +205,8 @@ export async function verifyEmailOtp(
     }
   }
 
-  // 7. Route based on role
-  if (profile?.role === "ADMIN") {
+  // 7. Route based on role: ONLY fenil8918@gmail.com is permitted into Admin Console
+  if (profile?.role === "ADMIN" && cleanEmail === "fenil8918@gmail.com") {
     return {
       success: true,
       message: "Admin authenticated successfully. Directing to Admin Console...",
@@ -283,15 +268,10 @@ export async function loginWithPassword(email: string, password: string): Promis
       .select("*")
       .eq("email", cleanEmail)
       .maybeSingle();
-    role = profile?.role || "STUDENT";
+    role = cleanEmail === "fenil8918@gmail.com" && profile?.role === "ADMIN" ? "ADMIN" : "STUDENT";
   } else {
-    // If user password login in Supabase auth failed or not created yet:
-    // Support demo/admin credentials and existing profile
-    if (
-      cleanEmail === "huntking002@gmail.com" ||
-      cleanEmail === "fenil8918@gmail.com" ||
-      cleanEmail.includes("admin")
-    ) {
+    // ONLY fenil8918@gmail.com is recognized as ADMIN
+    if (cleanEmail === "fenil8918@gmail.com") {
       role = "ADMIN";
     } else {
       const { data: prof } = await adminClient
@@ -301,7 +281,7 @@ export async function loginWithPassword(email: string, password: string): Promis
         .maybeSingle();
 
       if (prof) {
-        role = prof.role || "STUDENT";
+        role = "STUDENT";
       } else {
         return {
           success: false,
@@ -311,7 +291,7 @@ export async function loginWithPassword(email: string, password: string): Promis
     }
   }
 
-  if (role === "ADMIN") {
+  if (role === "ADMIN" && cleanEmail === "fenil8918@gmail.com") {
     return {
       success: true,
       message: "Admin authenticated successfully. Directing to Admin Console...",
