@@ -260,6 +260,17 @@ CREATE POLICY "Admin full access documents"
 ON public.documents FOR ALL
 USING (public.is_admin());
 
+-- 10B. DOCUMENT TEMPLATES
+ALTER TABLE public.document_templates ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public read active document templates"
+ON public.document_templates FOR SELECT
+USING (active = true OR public.is_admin());
+
+CREATE POLICY "Admin manage document templates"
+ON public.document_templates FOR ALL
+USING (public.is_admin());
+
 -- 11. USER SESSIONS & NOTIFICATIONS
 ALTER TABLE public.user_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
