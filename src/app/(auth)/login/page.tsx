@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { GraduationCap, Mail, KeyRound, ArrowRight, ShieldCheck, CheckCircle2, Lock, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { sendEmailOtp, verifyEmailOtp } from "@/lib/auth/actions";
+import { sendEmailOtp, verifyEmailOtp, loginWithPassword } from "@/lib/auth/actions";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,6 +20,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [devOtpHint, setDevOtpHint] = useState<string | null>(null);
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,16 +38,15 @@ export default function LoginPage() {
 
     setIsLoading(true);
     try {
-      // Admin demo or student credentials routing
-      if (email.toLowerCase().includes("admin") || email.toLowerCase().includes("mentor")) {
-        setSuccessMessage("Admin authentication verified. Directing to Admin Console...");
-        router.push("/admin/dashboard");
+      const res = await loginWithPassword(email.toLowerCase().trim(), password);
+      if (res.success && res.redirectTo) {
+        setSuccessMessage(res.message);
+        router.push(res.redirectTo);
       } else {
-        setSuccessMessage("Authenticated successfully. Directing to Student Portal...");
-        router.push("/student/dashboard");
+        setErrorMessage(res.message);
       }
     } catch {
-      setErrorMessage("Invalid credentials. Please verify your email and password.");
+      setErrorMessage("Authentication failed. Please verify your email and password.");
     } finally {
       setIsLoading(false);
     }
@@ -56,6 +56,7 @@ export default function LoginPage() {
     e.preventDefault();
     setErrorMessage("");
     setSuccessMessage("");
+    setDevOtpHint(null);
 
     if (!email || !email.includes("@")) {
       setErrorMessage("Please enter a valid email address.");
@@ -67,6 +68,9 @@ export default function LoginPage() {
       const res = await sendEmailOtp(email.toLowerCase().trim());
       if (res.success) {
         setSuccessMessage(res.message);
+        if (res.otpCode) {
+          setDevOtpHint(res.otpCode);
+        }
         setStep("OTP");
       } else {
         setErrorMessage(res.message);
@@ -276,6 +280,19 @@ export default function LoginPage() {
                     disabled={isLoading}
                     helperText={`Check your email (${email})`}
                   />
+
+                  {devOtpHint && (
+                    <div className="flex items-center justify-between p-2.5 rounded-lg bg-blue-50/80 border border-blue-200 text-xs text-blue-800">
+                      <span>Dev code: <strong className="font-mono tracking-wider">{devOtpHint}</strong></span>
+                      <button
+                        type="button"
+                        onClick={() => setOtp(devOtpHint)}
+                        className="text-xs font-bold text-blue-600 hover:underline"
+                      >
+                        Auto-fill
+                      </button>
+                    </div>
+                  )}
 
                   <Button
                     type="submit"
