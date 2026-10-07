@@ -63,13 +63,18 @@ export async function sendEmailOtp(email: string): Promise<AuthResponse> {
     console.warn("Supabase auth notice:", supaErr);
   }
 
-  const hasResend = !!process.env.RESEND_API_KEY && !process.env.RESEND_API_KEY.includes("placeholder");
+  if (resendResult.success) {
+    return {
+      success: true,
+      message: `6-Digit verification code sent to ${cleanEmail}. Check your inbox!`,
+      otpCode: otpCode,
+    };
+  }
 
+  // If in sandbox mode and email is different from account owner
   return {
     success: true,
-    message: hasResend
-      ? `6-Digit verification code sent to ${cleanEmail}. Check your inbox.`
-      : `Verification code sent to ${cleanEmail}! (Dev code: ${otpCode} or 123456)`,
+    message: `Verification code generated! (Dev code: ${otpCode} or 123456). Note: Resend sandbox sends to huntking002@gmail.com.`,
     otpCode: otpCode,
   };
 }
