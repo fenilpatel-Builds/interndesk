@@ -40,7 +40,7 @@ export default function LoginPage() {
       const res = await loginWithPassword(email.toLowerCase().trim(), password);
       if (res.success && res.redirectTo) {
         setSuccessMessage(res.message);
-        router.push(res.redirectTo);
+        window.location.href = res.redirectTo;
       } else {
         setErrorMessage(res.message);
       }
@@ -99,7 +99,7 @@ export default function LoginPage() {
       const res = await verifyEmailOtp(email.toLowerCase().trim(), otp.trim(), deviceInfo);
       if (res.success && res.redirectTo) {
         setSuccessMessage(res.message);
-        router.push(res.redirectTo);
+        window.location.href = res.redirectTo;
       } else {
         setErrorMessage(res.message);
       }

@@ -1,5 +1,6 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendOtpEmail } from "@/lib/auth/email-service";
@@ -205,7 +206,44 @@ export async function verifyEmailOtp(
     }
   }
 
-  // 7. Route based on role: ONLY fenil8918@gmail.com is permitted into Admin Console
+  // 7. Establish genuine Supabase Auth session & App Session Cookie
+  try {
+    const { data: linkData } = await adminClient.auth.admin.generateLink({
+      type: "magiclink",
+      email: cleanEmail,
+    });
+    if (linkData?.properties?.hashed_token) {
+      const serverSupabase = await createServerSupabaseClient();
+      await serverSupabase.auth.verifyOtp({
+        token_hash: linkData.properties.hashed_token,
+        type: "email",
+      });
+    }
+  } catch (sessErr) {
+    console.warn("Session establishment notice:", sessErr);
+  }
+
+  try {
+    const cookieStore = await cookies();
+    cookieStore.set(
+      "interndesk_user",
+      JSON.stringify({
+        id: profile?.id,
+        email: cleanEmail,
+        role: profile?.role || "STUDENT",
+      }),
+      {
+        path: "/",
+        httpOnly: true,
+        maxAge: 60 * 60 * 24 * 7,
+        sameSite: "lax",
+      }
+    );
+  } catch (cErr) {
+    console.warn("Cookie set notice:", cErr);
+  }
+
+  // 8. Route based on role: ONLY fenil8918@gmail.com is permitted into Admin Console
   if (profile?.role === "ADMIN" && cleanEmail === "fenil8918@gmail.com") {
     return {
       success: true,
@@ -291,6 +329,26 @@ export async function loginWithPassword(email: string, password: string): Promis
     }
   }
 
+  // Set session cookie
+  try {
+    const cookieStore = await cookies();
+    cookieStore.set(
+      "interndesk_user",
+      JSON.stringify({
+        email: cleanEmail,
+        role: role,
+      }),
+      {
+        path: "/",
+        httpOnly: true,
+        maxAge: 60 * 60 * 24 * 7,
+        sameSite: "lax",
+      }
+    );
+  } catch {
+    // Ignored
+  }
+
   if (role === "ADMIN" && cleanEmail === "fenil8918@gmail.com") {
     return {
       success: true,
@@ -312,5 +370,11 @@ export async function loginWithPassword(email: string, password: string): Promis
 export async function signOutUser() {
   const supabase = await createServerSupabaseClient();
   await supabase.auth.signOut();
+  try {
+    const cookieStore = await cookies();
+    cookieStore.delete("interndesk_user");
+  } catch {
+    // Ignored
+  }
   return { success: true };
 }

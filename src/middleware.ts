@@ -32,16 +32,31 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  // Refresh auth token
+  // Check Supabase Auth user session
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  // Check application session cookie
+  const interndeskSession = request.cookies.get("interndesk_user")?.value;
+  let parsedSession: { email?: string; role?: string } | null = null;
+  if (interndeskSession) {
+    try {
+      parsedSession = JSON.parse(interndeskSession);
+    } catch {
+      // Ignored
+    }
+  }
+
+  const userEmail = (user?.email || parsedSession?.email || "").toLowerCase().trim();
+  const isAuthenticated = !!user || !!parsedSession?.email;
+  const isAdmin = userEmail === "fenil8918@gmail.com" && (parsedSession?.role === "ADMIN" || !parsedSession);
 
   const path = request.nextUrl.pathname;
 
   // Protect /student/* routes
   if (path.startsWith("/student")) {
-    if (!user) {
+    if (!isAuthenticated) {
       const url = request.nextUrl.clone();
       url.pathname = "/login";
       url.searchParams.set("redirect", path);
@@ -49,9 +64,9 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Protect /admin/* routes
+  // Protect /admin/* routes (Only fenil8918@gmail.com allowed)
   if (path.startsWith("/admin")) {
-    if (!user) {
+    if (!isAuthenticated || userEmail !== "fenil8918@gmail.com") {
       const url = request.nextUrl.clone();
       url.pathname = "/login";
       url.searchParams.set("redirect", path);
