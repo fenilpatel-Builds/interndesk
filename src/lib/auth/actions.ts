@@ -45,22 +45,14 @@ export async function sendEmailOtp(email: string): Promise<AuthResponse> {
     console.warn("Notice: email_otps table insert skipped:", dbErr);
   }
 
-  // 3. Deliver branded 6-digit email via Resend REST API
-  await sendOtpEmail(cleanEmail, otpCode);
+  // 3. Deliver branded 6-digit email via Resend REST API (Sole email channel)
+  const resendResult = await sendOtpEmail(cleanEmail, otpCode);
 
-  // 4. Also trigger Supabase native OTP / magic link
-  try {
-    const supabase = await createServerSupabaseClient();
-    const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    await supabase.auth.signInWithOtp({
-      email: cleanEmail,
-      options: {
-        shouldCreateUser: true,
-        emailRedirectTo: `${siteUrl}/auth/callback`,
-      },
-    });
-  } catch (supaErr) {
-    console.warn("Supabase auth notice:", supaErr);
+  if (!resendResult.success) {
+    return {
+      success: false,
+      message: resendResult.error || "Failed to deliver OTP email via Resend.",
+    };
   }
 
   return {
@@ -87,6 +79,11 @@ export async function verifyEmailOtp(
 
   if (!cleanEmail || !cleanToken) {
     return { success: false, message: "Email and OTP code are required." };
+  }
+
+  // Strictly enforce 6 numeric digits
+  if (!/^\d{6}$/.test(cleanToken)) {
+    return { success: false, message: "Please enter a valid 6-digit numeric OTP code." };
   }
 
   const adminClient = createAdminClient();
@@ -125,32 +122,11 @@ export async function verifyEmailOtp(
     }
   }
 
-  // 3. Fallback check with native Supabase verifyOtp
-  if (!verified) {
-    try {
-      const supabase = await createServerSupabaseClient();
-      const { data, error } = await supabase.auth.verifyOtp({
-        email: cleanEmail,
-        token: cleanToken,
-        type: "email",
-      });
-      if (!error && data?.user) {
-        verified = true;
-      }
-    } catch {
-      // Ignored
-    }
-  }
-
-  // 4. Special development fallback codes for fast testing
-  if (cleanToken === "123456" || cleanToken === "847291") {
-    verified = true;
-  }
-
+  // STRICT VERIFICATION: NO HARDCODED 123456 / 847291 CODES PERMITTED!
   if (!verified) {
     return {
       success: false,
-      message: "Invalid or expired 6-digit OTP code. Please check your inbox or request a new code.",
+      message: "Invalid or expired 6-digit OTP code. Please check your inbox or click Resend OTP.",
     };
   }
 

@@ -20,6 +20,20 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(30);
+  const [isResending, setIsResending] = useState(false);
+
+  React.useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (step === "OTP" && resendCooldown > 0) {
+      interval = setInterval(() => {
+        setResendCooldown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [step, resendCooldown]);
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,6 +81,8 @@ export default function LoginPage() {
       if (res.success) {
         setSuccessMessage(res.message);
         setStep("OTP");
+        setResendCooldown(30);
+        setOtp("");
       } else {
         setErrorMessage(res.message);
       }
@@ -77,13 +93,35 @@ export default function LoginPage() {
     }
   };
 
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0 || isResending) return;
+    setIsResending(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+    try {
+      const res = await sendEmailOtp(email.toLowerCase().trim());
+      if (res.success) {
+        setSuccessMessage("A fresh 6-digit verification code has been sent to your email.");
+        setResendCooldown(30);
+        setOtp("");
+      } else {
+        setErrorMessage(res.message);
+      }
+    } catch {
+      setErrorMessage("Failed to resend verification code. Please try again.");
+    } finally {
+      setIsResending(false);
+    }
+  };
+
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
     setSuccessMessage("");
 
-    if (!otp || otp.trim().length < 6) {
-      setErrorMessage("Please enter the 6-digit OTP code sent to your email.");
+    const cleanOtp = otp.trim();
+    if (!cleanOtp || cleanOtp.length !== 6 || !/^\d{6}$/.test(cleanOtp)) {
+      setErrorMessage("Please enter the complete 6-digit OTP code sent to your email.");
       return;
     }
 
@@ -96,7 +134,7 @@ export default function LoginPage() {
         ipHash: "session-client",
       };
 
-      const res = await verifyEmailOtp(email.toLowerCase().trim(), otp.trim(), deviceInfo);
+      const res = await verifyEmailOtp(email.toLowerCase().trim(), cleanOtp, deviceInfo);
       if (res.success && res.redirectTo) {
         setSuccessMessage(res.message);
         window.location.href = res.redirectTo;
@@ -264,37 +302,63 @@ export default function LoginPage() {
                 </form>
               ) : (
                 <form onSubmit={handleVerifyOtp} className="space-y-4">
-                  <Input
-                    label="6-Digit Verification Code"
-                    type="text"
-                    placeholder="123456"
-                    maxLength={8}
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
-                    required
-                    disabled={isLoading}
-                    helperText={`Check your email (${email})`}
-                  />
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      6-Digit Verification Code
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        placeholder="••••••"
+                        maxLength={6}
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        required
+                        disabled={isLoading}
+                        className="w-full px-3.5 py-3 rounded-xl border border-slate-300 text-center text-lg font-mono tracking-[0.4em] font-bold focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all placeholder:tracking-normal placeholder:font-normal placeholder:text-slate-400 bg-white"
+                      />
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Enter the 6-digit code delivered to <strong className="text-slate-700">{email}</strong>
+                    </p>
+                  </div>
 
+                  <div className="flex items-center justify-between text-xs pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setStep("EMAIL")}
+                      className="font-semibold text-slate-500 hover:text-slate-800 transition-colors"
+                    >
+                      ← Change email
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResendOtp}
+                      disabled={resendCooldown > 0 || isResending}
+                      className={`font-bold transition-colors ${
+                        resendCooldown > 0 || isResending
+                          ? "text-slate-400 cursor-not-allowed"
+                          : "text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                      }`}
+                    >
+                      {isResending
+                        ? "Sending code..."
+                        : resendCooldown > 0
+                        ? `Resend OTP in ${resendCooldown}s`
+                        : "Resend OTP"}
+                    </button>
+                  </div>
 
                   <Button
                     type="submit"
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs"
                     size="lg"
                     isLoading={isLoading}
                   >
                     Verify &amp; Continue
                   </Button>
-
-                  <div className="text-center pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setStep("EMAIL")}
-                      className="text-xs font-semibold text-slate-500 hover:text-slate-800"
-                    >
-                      ← Change email
-                    </button>
-                  </div>
                 </form>
               )
             )}
