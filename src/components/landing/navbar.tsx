@@ -10,10 +10,10 @@ export function Navbar() {
 
   const navLinks = [
     { label: "Home", href: "#hero" },
-    { label: "About", href: "#about" },
+    { label: "About", href: "/about" },
     { label: "Features", href: "#features" },
     { label: "How It Works", href: "#how-it-works" },
-    { label: "FAQ", href: "#faq" },
+    { label: "Contact", href: "/contact" },
   ];
 
   return (
@@ -22,8 +22,8 @@ export function Navbar() {
         <div className="flex items-center justify-between h-18">
           {/* Logo & Tagline */}
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-700 to-indigo-800 flex items-center justify-center text-white shadow-sm shadow-blue-500/20 group-hover:scale-105 transition-transform duration-200">
-              <GraduationCap className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white shadow-sm shadow-blue-500/20 group-hover:scale-105 transition-transform duration-200">
+              <GraduationCap className="w-6 h-6" />
             </div>
             <div className="flex flex-col">
               <span className="text-xl font-bold tracking-tight text-slate-900 group-hover:text-blue-700 transition-colors">
@@ -41,7 +41,7 @@ export function Navbar() {
               <a
                 key={link.label}
                 href={link.href}
-                className="text-sm font-medium text-slate-600 hover:text-blue-700 transition-colors"
+                className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors"
               >
                 {link.label}
               </a>
@@ -51,14 +51,13 @@ export function Navbar() {
           {/* Auth Actions */}
           <div className="hidden md:flex items-center gap-3">
             <Link href="/login">
-              <Button variant="ghost" size="sm" className="font-semibold text-slate-700">
+              <Button variant="outline" size="sm" className="font-semibold text-slate-700 border-slate-300 hover:bg-slate-50 px-5 rounded-lg">
                 Login
               </Button>
             </Link>
             <Link href="/register">
-              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 font-semibold shadow-xs">
+              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs px-5 rounded-lg">
                 Register
-                <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </Link>
           </div>

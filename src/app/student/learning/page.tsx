@@ -1,168 +1,150 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { StudentTopbar } from "@/components/student/topbar";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BookOpen, FileText, Download, Lock, CheckCircle2, Search } from "lucide-react";
-
-interface MaterialItem {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  fileType: string;
-  fileSize: string;
-  isCompleted?: boolean;
-}
+import { BookOpen, FileText, ArrowRight, CheckCircle2, Code2, Cpu } from "lucide-react";
 
 export default function StudentLearningCenterPage() {
   const [selectedCategory, setSelectedCategory] = useState("ALL");
-  const [searchQuery, setSearchQuery] = useState("");
 
-  const materials: MaterialItem[] = [
+  const categories = [
+    { id: "ALL", label: "All" },
+    { id: "PYTHON", label: "Python" },
+    { id: "WEB", label: "Web Development" },
+    { id: "AIML", label: "AI & ML" },
+    { id: "DB", label: "Database" },
+    { id: "JAVA", label: "Java" },
+  ];
+
+  const materials = [
     {
       id: "m1",
-      title: "Module 1: Next.js App Router Architecture & Server Actions",
-      description: "Master modern routing, server components, data fetching caches, and layout streaming.",
-      category: "Web Development",
-      fileType: "PDF Guide",
-      fileSize: "2.4 MB",
-      isCompleted: true,
+      title: "Python Fundamentals",
+      category: "PYTHON",
+      pages: "24 Pages",
+      fileType: "PDF",
+      assigned: true,
+      icon: <BookOpen className="w-5 h-5 text-blue-600" />,
     },
     {
       id: "m2",
-      title: "Module 2: Supabase PostgreSQL & Row Level Security Deep Dive",
-      description: "Writing zero-trust RLS policies, PostgreSQL triggers, composite indexing, and role definitions.",
-      category: "Web Development",
-      fileType: "PDF Manual",
-      fileSize: "3.8 MB",
-      isCompleted: true,
+      title: "Web Development",
+      category: "WEB",
+      pages: "52 Pages",
+      fileType: "PDF",
+      assigned: true,
+      icon: <Code2 className="w-5 h-5 text-indigo-600" />,
     },
     {
       id: "m3",
-      title: "Module 3: Secure Payment Gateways & Cryptographic Webhooks",
-      description: "Architecting HMAC-SHA256 signature verification and tamper-proof financial transaction workflows.",
-      category: "Web Development",
-      fileType: "Reference Guide",
-      fileSize: "1.9 MB",
-      isCompleted: false,
-    },
-    {
-      id: "m4",
-      title: "Module 4: Enterprise State Machines & Production Deployment",
-      description: "Testing business logic, zero-downtime deployment pipelines, and session security hardening.",
-      category: "Web Development",
-      fileType: "Coursebook",
-      fileSize: "4.1 MB",
-      isCompleted: false,
+      title: "AI & ML Basics",
+      category: "AIML",
+      pages: "38 Pages",
+      fileType: "PDF",
+      assigned: true,
+      icon: <Cpu className="w-5 h-5 text-emerald-600" />,
     },
   ];
 
-  const categories = ["ALL", "Web Development", "Python", "Data Science", "AI / ML", "Java"];
-
-  const filteredMaterials = materials.filter((m) => {
-    const matchesCat = selectedCategory === "ALL" || m.category === selectedCategory;
-    const matchesSearch =
-      m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.description.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCat && matchesSearch;
-  });
+  const filtered = selectedCategory === "ALL"
+    ? materials
+    : materials.filter((m) => m.category === selectedCategory);
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
-      <StudentTopbar title="Learning Center" studentName="Aarav Sharma" />
+      <StudentTopbar title="Learning Center" studentName="Fenil Patel" />
 
       <main className="flex-1 overflow-y-auto p-6 space-y-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-              Curriculum & Study Materials
-            </h2>
-            <p className="text-xs text-slate-500">
-              Assigned enterprise courseware for your internship specialization track.
-            </p>
-          </div>
+        {/* Header matching Image 2 Screen 7 */}
+        <div>
+          <h2 className="text-xl font-black text-slate-900 tracking-tight">
+            Learning Center
+          </h2>
+          <p className="text-xs text-slate-500">
+            Access study materials and assessments assigned to you.
+          </p>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs">
-          <div className="relative w-full sm:w-72">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search assigned materials..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-blue-600"
-            />
-          </div>
-
-          <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
-            {categories.map((c) => (
-              <button
-                key={c}
-                onClick={() => setSelectedCategory(c)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                  selectedCategory === c
-                    ? "bg-blue-600 text-white"
-                    : "bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200"
-                }`}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Material Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredMaterials.map((mat) => (
-            <Card
-              key={mat.id}
-              className="border-slate-200/90 shadow-xs hover:border-blue-300 transition-all flex flex-col justify-between"
+        {/* Category Filter Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          {categories.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => setSelectedCategory(c.id)}
+              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 ${
+                selectedCategory === c.id
+                  ? "bg-blue-600 text-white shadow-2xs"
+                  : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+              }`}
             >
-              <CardContent className="p-6 space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                    <BookOpen className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                      {mat.category}
-                    </span>
-                    <h3 className="text-sm font-bold text-slate-900 mt-1.5 leading-snug">
-                      {mat.title}
-                    </h3>
-                  </div>
-                </div>
-
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {mat.description}
-                </p>
-
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                  <span>{mat.fileType} • {mat.fileSize}</span>
-                  {mat.isCompleted && (
-                    <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold text-[11px]">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      Completed
-                    </span>
-                  )}
-                </div>
-
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="w-full text-xs justify-center"
-                  onClick={() => alert(`Accessing signed URL for ${mat.title}...`)}
-                >
-                  <Download className="w-3.5 h-3.5 mr-1.5 text-blue-600" />
-                  Download Protected Material
-                </Button>
-              </CardContent>
-            </Card>
+              {c.label}
+            </button>
           ))}
+        </div>
+
+        {/* Main 2-Column Content: Study Materials (Left) & Assessments (Right) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left: Study Materials Grid */}
+          <div className="lg:col-span-8 space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">Study Materials</h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {filtered.map((mat) => (
+                <Card
+                  key={mat.id}
+                  className="border-slate-200/90 shadow-xs hover:border-blue-300 transition-all p-5 flex flex-col justify-between"
+                >
+                  <div className="space-y-3">
+                    <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center">
+                      {mat.icon}
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900">{mat.title}</h4>
+                      <p className="text-xs text-slate-500 mt-0.5">{mat.fileType} • {mat.pages}</p>
+                    </div>
+
+                    <span className="inline-block px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
+                      Assigned to You
+                    </span>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-100 mt-4">
+                    <button className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                      View Material →
+                    </button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          {/* Right: Assessments Widget */}
+          <div className="lg:col-span-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">Assessments</h3>
+              <Link href="/student/assessments" className="text-xs font-bold text-blue-600 hover:underline">
+                View All
+              </Link>
+            </div>
+
+            <Card className="border-slate-200/90 shadow-xs p-6 space-y-4">
+              <div className="space-y-1">
+                <h4 className="text-base font-bold text-slate-900">Python Fundamentals</h4>
+                <p className="text-xs text-slate-500">30 Questions • 30 Minutes</p>
+                <p className="text-xs text-emerald-600 font-semibold pt-1">Passing Score: 60%</p>
+              </div>
+
+              <Link href="/student/assessments" className="block pt-2">
+                <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs">
+                  Start Assessment →
+                </Button>
+              </Link>
+            </Card>
+          </div>
         </div>
       </main>
     </div>
