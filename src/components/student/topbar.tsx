@@ -11,7 +11,16 @@ interface StudentTopbarProps {
 }
 
 export function StudentTopbar({ title, studentName = "Student Intern" }: StudentTopbarProps) {
-  const { status, hoursStr, minutesStr, secondsStr } = useWorkTimer();
+  const {
+    status,
+    hoursStr,
+    minutesStr,
+    secondsStr,
+    breakFormatted,
+    clockIn,
+    clockOut,
+    resumeWork,
+  } = useWorkTimer();
 
   return (
     <header className="h-16 bg-white border-b border-slate-200/90 px-6 flex items-center justify-between shrink-0">
@@ -24,22 +33,48 @@ export function StudentTopbar({ title, studentName = "Student Intern" }: Student
 
         {/* Live Ticking Shift Indicator in Header */}
         {status === "WORKING" && (
-          <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-mono font-bold shadow-2xs animate-in fade-in">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-            </span>
-            <span>
-              {hoursStr}:{minutesStr}:{secondsStr}
-            </span>
+          <div className="hidden lg:flex items-center gap-2">
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-mono font-bold shadow-2xs animate-in fade-in">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span>
+                {hoursStr}:{minutesStr}:{secondsStr}
+              </span>
+            </div>
+            <button
+              onClick={clockOut}
+              className="text-[11px] font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-lg border border-red-200 transition-colors cursor-pointer"
+            >
+              Clock Out
+            </button>
           </div>
         )}
 
         {status === "ON_BREAK" && (
-          <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold shadow-2xs">
-            <Coffee className="w-3.5 h-3.5 text-amber-600 animate-bounce" />
-            <span>On Break</span>
+          <div className="hidden lg:flex items-center gap-2">
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold shadow-2xs">
+              <Coffee className="w-3.5 h-3.5 text-amber-600 animate-bounce" />
+              <span>On Break ({breakFormatted})</span>
+            </div>
+            <button
+              onClick={resumeWork}
+              className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200 transition-colors cursor-pointer"
+            >
+              Resume
+            </button>
           </div>
+        )}
+
+        {status === "IDLE" && (
+          <button
+            onClick={clockIn}
+            className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold transition-colors cursor-pointer"
+          >
+            <Clock className="w-3 h-3 text-blue-600" />
+            <span>Clock In</span>
+          </button>
         )}
       </div>
 
