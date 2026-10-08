@@ -35,14 +35,14 @@ export default function HomePage() {
             </p>
             <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/register">
-                <Button size="lg" className="bg-white text-blue-900 hover:bg-blue-50 font-bold px-8 shadow-lg">
-                  Register for Internship
+                <Button size="lg" className="bg-white text-blue-900 hover:bg-blue-50 font-bold px-8 shadow-lg rounded-xl">
+                  Register Free
                   <ArrowRight className="w-5 h-5 ml-2 text-blue-700" />
                 </Button>
               </Link>
-              <Link href="/login">
-                <Button size="lg" variant="outline" className="border-blue-300 text-white hover:bg-blue-800/40 font-semibold px-6">
-                  Access Portal
+              <Link href="/programs">
+                <Button size="lg" variant="outline" className="border-blue-300 text-white hover:bg-blue-800/40 font-semibold px-6 rounded-xl">
+                  Explore Programs
                 </Button>
               </Link>
             </div>

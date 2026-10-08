@@ -57,9 +57,9 @@ export function Features() {
     },
     {
       icon: <CreditCard className="w-6 h-6 text-teal-600" />,
-      title: "Secure Payments",
+      title: "Program Enrollment & Payments",
       description:
-        "Integrated ₹1,000 registration fee processing via Razorpay with server signature validation and auto-generated receipts.",
+        "Free student registration with secure program fee enrollment via Razorpay, cryptographic signature validation, and instant tax invoices.",
     },
   ];
 

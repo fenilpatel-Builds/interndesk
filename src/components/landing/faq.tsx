@@ -9,12 +9,12 @@ export function FAQ() {
 
   const faqs = [
     {
-      q: "What is the internship registration fee?",
-      a: "The official registration fee is ₹1,000 INR, payable online through our integrated Razorpay gateway. Upon successful verification, you receive an automated official payment receipt.",
+      q: "Is student registration on InternDesk free?",
+      a: "Yes! Registration on InternDesk is 100% free with zero signup charges. You can complete your profile, verify your email with a 6-digit OTP, and submit your application for administrator verification completely free of charge. Course enrollment fees apply only after approval when you choose a specific program.",
     },
     {
-      q: "When can I access the student dashboard?",
-      a: "Students gain access to the full dashboard once their registration has been submitted, the ₹1,000 fee is verified server-side, and an administrator reviews and approves the application.",
+      q: "When can I access the student dashboard and programs?",
+      a: "Students gain access to the student portal once their registration application is reviewed and approved by an administrator. After logging in, you can browse available program tracks, enroll, and activate your live work sessions.",
     },
     {
       q: "How is daily attendance tracked?",

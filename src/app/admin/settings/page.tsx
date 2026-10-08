@@ -88,11 +88,11 @@ export default function AdminSettingsPage() {
             <CardContent className="p-6 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
-                  label="Registration Fee (INR ₹)"
+                  label="Default Program Fee (INR ₹)"
                   type="number"
                   value={feeInr}
                   onChange={(e) => setFeeInr(e.target.value)}
-                  helperText="Fixed registration fee processed via Razorpay."
+                  helperText="Configurable program enrollment fee. Student registration is 100% free."
                   required
                 />
                 <Input

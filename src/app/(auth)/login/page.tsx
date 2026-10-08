@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { GraduationCap, Mail, KeyRound, ArrowRight, ShieldCheck, CheckCircle2, Lock, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AnimatedLogo } from "@/components/ui/animated-logo";
 import { sendEmailOtp, verifyEmailOtp, loginWithPassword } from "@/lib/auth/actions";
 
 export default function LoginPage() {
@@ -158,20 +159,8 @@ export default function LoginPage() {
         {/* Left Column: Form */}
         <div className="md:col-span-7 p-8 sm:p-12 space-y-6 flex flex-col justify-between">
           <div className="space-y-6">
-            {/* Logo */}
-            <Link href="/" className="inline-flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-xs">
-                <GraduationCap className="w-5 h-5" />
-              </div>
-              <div className="text-left">
-                <span className="text-lg font-bold tracking-tight text-slate-900 leading-none">
-                  InternDesk
-                </span>
-                <span className="block text-[9px] uppercase font-bold tracking-wider text-slate-400">
-                  Learn • Work • Grow
-                </span>
-              </div>
-            </Link>
+            {/* Unified Logo */}
+            <AnimatedLogo size="md" />
 
             <div>
               <h2 className="text-2xl font-black text-slate-900 tracking-tight">

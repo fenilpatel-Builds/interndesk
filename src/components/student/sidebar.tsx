@@ -28,6 +28,7 @@ export function StudentSidebar() {
       title: "OVERVIEW",
       items: [
         { label: "Dashboard", href: "/student/dashboard", icon: LayoutDashboard },
+        { label: "Browse Programs", href: "/student/programs", icon: GraduationCap },
       ],
     },
     {

@@ -33,10 +33,11 @@ export function AdminSidebar() {
       ],
     },
     {
-      title: "STUDENTS",
+      title: "STUDENTS & PROGRAMS",
       items: [
         { label: "Registrations", href: "/admin/registrations", icon: UserCheck },
         { label: "All Students", href: "/admin/students", icon: Users },
+        { label: "Programs & Fees", href: "/admin/programs", icon: BookOpen },
       ],
     },
     {

@@ -140,18 +140,18 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
         </div>
 
         {/* Dynamic Counter Hero & Radial Progress Gauge */}
-        <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center bg-slate-50/70 p-4 sm:p-5 rounded-2xl border border-slate-200/80">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-slate-50/70 p-4 sm:p-5 rounded-2xl border border-slate-200/80">
           {/* Digital Flip Counter Cards */}
-          <div className="sm:col-span-8 flex flex-col items-center sm:items-start justify-center space-y-2">
+          <div className="flex-1 flex flex-col items-center md:items-start justify-center space-y-2.5 min-w-0">
             <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
               Elapsed Productive Time
             </span>
 
             {/* 3 Digital Monospace Flip Blocks */}
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
               {/* Hours Box */}
               <div className="flex flex-col items-center">
-                <div className="w-14 sm:w-16 h-14 sm:h-16 rounded-xl bg-white border border-slate-200 shadow-2xs flex items-center justify-center text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight transition-transform duration-200 hover:scale-105">
+                <div className="w-14 sm:w-16 h-14 sm:h-16 rounded-xl bg-white border border-slate-200/90 shadow-2xs flex items-center justify-center text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight transition-transform duration-200 hover:scale-105">
                   {hoursStr}
                 </div>
                 <span className="text-[9px] uppercase font-bold text-slate-400 mt-1">
@@ -160,13 +160,13 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
               </div>
 
               {/* Animated Blinking Colon */}
-              <div className="text-2xl sm:text-3xl font-black text-blue-600 pb-4 animate-pulse select-none">
+              <div className="text-2xl sm:text-3xl font-black text-blue-600 pb-3.5 animate-pulse select-none">
                 :
               </div>
 
               {/* Minutes Box */}
               <div className="flex flex-col items-center">
-                <div className="w-14 sm:w-16 h-14 sm:h-16 rounded-xl bg-white border border-slate-200 shadow-2xs flex items-center justify-center text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight transition-transform duration-200 hover:scale-105">
+                <div className="w-14 sm:w-16 h-14 sm:h-16 rounded-xl bg-white border border-slate-200/90 shadow-2xs flex items-center justify-center text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight transition-transform duration-200 hover:scale-105">
                   {minutesStr}
                 </div>
                 <span className="text-[9px] uppercase font-bold text-slate-400 mt-1">
@@ -175,7 +175,7 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
               </div>
 
               {/* Animated Blinking Colon */}
-              <div className="text-2xl sm:text-3xl font-black text-blue-600 pb-4 animate-pulse select-none">
+              <div className="text-2xl sm:text-3xl font-black text-blue-600 pb-3.5 animate-pulse select-none">
                 :
               </div>
 
@@ -190,14 +190,14 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
               </div>
             </div>
 
-            <p className="text-[11px] text-slate-500 font-medium pt-1">
+            <p className="text-[11px] text-slate-500 font-medium pt-0.5">
               {remainingFormatted} to hit your 8h target
             </p>
           </div>
 
           {/* Radial SVG Circular Progress Gauge */}
-          <div className="sm:col-span-4 flex flex-col items-center justify-center border-t sm:border-t-0 sm:border-l border-slate-200/90 pt-4 sm:pt-0 sm:pl-4">
-            <div className="relative w-24 h-24 flex items-center justify-center">
+          <div className="shrink-0 flex flex-col items-center justify-center border-t md:border-t-0 md:border-l border-slate-200/90 pt-4 md:pt-0 md:pl-6 w-full md:w-auto">
+            <div className="relative w-24 h-24 flex items-center justify-center shrink-0">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 90 90">
                 {/* Track */}
                 <circle
@@ -234,7 +234,7 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
                 <span className="text-xl font-black text-slate-900 tracking-tight leading-none">
                   {progressPercent}%
                 </span>
-                <span className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">
+                <span className="text-[8px] font-bold text-slate-400 uppercase mt-1 tracking-wider whitespace-nowrap">
                   Of 8h Target
                 </span>
               </div>

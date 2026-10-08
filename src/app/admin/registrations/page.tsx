@@ -309,20 +309,20 @@ export default function AdminRegistrationsPage() {
               </div>
             </div>
 
-            {/* Section 3: Payment Verification */}
-            <div className="p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-200/80 space-y-1">
+            {/* Section 3: Registration Status */}
+            <div className="p-3.5 rounded-xl bg-blue-50/60 border border-blue-200/80 space-y-1">
               <div className="flex items-center justify-between">
-                <h4 className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">
-                  3. Payment Verification
+                <h4 className="text-[11px] font-bold uppercase tracking-wider text-blue-800">
+                  3. Registration Mode
                 </h4>
-                <span className="text-emerald-700 font-bold">₹1,000 INR Verified ✓</span>
+                <span className="text-blue-700 font-bold">100% Free Registration ✓</span>
               </div>
-              <p className="text-[11px] text-emerald-700">
-                Payment verified through Razorpay gateway signature.
+              <p className="text-[11px] text-blue-700">
+                Student verified via 6-digit email OTP. Program enrollment fees apply upon cohort selection.
               </p>
             </div>
 
-            {/* Actions */}
+            {/* Actions (Section 15) */}
             <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
               <Button
                 variant="danger"
@@ -331,19 +331,29 @@ export default function AdminRegistrationsPage() {
                 disabled={actionLoading || selectedReg.status === "REJECTED"}
               >
                 <XCircle className="w-4 h-4 mr-1.5" />
-                Reject Application
+                Reject
               </Button>
 
-              <Button
-                variant="success"
-                size="sm"
-                onClick={() => handleApprove(selectedReg)}
-                isLoading={actionLoading}
-                disabled={selectedReg.status === "APPROVED"}
-              >
-                <CheckCircle2 className="w-4 h-4 mr-1.5" />
-                Approve & Issue Offer Letter
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedReg(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="success"
+                  size="sm"
+                  onClick={() => handleApprove(selectedReg)}
+                  isLoading={actionLoading}
+                  disabled={selectedReg.status === "APPROVED"}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                >
+                  <CheckCircle2 className="w-4 h-4 mr-1.5" />
+                  Approve Student
+                </Button>
+              </div>
             </div>
           </div>
         </Modal>

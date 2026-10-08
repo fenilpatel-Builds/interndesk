@@ -16,7 +16,8 @@ export default function AdminFinancePage() {
       email: "aarav@college.edu",
       orderId: "order_k29f93nfa01",
       paymentId: "pay_093kfa82110",
-      amount: 1000,
+      program: "Full Stack Development",
+      amount: 4999,
       currency: "INR",
       receiptNumber: "RCPT-98214532",
       status: "VERIFIED",
@@ -28,7 +29,8 @@ export default function AdminFinancePage() {
       email: "priya@university.edu",
       orderId: "order_k29f93nfa02",
       paymentId: "pay_093kfa82111",
-      amount: 1000,
+      program: "Python & AI Engineering",
+      amount: 5499,
       currency: "INR",
       receiptNumber: "RCPT-98214533",
       status: "VERIFIED",
@@ -40,7 +42,8 @@ export default function AdminFinancePage() {
       email: "rohan@collegemail.in",
       orderId: "order_k29f93nfa03",
       paymentId: "pay_093kfa82112",
-      amount: 1000,
+      program: "Data Science & Analytics",
+      amount: 4499,
       currency: "INR",
       receiptNumber: "RCPT-98214534",
       status: "VERIFIED",
@@ -55,10 +58,10 @@ export default function AdminFinancePage() {
       <main className="flex-1 overflow-y-auto p-6 space-y-6">
         <div>
           <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-            Financial Ledger & Registration Receipts
+            Financial Ledger &amp; Program Enrollment Receipts
           </h2>
           <p className="text-xs text-slate-500">
-            Real-time reconciliation of ₹1,000 internship fee transactions processed via Razorpay.
+            Real-time reconciliation of course and cohort enrollment fee transactions processed via Razorpay.
           </p>
         </div>
 

@@ -94,7 +94,7 @@ export interface Payment {
   gateway: "RAZORPAY";
   order_id: string;
   payment_id?: string;
-  amount: number; // in INR e.g. 1000
+  amount: number; // in INR e.g. 4999 (Program enrollment fee)
   currency: string;
   status: "PENDING" | "VERIFIED" | "FAILED";
   verified_at?: string;

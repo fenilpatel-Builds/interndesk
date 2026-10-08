@@ -70,26 +70,54 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* 4 Top Stat Cards matching Image 2 Screen 9 */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="p-5 border-slate-200/90 shadow-xs">
-            <span className="text-xs font-semibold text-slate-500">Total Students</span>
+        {/* 8 Top Stat Cards conforming strictly to Section 27 */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card className="p-4 border-slate-200/90 shadow-2xs bg-white rounded-2xl">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Students</span>
             <div className="text-2xl font-black text-slate-900 mt-1">248</div>
+            <span className="text-[10px] text-emerald-600 font-semibold">↑ 18 this month</span>
           </Card>
 
-          <Card className="p-5 border-slate-200/90 shadow-xs">
-            <span className="text-xs font-semibold text-slate-500">Pending Approvals</span>
+          <Card className="p-4 border-slate-200/90 shadow-2xs bg-white rounded-2xl">
+            <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">Pending Approvals</span>
             <div className="text-2xl font-black text-amber-600 mt-1">12</div>
+            <span className="text-[10px] text-amber-600 font-semibold">Requires verification</span>
           </Card>
 
-          <Card className="p-5 border-slate-200/90 shadow-xs">
-            <span className="text-xs font-semibold text-slate-500">Active Interns</span>
+          <Card className="p-4 border-slate-200/90 shadow-2xs bg-white rounded-2xl">
+            <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">Active Interns</span>
             <div className="text-2xl font-black text-blue-600 mt-1">186</div>
+            <span className="text-[10px] text-blue-600 font-semibold">75% attendance rate</span>
           </Card>
 
-          <Card className="p-5 border-slate-200/90 shadow-xs">
-            <span className="text-xs font-semibold text-slate-500">Completed Interns</span>
+          <Card className="p-4 border-slate-200/90 shadow-2xs bg-white rounded-2xl">
+            <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Completed Internships</span>
             <div className="text-2xl font-black text-emerald-600 mt-1">50</div>
+            <span className="text-[10px] text-emerald-600 font-semibold">100% credentialed</span>
+          </Card>
+
+          <Card className="p-4 border-slate-200/90 shadow-2xs bg-white rounded-2xl">
+            <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">Active Programs</span>
+            <div className="text-2xl font-black text-indigo-600 mt-1">6</div>
+            <span className="text-[10px] text-indigo-600 font-semibold">All published</span>
+          </Card>
+
+          <Card className="p-4 border-slate-200/90 shadow-2xs bg-white rounded-2xl">
+            <span className="text-[11px] font-bold text-cyan-700 uppercase tracking-wider">Enrollments</span>
+            <div className="text-2xl font-black text-cyan-600 mt-1">214</div>
+            <span className="text-[10px] text-cyan-600 font-semibold">↑ 24 this week</span>
+          </Card>
+
+          <Card className="p-4 border-slate-200/90 shadow-2xs bg-white rounded-2xl">
+            <span className="text-[11px] font-bold text-violet-700 uppercase tracking-wider">Program Payments</span>
+            <div className="text-2xl font-black text-violet-600 mt-1">₹10.6L</div>
+            <span className="text-[10px] text-violet-600 font-semibold">Razorpay verified</span>
+          </Card>
+
+          <Card className="p-4 border-slate-200/90 shadow-2xs bg-white rounded-2xl">
+            <span className="text-[11px] font-bold text-rose-700 uppercase tracking-wider">Certificates</span>
+            <div className="text-2xl font-black text-rose-600 mt-1">50</div>
+            <span className="text-[10px] text-rose-600 font-semibold">Cryptographically signed</span>
           </Card>
         </div>
 
