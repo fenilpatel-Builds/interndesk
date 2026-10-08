@@ -55,9 +55,13 @@ export async function sendEmailOtp(email: string): Promise<AuthResponse> {
     };
   }
 
+  const successMessage = resendResult.forwardedTo
+    ? `6-Digit verification code sent! (Delivered to developer inbox ${resendResult.forwardedTo} & server console).`
+    : `6-Digit verification code sent to ${cleanEmail}. Check your inbox.`;
+
   return {
     success: true,
-    message: `6-Digit verification code sent to ${cleanEmail}. Check your inbox.`,
+    message: successMessage,
   };
 }
 
