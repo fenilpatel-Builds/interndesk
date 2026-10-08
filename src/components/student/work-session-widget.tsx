@@ -14,6 +14,7 @@ import {
   RotateCcw,
   Utensils,
   Smile,
+  Droplets,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -105,7 +106,7 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
                   ? `Paused for ${breakType.toLowerCase()} break`
                   : status === "COMPLETED"
                   ? "Shift finished today"
-                  : "Ready to begin"}
+                  : "Shift ready to begin • Click Clock In below"}
               </span>
             </div>
           </div>
@@ -131,9 +132,9 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
                 COMPLETED
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
                 <span className="w-2 h-2 rounded-full bg-slate-400" />
-                OFFLINE
+                NOT STARTED
               </span>
             )}
           </div>
@@ -284,141 +285,190 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
         {/* Dynamic Action Buttons */}
         <div className="space-y-3 pt-2">
           {status === "IDLE" ? (
-            <Button
-              size="lg"
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md shadow-blue-500/20 py-6 transition-all duration-200 hover:scale-[1.01]"
-              onClick={() => {
-                clockIn();
-                showToast("Shift started! Timer is now actively logging your work.");
-              }}
-            >
-              <Play className="w-5 h-5 mr-2 fill-current" />
-              Clock In &amp; Start Work Session
-            </Button>
-          ) : status === "WORKING" ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-2">
               <Button
-                variant="outline"
-                className="w-full border-slate-300 hover:border-amber-300 text-slate-700 hover:text-amber-700 font-bold rounded-xl hover:bg-amber-50/50 py-5 transition-all"
-                onClick={() => setShowBreakMenu(!showBreakMenu)}
-              >
-                <Coffee className="w-4 h-4 mr-2 text-amber-600" />
-                Take a Break
-              </Button>
-
-              <Button
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs py-5 transition-all"
+                size="lg"
+                className="w-full bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md shadow-blue-500/25 py-6 transition-all duration-200 hover:scale-[1.01] cursor-pointer"
                 onClick={() => {
-                  clockOut();
-                  showToast("Clocked out successfully! Total productive hours saved to database.");
+                  clockIn();
+                  showToast("Work session started! Live timer is actively recording your hours.");
                 }}
               >
-                <Square className="w-4 h-4 mr-2 fill-current" />
-                Clock Out
+                <Play className="w-5 h-5 mr-2 fill-current" />
+                Clock In &amp; Start Work Session
               </Button>
+              <p className="text-center text-[11px] text-slate-400 font-medium">
+                Click above to start your shift. Real-time timer logs productive hours with certified attendance.
+              </p>
+            </div>
+          ) : status === "WORKING" ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Button
+                  variant="outline"
+                  className="w-full border-amber-300 hover:border-amber-400 text-amber-900 bg-amber-50/60 hover:bg-amber-100/70 font-bold rounded-xl py-5 transition-all cursor-pointer"
+                  onClick={() => setShowBreakMenu(!showBreakMenu)}
+                >
+                  <Coffee className="w-4 h-4 mr-2 text-amber-600" />
+                  Take a Break {showBreakMenu ? "▲" : "▼"}
+                </Button>
+
+                <Button
+                  className="w-full bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-xs py-5 transition-all cursor-pointer"
+                  onClick={() => {
+                    clockOut();
+                    showToast("Clocked out successfully! Total productive hours saved to database.");
+                  }}
+                >
+                  <Square className="w-4 h-4 mr-2 fill-current" />
+                  Clock Out (End Shift)
+                </Button>
+              </div>
+
+              {/* Break Options Drawer / Menu conforming strictly to Section 19: Lunch, Water, Personal, Other */}
+              {showBreakMenu && (
+                <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200 space-y-3 animate-in fade-in slide-in-from-top-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                      <Coffee className="w-3.5 h-3.5 text-amber-600" />
+                      Select Break Type
+                    </span>
+                    <button
+                      onClick={() => setShowBreakMenu(false)}
+                      className="text-amber-700 hover:text-amber-900 text-xs font-bold cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <button
+                      onClick={() => {
+                        takeBreak("LUNCH");
+                        setShowBreakMenu(false);
+                        showToast("Lunch break started. Session paused.");
+                      }}
+                      className="p-3 rounded-xl bg-white border border-amber-200 text-center hover:bg-amber-100/60 hover:border-amber-300 transition-all shadow-2xs cursor-pointer"
+                    >
+                      <Utensils className="w-4 h-4 mx-auto text-amber-600 mb-1" />
+                      <span className="block text-xs font-bold text-amber-900">Lunch</span>
+                      <span className="block text-[10px] text-amber-700 font-medium">45 mins</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        takeBreak("COFFEE");
+                        setShowBreakMenu(false);
+                        showToast("Coffee break started. Enjoy!");
+                      }}
+                      className="p-3 rounded-xl bg-white border border-amber-200 text-center hover:bg-amber-100/60 hover:border-amber-300 transition-all shadow-2xs cursor-pointer"
+                    >
+                      <Coffee className="w-4 h-4 mx-auto text-amber-600 mb-1" />
+                      <span className="block text-xs font-bold text-amber-900">Coffee / Tea</span>
+                      <span className="block text-[10px] text-amber-700 font-medium">15 mins</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        takeBreak("WATER");
+                        setShowBreakMenu(false);
+                        showToast("Hydration break started.");
+                      }}
+                      className="p-3 rounded-xl bg-white border border-amber-200 text-center hover:bg-amber-100/60 hover:border-amber-300 transition-all shadow-2xs cursor-pointer"
+                    >
+                      <Droplets className="w-4 h-4 mx-auto text-blue-600 mb-1" />
+                      <span className="block text-xs font-bold text-amber-900">Water</span>
+                      <span className="block text-[10px] text-amber-700 font-medium">5 mins</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        takeBreak("PERSONAL");
+                        setShowBreakMenu(false);
+                        showToast("Short rest pause started.");
+                      }}
+                      className="p-3 rounded-xl bg-white border border-amber-200 text-center hover:bg-amber-100/60 hover:border-amber-300 transition-all shadow-2xs cursor-pointer"
+                    >
+                      <Smile className="w-4 h-4 mx-auto text-amber-600 mb-1" />
+                      <span className="block text-xs font-bold text-amber-900">Personal</span>
+                      <span className="block text-[10px] text-amber-700 font-medium">10 mins</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : status === "ON_BREAK" ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Button
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md shadow-emerald-500/20 py-5 transition-all"
-                onClick={() => {
-                  resumeWork();
-                  showToast("Resumed working! Active session timer resumed.");
-                }}
-              >
-                <Play className="w-4 h-4 mr-2 fill-current" />
-                Resume Work Session
-              </Button>
+            <div className="space-y-3">
+              <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Coffee className="w-4 h-4 text-amber-600 animate-bounce" />
+                  <span>Work Timer Paused • On {breakType} Break ({breakFormatted})</span>
+                </div>
+                <span className="text-[10px] text-amber-700 font-semibold uppercase">Accurate hour logging active</span>
+              </div>
 
-              <Button
-                variant="outline"
-                className="w-full border-slate-300 text-slate-700 font-bold rounded-xl hover:bg-slate-50 py-5"
-                onClick={() => {
-                  clockOut();
-                  showToast("Clocked out from break. Today's shift logged.");
-                }}
-              >
-                <Square className="w-4 h-4 mr-2 text-slate-500" />
-                End Shift
-              </Button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Button
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md shadow-emerald-500/20 py-5 transition-all cursor-pointer"
+                  onClick={() => {
+                    resumeWork();
+                    showToast("Resumed working! Active session timer resumed.");
+                  }}
+                >
+                  <Play className="w-4 h-4 mr-2 fill-current" />
+                  Resume Work Session
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full border-slate-300 hover:border-red-300 text-slate-700 hover:text-red-700 font-bold rounded-xl hover:bg-red-50/50 py-5 transition-all cursor-pointer"
+                  onClick={() => {
+                    clockOut();
+                    showToast("Clocked out from break. Today's shift logged.");
+                  }}
+                >
+                  <Square className="w-4 h-4 mr-2 text-slate-500" />
+                  End Shift &amp; Clock Out
+                </Button>
+              </div>
             </div>
           ) : (
             /* COMPLETED */
-            <div className="flex items-center gap-3">
-              <div className="flex-1 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Today&apos;s shift successfully completed and audited!</span>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-slate-500 hover:text-slate-800 text-xs font-bold"
-                onClick={() => {
-                  resetSession();
-                  showToast("Session reset. You can start a new shift anytime.");
-                }}
-              >
-                <RotateCcw className="w-3.5 h-3.5 mr-1" />
-                Reset
-              </Button>
-            </div>
-          )}
-
-          {/* Break Options Drawer / Menu */}
-          {showBreakMenu && status === "WORKING" && (
-            <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200/80 space-y-3 animate-in fade-in slide-in-from-top-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-                  <Coffee className="w-3.5 h-3.5 text-amber-600" />
-                  Select Break Category
+            <div className="space-y-3">
+              <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Today&apos;s shift successfully completed and audited!</span>
+                </div>
+                <span className="text-[11px] font-mono font-semibold text-emerald-700 bg-emerald-100/80 px-2.5 py-0.5 rounded-md">
+                  {hoursStr}h {minutesStr}m logged
                 </span>
-                <button
-                  onClick={() => setShowBreakMenu(false)}
-                  className="text-amber-700 hover:text-amber-900 text-xs font-bold"
-                >
-                  ✕
-                </button>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                <button
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Button
+                  size="lg"
+                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md shadow-blue-500/20 py-5 transition-all cursor-pointer"
                   onClick={() => {
-                    takeBreak("COFFEE");
-                    setShowBreakMenu(false);
-                    showToast("Coffee break started. Enjoy your refreshment!");
+                    clockIn();
+                    showToast("New shift started! Timer is now actively logging.");
                   }}
-                  className="p-2.5 rounded-lg bg-white border border-amber-200 text-center hover:bg-amber-100/50 transition-colors"
                 >
-                  <Coffee className="w-4 h-4 mx-auto text-amber-600 mb-1" />
-                  <span className="block text-xs font-bold text-amber-900">Coffee</span>
-                  <span className="block text-[10px] text-amber-700 font-medium">15 mins</span>
-                </button>
+                  <Play className="w-4 h-4 mr-2 fill-current" />
+                  Start New Work Shift
+                </Button>
 
-                <button
+                <Button
+                  variant="outline"
+                  className="w-full border-slate-300 hover:border-slate-400 text-slate-700 font-bold rounded-xl py-5 transition-all cursor-pointer"
                   onClick={() => {
-                    takeBreak("LUNCH");
-                    setShowBreakMenu(false);
-                    showToast("Lunch break started. Session paused.");
+                    resetSession();
+                    showToast("Session reset to initial 00:00:00 state.");
                   }}
-                  className="p-2.5 rounded-lg bg-white border border-amber-200 text-center hover:bg-amber-100/50 transition-colors"
                 >
-                  <Utensils className="w-4 h-4 mx-auto text-amber-600 mb-1" />
-                  <span className="block text-xs font-bold text-amber-900">Lunch</span>
-                  <span className="block text-[10px] text-amber-700 font-medium">45 mins</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    takeBreak("PERSONAL");
-                    setShowBreakMenu(false);
-                    showToast("Short rest pause started.");
-                  }}
-                  className="p-2.5 rounded-lg bg-white border border-amber-200 text-center hover:bg-amber-100/50 transition-colors"
-                >
-                  <Smile className="w-4 h-4 mx-auto text-amber-600 mb-1" />
-                  <span className="block text-xs font-bold text-amber-900">Stretch</span>
-                  <span className="block text-[10px] text-amber-700 font-medium">10 mins</span>
-                </button>
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Reset to 00:00:00
+                </Button>
               </div>
             </div>
           )}

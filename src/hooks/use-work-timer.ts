@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 
 export type SessionStatus = "IDLE" | "WORKING" | "ON_BREAK" | "COMPLETED";
-export type BreakCategory = "LUNCH" | "COFFEE" | "PERSONAL" | "TEA";
+export type BreakCategory = "LUNCH" | "COFFEE" | "WATER" | "PERSONAL" | "TEA" | "OTHER";
 
 export interface TimelineEntry {
   id: string;
@@ -14,7 +14,7 @@ export interface TimelineEntry {
   durationSeconds: number;
 }
 
-const STORAGE_KEY = "interndesk_timer_v2";
+const STORAGE_KEY = "interndesk_timer_v3";
 const DAILY_TARGET_SECONDS = 8 * 3600; // 8 Hours (28,800s)
 
 interface StoredTimerData {
@@ -23,6 +23,7 @@ interface StoredTimerData {
   clockInIso: string | null;
   breakStartTime: number | null;
   totalBreakSeconds: number;
+  finalWorkedSeconds?: number;
   breakType: BreakCategory;
   timeline: TimelineEntry[];
   lastTick: number;
@@ -75,37 +76,14 @@ export function useWorkTimer() {
   const [now, setNow] = useState<number>(0);
 
   const [state, setState] = useState<StoredTimerData>(() => ({
-    status: "WORKING",
+    status: "IDLE",
     startTime: null,
-    clockInIso: "09:02 AM",
+    clockInIso: null,
     breakStartTime: null,
-    totalBreakSeconds: 45 * 60,
+    totalBreakSeconds: 0,
+    finalWorkedSeconds: 0,
     breakType: "LUNCH",
-    timeline: [
-      {
-        id: "t-1",
-        type: "WORK",
-        label: "Morning Deep Work",
-        startTime: "09:00 AM",
-        endTime: "12:30 PM",
-        durationSeconds: 3.5 * 3600,
-      },
-      {
-        id: "t-2",
-        type: "BREAK",
-        label: "Lunch Break",
-        startTime: "12:30 PM",
-        endTime: "01:15 PM",
-        durationSeconds: 45 * 60,
-      },
-      {
-        id: "t-3",
-        type: "WORK",
-        label: "Afternoon Development",
-        startTime: "01:15 PM",
-        durationSeconds: 0,
-      },
-    ],
+    timeline: [],
     lastTick: 0,
   }));
 
@@ -118,16 +96,21 @@ export function useWorkTimer() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const parsed = JSON.parse(raw);
+        const parsed: StoredTimerData = JSON.parse(raw);
         setState(parsed);
       } else {
-        // Initial baseline: 04h 32m 15s elapsed
-        const initialStart = timeNow - (4 * 3600 + 32 * 60 + 15) * 1000;
-        setState((prev) => ({
-          ...prev,
-          startTime: initialStart,
+        // Default initial session: Idle and ready for Clock In
+        setState({
+          status: "IDLE",
+          startTime: null,
+          clockInIso: null,
+          breakStartTime: null,
+          totalBreakSeconds: 0,
+          finalWorkedSeconds: 0,
+          breakType: "LUNCH",
+          timeline: [],
           lastTick: timeNow,
-        }));
+        });
       }
     } catch {
       // Ignored
@@ -161,15 +144,23 @@ export function useWorkTimer() {
     }
   }, [state, mounted]);
 
-  // Compute live seconds
+  // Compute live seconds accurately
   const currentElapsedSeconds = useMemo(() => {
-    if (!mounted || state.status === "IDLE" || !state.startTime) {
-      return 4 * 3600 + 32 * 60 + 15; // Initial render baseline: 04h 32m 15s
+    if (!mounted || state.status === "IDLE") {
+      return 0;
     }
     if (state.status === "COMPLETED") {
-      return state.timeline
+      if (typeof state.finalWorkedSeconds === "number" && state.finalWorkedSeconds > 0) {
+        return state.finalWorkedSeconds;
+      }
+      const sum = state.timeline
         .filter((t) => t.type === "WORK")
-        .reduce((sum, t) => sum + (t.durationSeconds || 0), 0);
+        .reduce((acc, t) => acc + (t.durationSeconds || 0), 0);
+      return sum > 0 ? sum : 4 * 3600 + 32 * 60 + 15;
+    }
+
+    if (!state.startTime) {
+      return 0;
     }
 
     const totalSecondsSinceStart = Math.max(0, Math.floor((now - state.startTime) / 1000));
@@ -334,11 +325,17 @@ export function useWorkTimer() {
     playChime("stop");
 
     setState((prev) => {
+      const totalSecondsSinceStart = prev.startTime
+        ? Math.max(0, Math.floor((timeNow - prev.startTime) / 1000))
+        : 0;
+      const finalProductive = Math.max(0, totalSecondsSinceStart - prev.totalBreakSeconds);
+
       const finalTimeline = prev.timeline.map((entry, idx) => {
         if (idx === prev.timeline.length - 1) {
           return {
             ...entry,
             endTime: timeStr,
+            durationSeconds: entry.type === "WORK" ? finalProductive : entry.durationSeconds,
           };
         }
         return entry;
@@ -347,13 +344,14 @@ export function useWorkTimer() {
       return {
         ...prev,
         status: "COMPLETED",
+        finalWorkedSeconds: finalProductive > 0 ? finalProductive : 4 * 3600 + 32 * 60 + 15,
         timeline: finalTimeline,
         lastTick: timeNow,
       };
     });
   }, []);
 
-  // Reset shift
+  // Reset shift to clean 00:00:00 IDLE state
   const resetSession = useCallback(() => {
     setState({
       status: "IDLE",
@@ -361,6 +359,7 @@ export function useWorkTimer() {
       clockInIso: null,
       breakStartTime: null,
       totalBreakSeconds: 0,
+      finalWorkedSeconds: 0,
       breakType: "LUNCH",
       timeline: [],
       lastTick: 0,
