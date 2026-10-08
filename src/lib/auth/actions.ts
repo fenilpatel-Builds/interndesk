@@ -45,35 +45,26 @@ export async function sendEmailOtp(email: string): Promise<AuthResponse> {
     console.warn("Notice: email_otps table insert skipped:", dbErr);
   }
 
-  // 3. Dispatch real email directly to the student's personal inbox via Supabase Auth Mailer
+  // 3. Deliver real 6-digit branded email directly to the student's personal inbox via EmailJS (Primary)
+  const emailResult = await sendOtpEmail(cleanEmail, otpCode);
+
+  // 4. Also notify Supabase Auth for session creation
   try {
     const supabase = await createServerSupabaseClient();
-    const { error: supaAuthError } = await supabase.auth.signInWithOtp({
+    await supabase.auth.signInWithOtp({
       email: cleanEmail,
-      options: {
-        shouldCreateUser: true,
-      },
+      options: { shouldCreateUser: true },
     });
-
-    if (supaAuthError) {
-      console.warn("[Supabase Auth Mailer Notice]:", supaAuthError.message);
-      if (supaAuthError.status === 429) {
-        return {
-          success: false,
-          message: "Email dispatch rate limit reached. Please wait 60 seconds before requesting another code.",
-        };
-      }
-    } else {
-      console.log(`[Supabase Auth Mailer Success]: Verification email dispatched directly to ${cleanEmail}`);
-    }
   } catch (supaErr) {
-    console.error("[Supabase Mailer Exception]:", supaErr);
+    console.warn("Supabase Auth sync notice:", supaErr);
   }
 
-  // 4. Secondary channel: If SMTP / Resend is configured, also attempt dispatch
-  sendOtpEmail(cleanEmail, otpCode).catch((err) => {
-    console.warn("Secondary email provider notice:", err);
-  });
+  if (!emailResult.success) {
+    return {
+      success: false,
+      message: emailResult.error || "Failed to dispatch verification code to email.",
+    };
+  }
 
   return {
     success: true,

@@ -1,9 +1,10 @@
 /**
  * Multi-Provider Transactional Email Service
  * Supports:
- * 1. SMTP / Gmail App Password (via Nodemailer) - Sends to ANY recipient without domain verification
- * 2. Brevo (Sendinblue) REST API - Free 300 emails/day to ANY recipient
- * 3. Resend REST API
+ * 1. EmailJS (100% Free, NO phone number, 1-click Google OAuth connect, sends directly to ANY recipient)
+ * 2. SMTP / Gmail App Password (via Nodemailer)
+ * 3. Brevo (Sendinblue) REST API
+ * 4. Resend REST API
  */
 
 import nodemailer from "nodemailer";
@@ -11,7 +12,7 @@ import nodemailer from "nodemailer";
 export interface SendOtpResult {
   success: boolean;
   error?: string;
-  provider?: "SMTP" | "BREVO" | "RESEND" | "SIMULATION";
+  provider?: "EMAILJS" | "SMTP" | "BREVO" | "RESEND" | "SIMULATION";
   forwardedTo?: string;
 }
 
@@ -57,7 +58,53 @@ export async function sendOtpEmail(email: string, otpCode: string): Promise<Send
   `;
 
   // =========================================================================
-  // PROVIDER 1: SMTP / GMAIL APP PASSWORD (Sends to ANY recipient in the world)
+  // PROVIDER 1: EMAILJS (Zero Phone Number, Zero Domain, Sends to ANY recipient)
+  // =========================================================================
+  const emailjsServiceId = process.env.EMAILJS_SERVICE_ID;
+  const emailjsTemplateId = process.env.EMAILJS_TEMPLATE_ID;
+  const emailjsPublicKey = process.env.EMAILJS_PUBLIC_KEY;
+  const emailjsPrivateKey = process.env.EMAILJS_PRIVATE_KEY;
+
+  if (emailjsServiceId && emailjsTemplateId && emailjsPublicKey) {
+    try {
+      const ejsRes = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "origin": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+        },
+        body: JSON.stringify({
+          service_id: emailjsServiceId,
+          template_id: emailjsTemplateId,
+          user_id: emailjsPublicKey,
+          accessToken: emailjsPrivateKey || undefined,
+          template_params: {
+            to_email: cleanEmail,
+            email: cleanEmail,
+            user_email: cleanEmail,
+            to_name: cleanEmail.split("@")[0],
+            otp_code: otpCode,
+            code: otpCode,
+            token: otpCode,
+            message: `Your 6-digit InternDesk verification code is: ${otpCode}`,
+          },
+        }),
+      });
+
+      if (ejsRes.ok) {
+        console.log(`[EmailJS Success]: 6-digit OTP code ${otpCode} delivered directly to ${cleanEmail}`);
+        return { success: true, provider: "EMAILJS" };
+      } else {
+        const errText = await ejsRes.text().catch(() => "");
+        console.warn("[EmailJS REST Non-OK]:", errText);
+      }
+    } catch (ejsErr) {
+      console.error("[EmailJS REST Error]:", ejsErr);
+    }
+  }
+
+  // =========================================================================
+  // PROVIDER 2: SMTP / GMAIL APP PASSWORD (Sends to ANY recipient)
   // =========================================================================
   const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER;
   const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
@@ -88,12 +135,11 @@ export async function sendOtpEmail(email: string, otpCode: string): Promise<Send
     } catch (smtpErr: unknown) {
       const msg = smtpErr instanceof Error ? smtpErr.message : "SMTP delivery error";
       console.error("[SMTP Error]:", msg);
-      // Fall through to other providers if available
     }
   }
 
   // =========================================================================
-  // PROVIDER 2: BREVO (SENDINBLUE) REST API (Sends to ANY recipient)
+  // PROVIDER 3: BREVO (SENDINBLUE) REST API (Sends to ANY recipient)
   // =========================================================================
   const brevoKey = process.env.BREVO_API_KEY;
   const brevoSender = process.env.BREVO_SENDER_EMAIL || smtpUser || "notifications@interndesk.com";
@@ -128,7 +174,7 @@ export async function sendOtpEmail(email: string, otpCode: string): Promise<Send
   }
 
   // =========================================================================
-  // PROVIDER 3: RESEND REST API
+  // PROVIDER 4: RESEND REST API
   // =========================================================================
   const resendApiKey = process.env.RESEND_API_KEY || process.env.EMAIL_PROVIDER_API_KEY;
   const resendFrom = process.env.EMAIL_FROM || "InternDesk <onboarding@resend.dev>";
@@ -156,16 +202,14 @@ export async function sendOtpEmail(email: string, otpCode: string): Promise<Send
 
       const errData = await response.json().catch(() => ({}));
       const errorMessage = typeof errData.message === "string" ? errData.message : "";
-      console.error("[Resend API Error]:", errData);
 
       const isSandboxRestriction =
         errorMessage.toLowerCase().includes("testing emails to your own email address") ||
         errorMessage.toLowerCase().includes("huntking002@gmail.com");
 
       if (isSandboxRestriction) {
-        console.warn(`[Resend Sandbox Notice]: Cannot send directly to ${cleanEmail} without custom domain on Resend. Forwarding to owner account huntking002@gmail.com...`);
+        console.warn(`[Resend Sandbox Notice]: Free trial sender (${resendFrom}) cannot send to ${cleanEmail}. Forwarding to owner account huntking002@gmail.com...`);
 
-        // Forward copy to owner account
         await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
@@ -180,7 +224,7 @@ export async function sendOtpEmail(email: string, otpCode: string): Promise<Send
               <div style="font-family: sans-serif; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px;">
                 <p><strong>Recipient:</strong> ${cleanEmail}</p>
                 <p><strong>OTP Code:</strong> <span style="font-size: 28px; font-weight: bold; color: #1e40af;">${otpCode}</span></p>
-                <p style="color: #64748b; font-size: 12px;">Forwarded because Resend free tier without custom domain only permits sending to huntking002@gmail.com.</p>
+                <p style="color: #64748b; font-size: 12px;">Forwarded because Resend free tier only permits sending to huntking002@gmail.com.</p>
               </div>
             `,
           }),
@@ -209,7 +253,7 @@ export async function sendOtpEmail(email: string, otpCode: string): Promise<Send
   }
 
   // =========================================================================
-  // PROVIDER 4: LOCAL DEVELOPMENT SIMULATION
+  // PROVIDER 5: LOCAL DEVELOPMENT SIMULATION
   // =========================================================================
   console.log(`\n================================================================`);
   console.log(`[LOCAL DEV OTP SIMULATION]`);
