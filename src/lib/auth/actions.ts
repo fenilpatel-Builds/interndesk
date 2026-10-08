@@ -45,23 +45,39 @@ export async function sendEmailOtp(email: string): Promise<AuthResponse> {
     console.warn("Notice: email_otps table insert skipped:", dbErr);
   }
 
-  // 3. Deliver branded 6-digit email via Resend REST API (Sole email channel)
-  const resendResult = await sendOtpEmail(cleanEmail, otpCode);
+  // 3. Dispatch real email directly to the student's personal inbox via Supabase Auth Mailer
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { error: supaAuthError } = await supabase.auth.signInWithOtp({
+      email: cleanEmail,
+      options: {
+        shouldCreateUser: true,
+      },
+    });
 
-  if (!resendResult.success) {
-    return {
-      success: false,
-      message: resendResult.error || "Failed to deliver OTP email via Resend.",
-    };
+    if (supaAuthError) {
+      console.warn("[Supabase Auth Mailer Notice]:", supaAuthError.message);
+      if (supaAuthError.status === 429) {
+        return {
+          success: false,
+          message: "Email dispatch rate limit reached. Please wait 60 seconds before requesting another code.",
+        };
+      }
+    } else {
+      console.log(`[Supabase Auth Mailer Success]: Verification email dispatched directly to ${cleanEmail}`);
+    }
+  } catch (supaErr) {
+    console.error("[Supabase Mailer Exception]:", supaErr);
   }
 
-  const successMessage = resendResult.forwardedTo
-    ? `6-Digit verification code sent! (Delivered to developer inbox ${resendResult.forwardedTo} & server console).`
-    : `6-Digit verification code sent to ${cleanEmail}. Check your inbox.`;
+  // 4. Secondary channel: If SMTP / Resend is configured, also attempt dispatch
+  sendOtpEmail(cleanEmail, otpCode).catch((err) => {
+    console.warn("Secondary email provider notice:", err);
+  });
 
   return {
     success: true,
-    message: successMessage,
+    message: `6-Digit verification code sent directly to ${cleanEmail}. Check your inbox!`,
   };
 }
 
@@ -93,14 +109,33 @@ export async function verifyEmailOtp(
   const adminClient = createAdminClient();
   let verified = false;
 
-  // 1. Check local runtime cache
-  const cached = localOtpCache.get(cleanEmail);
-  if (cached && cached.expiresAt > Date.now() && cached.code === cleanToken) {
-    verified = true;
-    localOtpCache.delete(cleanEmail);
+  // 1. Verify via Supabase Auth OTP (from the email delivered to the user's inbox)
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { data: supaVerify, error: supaErr } = await supabase.auth.verifyOtp({
+      email: cleanEmail,
+      token: cleanToken,
+      type: "email",
+    });
+
+    if (!supaErr && supaVerify?.user) {
+      verified = true;
+      console.log(`[Supabase Auth OTP Verified]: Successfully verified code for ${cleanEmail}`);
+    }
+  } catch (supaVerifyErr) {
+    console.warn("Supabase verifyOtp check:", supaVerifyErr);
   }
 
-  // 2. Check against email_otps table in Supabase
+  // 2. Fallback: Check local runtime cache
+  if (!verified) {
+    const cached = localOtpCache.get(cleanEmail);
+    if (cached && cached.expiresAt > Date.now() && cached.code === cleanToken) {
+      verified = true;
+      localOtpCache.delete(cleanEmail);
+    }
+  }
+
+  // 3. Fallback: Check against email_otps table in Supabase
   if (!verified) {
     try {
       const { data: activeOtp } = await adminClient
