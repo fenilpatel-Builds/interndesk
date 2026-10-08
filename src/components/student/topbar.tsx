@@ -4,6 +4,8 @@ import React from "react";
 import { Bell, Clock, ShieldCheck, Coffee } from "lucide-react";
 import Link from "next/link";
 import { useWorkTimer } from "@/hooks/use-work-timer";
+import { GlobalSearch } from "@/components/ui/global-search";
+import { NotificationCenter } from "@/components/ui/notification-center";
 
 interface StudentTopbarProps {
   title: string;
@@ -78,7 +80,10 @@ export function StudentTopbar({ title, studentName = "Student Intern" }: Student
         )}
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
+        {/* Global Search (Ctrl + K) conforming to Section 55 */}
+        <GlobalSearch />
+
         {/* Quick Report Action */}
         <Link href="/student/daily-reports" className="hidden sm:inline-flex">
           <button className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition-colors cursor-pointer">
@@ -86,13 +91,8 @@ export function StudentTopbar({ title, studentName = "Student Intern" }: Student
           </button>
         </Link>
 
-        {/* Notifications */}
-        <button
-          className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 relative cursor-pointer"
-          aria-label="View notifications"
-        >
-          <Bell className="w-4 h-4" />
-        </button>
+        {/* Interactive Notification Center conforming to Section 52 */}
+        <NotificationCenter />
 
         {/* Student Avatar */}
         <div className="flex items-center gap-2 pl-2 border-l border-slate-200">

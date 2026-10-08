@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { StudentTopbar } from "@/components/student/topbar";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -159,25 +160,58 @@ export default function StudentDocumentsPage() {
                   has successfully completed the internship program at <strong className="text-slate-800">InternDesk</strong> from October 1, 2026 to October 31, 2026.
                 </p>
 
-                {/* Footer Stamp & Signatory */}
+                {/* Footer Stamp, QR Code & Signatory conforming to Section 91 & 92 */}
                 <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-left">
                   <div className="text-[10px] text-slate-500">
-                    <div className="font-script text-sm text-slate-800 font-bold">Authorized Signatory</div>
-                    <p className="text-[9px] text-slate-400">Head of Operations</p>
+                    <div className="font-serif text-sm text-slate-900 font-bold">Authorized Signatory</div>
+                    <p className="text-[9px] text-slate-400">Head of Operations • InternDesk</p>
+                    <span className="font-mono text-[9px] text-blue-600 block mt-0.5">
+                      ID: ID-CERT-2026-8918
+                    </span>
                   </div>
 
-                  <div className="w-12 h-12 rounded-full border-2 border-amber-500 bg-amber-50/60 flex items-center justify-center text-amber-700">
-                    <Award className="w-6 h-6" />
+                  {/* QR Code Block linking to /verify/[id] */}
+                  <Link
+                    href="/verify/ID-CERT-2026-8918"
+                    className="flex items-center gap-2 p-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors"
+                    title="Scan or click to verify authentically"
+                  >
+                    {/* SVG QR Glyph */}
+                    <div className="w-10 h-10 bg-white p-1 rounded border border-slate-200 flex flex-col justify-between">
+                      <div className="flex justify-between">
+                        <div className="w-2.5 h-2.5 bg-slate-900 rounded-xs" />
+                        <div className="w-2.5 h-2.5 bg-slate-900 rounded-xs" />
+                      </div>
+                      <div className="w-1.5 h-1.5 bg-blue-600 mx-auto rounded-full" />
+                      <div className="flex justify-between">
+                        <div className="w-2.5 h-2.5 bg-slate-900 rounded-xs" />
+                        <div className="w-1.5 h-1.5 bg-slate-400" />
+                      </div>
+                    </div>
+                    <div className="text-[9px] leading-tight text-slate-600">
+                      <span className="font-bold text-slate-900 block">Scan to Verify</span>
+                      <span className="text-emerald-600 font-semibold">Valid Credential</span>
+                    </div>
+                  </Link>
+
+                  <div className="w-11 h-11 rounded-full border-2 border-amber-500 bg-amber-50/70 flex items-center justify-center text-amber-700 shrink-0">
+                    <Award className="w-5 h-5" />
                   </div>
                 </div>
               </div>
 
-              {/* Download Action */}
-              <div className="pt-4">
-                <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs">
+              {/* Download & Public Verification Actions */}
+              <div className="pt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs py-5">
                   <Download className="w-4 h-4 mr-2" />
                   Download PDF
                 </Button>
+                <Link href="/verify/ID-CERT-2026-8918">
+                  <Button variant="outline" className="w-full border-slate-300 text-slate-700 font-bold rounded-xl py-5 hover:bg-slate-50">
+                    <ShieldCheck className="w-4 h-4 mr-2 text-emerald-600" />
+                    Verify Publicly
+                  </Button>
+                </Link>
               </div>
             </Card>
           </div>

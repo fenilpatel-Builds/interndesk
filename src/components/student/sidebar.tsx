@@ -9,12 +9,14 @@ import {
   Clock,
   FileSpreadsheet,
   CheckSquare,
+  Calendar,
   BookOpen,
   Award,
   FileText,
   CreditCard,
   User,
   Shield,
+  LifeBuoy,
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -37,6 +39,7 @@ export function StudentSidebar() {
         { label: "Attendance & Sessions", href: "/student/attendance", icon: Clock },
         { label: "Daily Reports", href: "/student/daily-reports", icon: FileSpreadsheet },
         { label: "Tasks", href: "/student/tasks", icon: CheckSquare },
+        { label: "Calendar", href: "/student/calendar", icon: Calendar },
       ],
     },
     {
@@ -58,6 +61,7 @@ export function StudentSidebar() {
         { label: "Payments & Receipts", href: "/student/payments", icon: CreditCard },
         { label: "My Profile", href: "/student/profile", icon: User },
         { label: "Account & Devices", href: "/student/security", icon: Shield },
+        { label: "Help & Support", href: "/student/support", icon: LifeBuoy },
       ],
     },
   ];
