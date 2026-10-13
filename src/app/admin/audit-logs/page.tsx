@@ -149,7 +149,7 @@ export default function AdminAuditLogsPage() {
               <tbody className="divide-y divide-slate-100">
                 {filtered.map((log) => (
                   <tr key={log.id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="px-6 py-4 font-mono text-slate-500">
+                    <td suppressHydrationWarning className="px-6 py-4 font-mono text-slate-500">
                       {new Date(log.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                     </td>
                     <td className="px-4 py-4 font-bold text-slate-900">

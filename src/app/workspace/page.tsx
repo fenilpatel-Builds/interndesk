@@ -958,7 +958,7 @@ export default function WorkspacePage() {
                         <p>Member Type: <strong>{selectedMember.member_type}</strong></p>
                         <p>Designation: <strong>{selectedMember.designation || selectedMember.job_title}</strong></p>
                         <p>Assigned Manager/Mentor: <strong>{selectedMember.mentor_name || selectedMember.manager_name || "Elena Rostova"}</strong></p>
-                        <p>Joined Workspace: <strong>{new Date(selectedMember.joined_at).toLocaleDateString()}</strong></p>
+                        <p suppressHydrationWarning>Joined Workspace: <strong>{new Date(selectedMember.joined_at).toLocaleDateString()}</strong></p>
                         <p>Status: <strong className={selectedMember.status === "ACTIVE" ? "text-emerald-600" : "text-red-600"}>{selectedMember.status}</strong></p>
                       </div>
 
@@ -1267,7 +1267,7 @@ export default function WorkspacePage() {
                           <div key={c.id} className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
                             <div className="flex items-center justify-between">
                               <span className="font-bold text-slate-900">{c.author_name}</span>
-                              <span className="text-[10px] text-slate-400 font-mono">{new Date(c.created_at).toLocaleTimeString()}</span>
+                              <span suppressHydrationWarning className="text-[10px] text-slate-400 font-mono">{new Date(c.created_at).toLocaleTimeString()}</span>
                             </div>
                             <p className="text-slate-600">{c.text}</p>
                           </div>
@@ -1363,7 +1363,7 @@ export default function WorkspacePage() {
                   <span className="text-5xl font-mono font-black text-slate-900 tracking-wider">
                     {formatTimer(timerSeconds)}
                   </span>
-                  <p className="text-xs text-slate-400 mt-2 font-mono">
+                  <p suppressHydrationWarning className="text-xs text-slate-400 mt-2 font-mono">
                     Clock-in: {activeSession?.clock_in_at ? new Date(activeSession.clock_in_at).toLocaleTimeString() : "--:--:--"}
                   </p>
                 </div>
@@ -1424,8 +1424,8 @@ export default function WorkspacePage() {
                         <tr key={s.id} className="hover:bg-slate-50">
                           <td className="p-3.5 font-bold text-slate-900">{s.work_date}</td>
                           <td className="p-3.5">{s.member_name}</td>
-                          <td className="p-3.5 font-mono">{new Date(s.clock_in_at).toLocaleTimeString()}</td>
-                          <td className="p-3.5 font-mono">{s.clock_out_at ? new Date(s.clock_out_at).toLocaleTimeString() : "--:--"}</td>
+                          <td suppressHydrationWarning className="p-3.5 font-mono">{new Date(s.clock_in_at).toLocaleTimeString()}</td>
+                          <td suppressHydrationWarning className="p-3.5 font-mono">{s.clock_out_at ? new Date(s.clock_out_at).toLocaleTimeString() : "--:--"}</td>
                           <td className="p-3.5 font-mono font-bold text-emerald-600">
                             {Math.floor(s.productive_seconds / 3600)}h {Math.floor((s.productive_seconds % 3600) / 60)}m
                           </td>
@@ -2215,7 +2215,7 @@ export default function WorkspacePage() {
                         <span className="text-slate-500 ml-2">by {log.actor_email}</span>
                         <p className="text-[11px] text-slate-400 mt-0.5">{log.resource}</p>
                       </div>
-                      <span className="text-[10px] text-slate-400 font-mono">
+                      <span suppressHydrationWarning className="text-[10px] text-slate-400 font-mono">
                         {new Date(log.created_at).toLocaleTimeString()}
                       </span>
                     </div>

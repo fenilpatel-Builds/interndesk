@@ -223,7 +223,7 @@ export default function SuperAdminConsolePage() {
                   <p className="text-[11px] text-slate-500 mt-0.5">Resource: {log.resource}</p>
                 </div>
                 <div className="text-right text-[11px] text-slate-500 font-mono">
-                  <p>{new Date(log.created_at).toLocaleTimeString()}</p>
+                  <p suppressHydrationWarning>{new Date(log.created_at).toLocaleTimeString()}</p>
                   <p>IP: {log.ip_address}</p>
                 </div>
               </div>
