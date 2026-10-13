@@ -36,8 +36,8 @@ export default function StudentSupportPage() {
   const [tickets, setTickets] = useState<SupportTicket[]>([
     {
       id: "TICK-8901",
-      subject: "Verification of Program Enrollment Payment",
-      category: "Enrollment & Payment",
+      subject: "Confirmation of Program Cohort Enrollment",
+      category: "Enrollment & Cohorts",
       status: "RESOLVED",
       createdAt: "Oct 7, 2026",
       priority: "HIGH",
@@ -54,8 +54,8 @@ export default function StudentSupportPage() {
 
   const faqs = [
     {
-      q: "Is registration free?",
-      a: "Yes. Registration is 100% free with zero signup charges or card inputs. Program enrollment fees apply only after admin verification when you choose and enroll in a specific course.",
+      q: "Are there any fees for registration or programs?",
+      a: "No. InternDesk operates with strictly zero registration fees, zero course fees, and zero payment gateways. All programs, certificates, and workspaces are completely free and sponsored directly by your host organization.",
     },
     {
       q: "What is Productive Time and how is it calculated?",
@@ -226,7 +226,7 @@ export default function StudentSupportPage() {
                     <option value="GENERAL">General Inquiries</option>
                     <option value="ATTENDANCE">Attendance &amp; Live Timer</option>
                     <option value="LEARNING">Learning Materials &amp; Subjects</option>
-                    <option value="ENROLLMENT">Program Enrollment &amp; Payments</option>
+                    <option value="ENROLLMENT">Program Enrollment &amp; Cohorts</option>
                     <option value="CERTIFICATES">Certificates &amp; Verification</option>
                   </select>
                 </div>

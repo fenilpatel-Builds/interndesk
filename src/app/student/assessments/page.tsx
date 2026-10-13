@@ -81,16 +81,16 @@ const mockQuestions: ExamQuestion[] = [
   },
   {
     id: "q5",
-    text: "Which REST service validates payment signatures server-side to guarantee cryptographic integrity?",
+    text: "How does InternDesk guarantee tenant data isolation across multi-organization workspaces?",
     marks: 1,
     options: [
-      { key: "A", text: "Client-side alert triggers" },
-      { key: "B", text: "HMAC-SHA256 signature verification with secret key" },
+      { key: "A", text: "Client-side CSS hidden elements" },
+      { key: "B", text: "Server-enforced organization_id scoping and PostgreSQL Row Level Security" },
       { key: "C", text: "Browser local storage tokens" },
-      { key: "D", text: "URL query parameter matching" },
+      { key: "D", text: "URL query parameter matching without server validation" },
     ],
     correctAnswer: "B",
-    explanation: "HMAC-SHA256 hashes the order ID and payment ID using the private API secret key to prevent payment manipulation.",
+    explanation: "Server-enforced organization_id scoping and database RLS ensure one tenant can never access or modify another organization's records.",
   },
 ];
 
@@ -205,7 +205,7 @@ export default function StudentAssessmentsPage() {
                     Assessment: Full Stack &amp; Architecture Fundamentals
                   </CardTitle>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Covers React Server Components, PostgreSQL RLS, Payment Integrations, and Timers.
+                    Covers React Server Components, PostgreSQL RLS, Multi-Tenant Isolation, and Timers.
                   </p>
                 </div>
 

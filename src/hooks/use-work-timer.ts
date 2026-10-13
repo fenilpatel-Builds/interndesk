@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useSyncExternalStore } from "react";
 
 export type SessionStatus = "IDLE" | "WORKING" | "ON_BREAK" | "COMPLETED";
 export type BreakCategory = "LUNCH" | "COFFEE" | "WATER" | "PERSONAL" | "TEA" | "OTHER";
@@ -72,50 +72,39 @@ function playChime(type: "start" | "break" | "stop") {
 }
 
 export function useWorkTimer() {
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
   const [now, setNow] = useState<number>(0);
 
-  const [state, setState] = useState<StoredTimerData>(() => ({
-    status: "IDLE",
-    startTime: null,
-    clockInIso: null,
-    breakStartTime: null,
-    totalBreakSeconds: 0,
-    finalWorkedSeconds: 0,
-    breakType: "LUNCH",
-    timeline: [],
-    lastTick: 0,
-  }));
-
-  // Safe client-side initialization to avoid Next.js 16 prerender Date.now() blocking
-  useEffect(() => {
-    setMounted(true);
-    const timeNow = Date.now();
-    setNow(timeNow);
-
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed: StoredTimerData = JSON.parse(raw);
-        setState(parsed);
-      } else {
-        // Default initial session: Idle and ready for Clock In
-        setState({
-          status: "IDLE",
-          startTime: null,
-          clockInIso: null,
-          breakStartTime: null,
-          totalBreakSeconds: 0,
-          finalWorkedSeconds: 0,
-          breakType: "LUNCH",
-          timeline: [],
-          lastTick: timeNow,
-        });
+  const [state, setState] = useState<StoredTimerData>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          return JSON.parse(raw);
+        }
+      } catch {
+        // Fallback to default
       }
-    } catch {
-      // Ignored
     }
+    return {
+      status: "IDLE",
+      startTime: null,
+      clockInIso: null,
+      breakStartTime: null,
+      totalBreakSeconds: 0,
+      finalWorkedSeconds: 0,
+      breakType: "LUNCH",
+      timeline: [],
+      lastTick: 0,
+    };
+  });
 
+  // Sync external system clock interval
+  useEffect(() => {
     const interval = setInterval(() => {
       setNow(Date.now());
     }, 1000);
@@ -127,6 +116,7 @@ export function useWorkTimer() {
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
+
     return () => {
       clearInterval(interval);
       document.removeEventListener("visibilitychange", handleVisibilityChange);

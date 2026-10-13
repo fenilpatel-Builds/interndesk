@@ -13,7 +13,6 @@ import {
   BookOpen,
   Award,
   FileText,
-  CreditCard,
   User,
   Shield,
   LifeBuoy,
@@ -58,7 +57,7 @@ export function StudentSidebar() {
     {
       title: "ACCOUNT",
       items: [
-        { label: "Payments & Receipts", href: "/student/payments", icon: CreditCard },
+        { label: "Multi-Tenant Workspace", href: "/workspace", icon: LayoutDashboard },
         { label: "My Profile", href: "/student/profile", icon: User },
         { label: "Account & Devices", href: "/student/security", icon: Shield },
         { label: "Help & Support", href: "/student/support", icon: LifeBuoy },

@@ -30,7 +30,7 @@ export default function ContactPage() {
               Contact InternDesk Support
             </h1>
             <p className="text-base text-slate-600 max-w-xl mx-auto">
-              Have questions regarding registration, payment verification, or university partnerships? Our team is here to assist.
+              Have questions regarding workspace onboarding, organization verification, or institutional partnerships? Our team is here to assist.
             </p>
           </div>
 
@@ -96,7 +96,7 @@ export default function ContactPage() {
                         <Input label="Email Address" type="email" placeholder="intern@college.edu" required />
                       </div>
 
-                      <Input label="Subject" placeholder="e.g. Payment inquiry or Certificate verification" required />
+                      <Input label="Subject" placeholder="e.g. Organization onboarding or Certificate verification" required />
 
                       <div className="space-y-1.5">
                         <label className="block text-sm font-medium text-slate-700">Message</label>

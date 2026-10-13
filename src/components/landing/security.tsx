@@ -1,31 +1,31 @@
-import { ShieldCheck, Lock, KeyRound, Server, History } from "lucide-react";
+import { ShieldCheck, Lock, KeyRound, Server, History, Layers } from "lucide-react";
 
 export function SecurityTrust() {
   const points = [
     {
-      icon: <Lock className="w-5 h-5 text-blue-600" />,
-      title: "PostgreSQL Row Level Security (RLS)",
-      desc: "Every database query enforces tenant and role ownership at the engine level. Students can never view another intern's data.",
+      icon: <Layers className="w-5 h-5 text-blue-400" />,
+      title: "Strict Multi-Tenant Isolation",
+      desc: "Every database query and API operation enforces organization_id scoping at the server layer. One organization can never view or modify another's data.",
     },
     {
-      icon: <Server className="w-5 h-5 text-indigo-600" />,
-      title: "Cryptographic Payment Verification",
-      desc: "Razorpay webhooks and HMAC-SHA256 signatures are evaluated server-side. Zero trust in client-side payment flags.",
+      icon: <Lock className="w-5 h-5 text-indigo-400" />,
+      title: "Granular Enterprise RBAC",
+      desc: "10 enterprise roles enforce least-privilege access. Changing tenant ID in requests or client tampering is actively blocked.",
     },
     {
-      icon: <KeyRound className="w-5 h-5 text-sky-600" />,
-      title: "Device & Session Intelligence",
-      desc: "Detect unfamiliar devices, maintain active session registries, and empower users to revoke sessions remotely.",
+      icon: <KeyRound className="w-5 h-5 text-sky-400" />,
+      title: "Protected Organization Codes",
+      desc: "Unique system-generated codes (ORG-XXXXXX) facilitate discovery without exposing internal rosters or granting unauthenticated access.",
     },
     {
-      icon: <History className="w-5 h-5 text-emerald-600" />,
-      title: "Immutable Audit Logging",
-      desc: "Every critical state transition (attendance clocks, break timers, admin approvals, exam starts) is permanently audited.",
+      icon: <History className="w-5 h-5 text-emerald-400" />,
+      title: "Immutable Audit Trail",
+      desc: "Every critical state transition (attendance clocks, break timers, admin approvals, exam attempts, document issuance) is permanently audited.",
     },
   ];
 
   return (
-    <section className="py-20 bg-slate-900 text-slate-100">
+    <section id="security" className="py-20 bg-slate-900 text-slate-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           <div className="lg:col-span-5 space-y-4">
@@ -34,10 +34,10 @@ export function SecurityTrust() {
               <span>Enterprise Grade Security</span>
             </div>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-              Built on Zero-Trust Security Architecture
+              Built on Zero-Trust Multi-Tenant Architecture
             </h2>
-            <p className="text-sm text-slate-300 leading-relaxed">
-              InternDesk is engineered from the ground up to prevent data leakage, credential sharing, and unauthorized document generation.
+            <p className="text-sm text-slate-300 leading-relaxed font-normal">
+              InternDesk is engineered from the ground up to prevent cross-tenant data leakage, credential sharing, and unauthorized document generation.
             </p>
           </div>
 
@@ -51,7 +51,7 @@ export function SecurityTrust() {
                   {pt.icon}
                 </div>
                 <h3 className="text-base font-bold text-white">{pt.title}</h3>
-                <p className="text-xs text-slate-400 leading-relaxed">{pt.desc}</p>
+                <p className="text-xs text-slate-400 leading-relaxed font-normal">{pt.desc}</p>
               </div>
             ))}
           </div>

@@ -13,7 +13,6 @@ import {
   CheckSquare,
   BookOpen,
   Award,
-  CreditCard,
   BarChart3,
   History,
   Settings,
@@ -37,7 +36,7 @@ export function AdminSidebar() {
       items: [
         { label: "Registrations", href: "/admin/registrations", icon: UserCheck },
         { label: "All Students", href: "/admin/students", icon: Users },
-        { label: "Programs & Fees", href: "/admin/programs", icon: BookOpen },
+        { label: "Programs & Cohorts", href: "/admin/programs", icon: BookOpen },
       ],
     },
     {
@@ -56,10 +55,10 @@ export function AdminSidebar() {
       ],
     },
     {
-      title: "DOCUMENTS & FINANCE",
+      title: "DOCUMENTS & CREDENTIALS",
       items: [
         { label: "Official Documents", href: "/admin/documents", icon: Award },
-        { label: "Payments & Receipts", href: "/admin/finance", icon: CreditCard },
+        { label: "Multi-Tenant Workspace", href: "/workspace", icon: LayoutDashboard },
       ],
     },
     {

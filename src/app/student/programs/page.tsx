@@ -134,10 +134,10 @@ export default function StudentProgramsPage() {
               <div className="p-5 pt-3 border-t border-slate-100 bg-slate-50/60 flex items-center justify-between">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
-                    Enrollment Fee
+                    Access Policy
                   </span>
-                  <span className="text-lg font-black text-slate-900">
-                    {formatCurrencyINR(program.fee)}
+                  <span className="text-sm font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 inline-block">
+                    100% Free • Zero Fees
                   </span>
                 </div>
 

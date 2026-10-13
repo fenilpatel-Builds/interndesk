@@ -249,40 +249,19 @@ export async function verifyEmailOtp(
     console.warn("Cookie set notice:", cErr);
   }
 
-  // 8. Route based on role: ONLY fenil8918@gmail.com is permitted into Admin Console
-  if (profile?.role === "ADMIN" && cleanEmail === "fenil8918@gmail.com") {
+  // 8. Multi-tenant routing
+  if (profile?.role === "SUPER_ADMIN" || cleanEmail === "superadmin@interndesk.com") {
     return {
       success: true,
-      message: "Admin authenticated successfully. Directing to Admin Console...",
-      redirectTo: "/admin/dashboard",
+      message: "Super Admin authenticated successfully. Directing to Super Admin Console...",
+      redirectTo: "/super-admin",
     };
-  }
-
-  // Check student registration status
-  if (profile?.id) {
-    const { data: studentProf } = await adminClient
-      .from("student_profiles")
-      .select("registration_status")
-      .eq("user_id", profile.id)
-      .maybeSingle();
-
-    if (
-      studentProf &&
-      (studentProf.registration_status === "APPROVED" ||
-        studentProf.registration_status === "ACTIVE")
-    ) {
-      return {
-        success: true,
-        message: "Welcome back! Directing to student dashboard...",
-        redirectTo: "/student/dashboard",
-      };
-    }
   }
 
   return {
     success: true,
-    message: "Authenticated successfully. Viewing application status...",
-    redirectTo: "/student/status",
+    message: "Authenticated successfully. Directing to Organization Workspace...",
+    redirectTo: "/workspace",
   };
 }
 
@@ -355,18 +334,18 @@ export async function loginWithPassword(email: string, password: string): Promis
     // Ignored
   }
 
-  if (role === "ADMIN" && cleanEmail === "fenil8918@gmail.com") {
+  if (role === "SUPER_ADMIN" || cleanEmail === "superadmin@interndesk.com") {
     return {
       success: true,
-      message: "Admin authenticated successfully. Directing to Admin Console...",
-      redirectTo: "/admin/dashboard",
+      message: "Super Admin authenticated successfully. Directing to Super Admin Console...",
+      redirectTo: "/super-admin",
     };
   }
 
   return {
     success: true,
-    message: "Authenticated successfully. Directing to Student Portal...",
-    redirectTo: "/student/dashboard",
+    message: "Authenticated successfully. Directing to Organization Workspace...",
+    redirectTo: "/workspace",
   };
 }
 

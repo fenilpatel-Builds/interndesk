@@ -1,155 +1,163 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   CheckCircle2,
-  Sparkles,
-  ArrowRight,
+  Building2,
+  KeyRound,
   ShieldCheck,
   UserCheck,
-  BookOpen,
-  CreditCard,
   Clock,
+  BookOpen,
   Award,
-  FileText,
+  ArrowRight,
 } from "lucide-react";
 
 export function HowItWorks() {
-  // Master Prompt Section 10: 10-step connected journey
-  const steps = [
+  const [activeTab, setActiveTab] = useState<"org" | "member">("org");
+
+  const orgSteps = [
     {
       num: "01",
-      title: "Register Free",
-      desc: "Complete your basic profile without any registration charges. 100% free signup.",
-      highlight: "Free Signup",
+      title: "Select Organization Type",
+      desc: "Choose from Corporate MNC, Educational Institution, Training Institute, or Internship Provider.",
+      highlight: "Tailored Workspace",
     },
     {
       num: "02",
-      title: "Verify Email",
-      desc: "Verify your email address instantly using a secure 6-digit numeric OTP code.",
-      highlight: "Email OTP",
+      title: "Organization Verification",
+      desc: "Verify domain, website, or provide credentials for platform Super Admin approval.",
+      highlight: "Verified Status",
     },
     {
       num: "03",
-      title: "Get Approved",
-      desc: "Administrators review your student background and approve your portal access.",
-      highlight: "Admin Verified",
+      title: "Unique Organization Code",
+      desc: "System generates a unique Organization Code (e.g. ORG-7K4P9X) for secure member discovery.",
+      highlight: "ORG-XXXXXX",
     },
     {
       num: "04",
-      title: "Choose Program",
-      desc: "Browse industry cohorts in Fullstack, Python & AI, DevOps, Data Science, and more.",
-      highlight: "Marketplace",
+      title: "Configure Hierarchy",
+      desc: "Set up departments, teams, cohorts, working hours, and assignment workflows.",
+      highlight: "Custom Hierarchy",
     },
     {
       num: "05",
-      title: "Enroll",
-      desc: "Request enrollment in your chosen cohort with duration and technology specialization.",
-      highlight: "Cohort Lock",
-    },
-    {
-      num: "06",
-      title: "Pay Program Fee",
-      desc: "Pay the admin-configured program fee via 256-bit secure Razorpay gateway.",
-      highlight: "Program Fee",
-    },
-    {
-      num: "07",
-      title: "Learn & Work",
-      desc: "Clock in daily, track live sessions, take breaks, and submit daily work logs.",
-      highlight: "Live Work Timer",
-    },
-    {
-      num: "08",
-      title: "Complete Assessments",
-      desc: "Solve weekly timed MCQ assessments and capstone coding milestones.",
-      highlight: "MCQ Engine",
-    },
-    {
-      num: "09",
-      title: "Complete Internship",
-      desc: "Satisfy attendance criteria, project benchmarks, and mentor sign-offs.",
-      highlight: "Completion",
-    },
-    {
-      num: "10",
-      title: "Receive Documents",
-      desc: "Download your official cryptographically verified Certificate & Completion Letters.",
-      highlight: "Verified PDF",
+      title: "Manage & Monitor",
+      desc: "Review daily reports, track live attendance, conduct assessments, and issue verifiable certificates.",
+      highlight: "Full Administration",
     },
   ];
 
+  const memberSteps = [
+    {
+      num: "01",
+      title: "Create Account",
+      desc: "Sign up with your personal or work email and verify your identity using a secure OTP.",
+      highlight: "Zero Signup Fee",
+    },
+    {
+      num: "02",
+      title: "Discover Your Workspace",
+      desc: "Enter your Organization Code (e.g. ORG-7K4P9X) or accept an administrator invitation.",
+      highlight: "Code Verification",
+    },
+    {
+      num: "03",
+      title: "Role & Profile Setup",
+      desc: "Select member type (Student, Intern, Employee, Trainee) and complete your authorized profile.",
+      highlight: "Role Resolution",
+    },
+    {
+      num: "04",
+      title: "Clock In & Complete Tasks",
+      desc: "Track live work sessions, record lunch/short breaks, submit daily reports, and access LMS.",
+      highlight: "Live Work Timer",
+    },
+    {
+      num: "05",
+      title: "Earn Official Credentials",
+      desc: "Receive tamper-proof Offer Letters and Completion Certificates verifiable on public endpoints.",
+      highlight: "Tamper-Proof Credential",
+    },
+  ];
+
+  const currentSteps = activeTab === "org" ? orgSteps : memberSteps;
+
   return (
-    <section id="how-it-works" className="py-20 bg-slate-50 border-b border-slate-200/80 relative overflow-hidden">
+    <section id="how-it-works" className="py-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="text-center max-w-3xl mx-auto space-y-3 mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold border border-blue-200">
-            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-            <span>End-to-End Progression</span>
-          </div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+        <div className="text-center max-w-3xl mx-auto mb-10">
+          <span className="text-xs uppercase font-extrabold tracking-wider text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+            Unified Workflow Architecture
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mt-3">
             How InternDesk Works
           </h2>
-          <p className="text-base text-slate-600">
-            A clear, 10-stage journey connecting free student onboarding to certified industry completion.
+          <p className="text-base sm:text-lg text-slate-600 mt-3 font-normal">
+            Two distinct, friction-free onboarding journeys designed for organizations and workforce members.
           </p>
+
+          {/* Tab Switcher */}
+          <div className="mt-8 inline-flex p-1 rounded-xl bg-slate-100 border border-slate-200">
+            <button
+              onClick={() => setActiveTab("org")}
+              className={`px-5 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all ${
+                activeTab === "org"
+                  ? "bg-white text-blue-700 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Building2 className="w-4 h-4 inline mr-1.5" />
+              Journey A: For Organizations
+            </button>
+            <button
+              onClick={() => setActiveTab("member")}
+              className={`px-5 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all ${
+                activeTab === "member"
+                  ? "bg-white text-blue-700 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <UserCheck className="w-4 h-4 inline mr-1.5" />
+              Journey B: For Students & Interns
+            </button>
+          </div>
         </div>
 
-        {/* 10-Step Connected Grid (Section 10) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 relative">
-          {steps.map((item, idx) => (
+        {/* Step Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          {currentSteps.map((step, idx) => (
             <div
               key={idx}
-              className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs relative flex flex-col justify-between hover:shadow-md hover:border-blue-300 transition-all duration-300 group"
+              className="relative p-5 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:shadow-md transition-all duration-200 flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-2xl font-black text-blue-600/25 group-hover:text-blue-600/60 transition-colors">
-                    {item.num}
+                  <span className="text-2xl font-black text-blue-600/40">
+                    {step.num}
                   </span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-100">
-                    {item.highlight}
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-100/70 text-blue-800">
+                    {step.highlight}
                   </span>
                 </div>
-                <h3 className="text-sm font-bold text-slate-900 mb-1.5 group-hover:text-blue-600 transition-colors">
-                  {item.title}
-                </h3>
-                <p className="text-xs text-slate-500 leading-relaxed font-normal">
-                  {item.desc}
+                <h4 className="text-sm font-bold text-slate-900 mb-2">
+                  {step.title}
+                </h4>
+                <p className="text-xs text-slate-600 leading-relaxed font-normal">
+                  {step.desc}
                 </p>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-slate-400">
-                <span>Stage {idx + 1} of 10</span>
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-              </div>
+              {idx < currentSteps.length - 1 && (
+                <div className="hidden md:block absolute -right-2.5 top-1/2 -translate-y-1/2 z-10">
+                  <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs shadow-xs">
+                    →
+                  </div>
+                </div>
+              )}
             </div>
           ))}
-        </div>
-
-        {/* Timeline Summary Banner */}
-        <div className="mt-12 p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
-              ✓
-            </div>
-            <div>
-              <h4 className="text-sm font-bold text-slate-900">
-                100% Free Registration Guarantee
-              </h4>
-              <p className="text-xs text-slate-500">
-                Zero fees at signup. Program fees apply only when you choose and enroll in a specific course cohort.
-              </p>
-            </div>
-          </div>
-          <a
-            href="/register"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs shrink-0"
-          >
-            <span>Register Free Now</span>
-            <ArrowRight className="w-4 h-4" />
-          </a>
         </div>
       </div>
     </section>

@@ -124,10 +124,10 @@ export default function AdminProgramsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-              Internship Programs &amp; Configurable Fees
+              Internship Programs &amp; Cohort Tracks
             </h2>
             <p className="text-xs text-slate-500">
-              Configure curriculum tracks, enrollment pricing, and cohort durations.
+              Configure curriculum tracks, learning objectives, and cohort durations.
             </p>
           </div>
 
@@ -171,10 +171,10 @@ export default function AdminProgramsPage() {
                   <h3 className="text-base font-bold text-slate-900 mt-1">{p.title}</h3>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs font-mono font-extrabold text-emerald-700">
-                    {formatCurrencyINR(p.fee)}
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 block">
+                    Zero Fee Cohort
                   </span>
-                  <span className="text-[10px] text-slate-400 block">{p.duration}</span>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">{p.duration}</span>
                 </div>
               </div>
 
@@ -231,16 +231,13 @@ export default function AdminProgramsPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold text-slate-700 block mb-1">
-                Configurable Program Fee (INR)
+                Tuition Policy
               </label>
               <input
-                type="number"
-                min={0}
-                step={100}
-                value={formData.fee}
-                onChange={(e) => setFormData({ ...formData, fee: Number(e.target.value) })}
-                className="w-full text-xs py-2 px-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-100"
-                required
+                type="text"
+                disabled
+                value="Zero Fees (100% Free Cohort)"
+                className="w-full text-xs py-2 px-3 border border-slate-200 bg-slate-50 text-emerald-700 font-semibold rounded-lg cursor-not-allowed"
               />
             </div>
 

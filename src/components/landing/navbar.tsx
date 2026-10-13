@@ -2,31 +2,30 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Menu, X, ArrowRight } from "lucide-react";
+import { Menu, X, ArrowRight, Building2, Search, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatedLogo } from "@/components/ui/animated-logo";
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Section 7 Navigation links
   const navLinks = [
-    { label: "Home", href: "/" },
-    { label: "Programs", href: "/programs" },
-    { label: "How It Works", href: "/#how-it-works" },
+    { label: "Platform", href: "/#platform" },
+    { label: "Solutions", href: "/#solutions" },
     { label: "Features", href: "/#features" },
-    { label: "About", href: "/about" },
+    { label: "Security", href: "/#security" },
+    { label: "Verify Credential", href: "/verify/IND-APX-2026-0042" },
   ];
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-18">
-          {/* Logo & Tagline (Section 7) */}
+          {/* Logo & Tagline */}
           <AnimatedLogo size="md" />
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-7">
+          <nav className="hidden lg:flex items-center gap-7">
             {navLinks.map((link) => (
               <Link
                 key={link.label}
@@ -38,23 +37,34 @@ export function Navbar() {
             ))}
           </nav>
 
-          {/* Auth Actions (Section 7: "Register Free", Never "Pay to Register") */}
+          {/* Action CTAs */}
           <div className="hidden md:flex items-center gap-3">
+            <Link href="/join">
+              <Button
+                variant="outline"
+                size="sm"
+                className="font-semibold text-slate-700 border-slate-300 hover:bg-slate-50 px-4 rounded-xl flex items-center gap-1.5"
+              >
+                <Search className="w-3.5 h-3.5 text-slate-500" />
+                Find Org
+              </Button>
+            </Link>
             <Link href="/login">
               <Button
                 variant="outline"
                 size="sm"
-                className="font-semibold text-slate-700 border-slate-300 hover:bg-slate-50 px-5 rounded-xl"
+                className="font-semibold text-slate-700 border-slate-300 hover:bg-slate-50 px-4 rounded-xl"
               >
-                Login
+                Sign In
               </Button>
             </Link>
-            <Link href="/register">
+            <Link href="/onboard/organization">
               <Button
                 size="sm"
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-xs px-5 rounded-xl"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-500/10 px-5 rounded-xl flex items-center gap-1.5"
               >
-                Register Free
+                <Building2 className="w-4 h-4" />
+                Create Workspace
               </Button>
             </Link>
           </div>
@@ -88,14 +98,19 @@ export function Navbar() {
             ))}
           </div>
           <div className="pt-4 border-t border-slate-100 flex flex-col gap-2.5">
-            <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+            <Link href="/join" onClick={() => setMobileMenuOpen(false)}>
               <Button variant="outline" className="w-full justify-center rounded-xl">
-                Login
+                Find Your Organization (Enter Code)
               </Button>
             </Link>
-            <Link href="/register" onClick={() => setMobileMenuOpen(false)}>
+            <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+              <Button variant="outline" className="w-full justify-center rounded-xl">
+                Sign In
+              </Button>
+            </Link>
+            <Link href="/onboard/organization" onClick={() => setMobileMenuOpen(false)}>
               <Button className="w-full justify-center bg-blue-600 hover:bg-blue-700 font-bold rounded-xl text-white">
-                Register Free
+                Create Organization Workspace
               </Button>
             </Link>
           </div>

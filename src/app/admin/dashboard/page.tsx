@@ -109,9 +109,9 @@ export default function AdminDashboardPage() {
           </Card>
 
           <Card className="p-4 border-slate-200/90 shadow-2xs bg-white rounded-2xl">
-            <span className="text-[11px] font-bold text-violet-700 uppercase tracking-wider">Program Payments</span>
-            <div className="text-2xl font-black text-violet-600 mt-1">₹10.6L</div>
-            <span className="text-[10px] text-violet-600 font-semibold">Razorpay verified</span>
+            <span className="text-[11px] font-bold text-violet-700 uppercase tracking-wider">Attendance Compliance</span>
+            <div className="text-2xl font-black text-violet-600 mt-1">98.4%</div>
+            <span className="text-[10px] text-violet-600 font-semibold">1,248h logged</span>
           </Card>
 
           <Card className="p-4 border-slate-200/90 shadow-2xs bg-white rounded-2xl">

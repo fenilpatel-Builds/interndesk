@@ -9,7 +9,6 @@ import {
   Clock,
   BookOpen,
   Award,
-  CreditCard,
   CheckCheck,
   X,
   Sparkles,
@@ -20,7 +19,7 @@ export interface NotificationItem {
   title: string;
   message: string;
   category: "SYSTEM" | "IMPORTANT" | "GENERAL";
-  type: "APPROVAL" | "TASK" | "ASSESSMENT" | "PAYMENT" | "CERTIFICATE" | "GENERAL";
+  type: "APPROVAL" | "TASK" | "ASSESSMENT" | "ONBOARDING" | "CERTIFICATE" | "GENERAL";
   createdAt: string;
   isRead: boolean;
   actionUrl?: string;
@@ -62,7 +61,7 @@ const INITIAL_NOTIFICATIONS: NotificationItem[] = [
     title: "Program Enrollment Activated",
     message: "Your program enrollment in Full Stack Web Development is fully verified and active.",
     category: "SYSTEM",
-    type: "PAYMENT",
+    type: "ONBOARDING",
     createdAt: "Yesterday",
     isRead: true,
     actionUrl: "/student/programs",
@@ -119,8 +118,8 @@ export function NotificationCenter() {
         return <Clock className="w-4 h-4 text-blue-600" />;
       case "ASSESSMENT":
         return <Award className="w-4 h-4 text-amber-600" />;
-      case "PAYMENT":
-        return <CreditCard className="w-4 h-4 text-teal-600" />;
+      case "ONBOARDING":
+        return <CheckCircle2 className="w-4 h-4 text-emerald-600" />;
       case "CERTIFICATE":
         return <Sparkles className="w-4 h-4 text-indigo-600" />;
       default:

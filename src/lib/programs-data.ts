@@ -326,3 +326,5 @@ export function getProgramById(id: string): InternshipProgram | undefined {
 export function getAllPrograms(): InternshipProgram[] {
   return INTERNSHIP_PROGRAMS;
 }
+
+export const programsData = INTERNSHIP_PROGRAMS;

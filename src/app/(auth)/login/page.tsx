@@ -253,6 +253,59 @@ export default function LoginPage() {
                 >
                   Login
                 </Button>
+
+                {/* Instant Demo Personas for Evaluation */}
+                <div className="pt-2 border-t border-slate-100">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 text-center">
+                    Instant Demo Login Shortcuts
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmail("admin@apextech.com");
+                        setPassword("apex123");
+                        window.location.href = "/workspace";
+                      }}
+                      className="p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 text-left font-semibold text-[11px]"
+                    >
+                      🏢 Apex Org Admin
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmail("sarah.chen@student.io");
+                        setPassword("sarah123");
+                        window.location.href = "/workspace";
+                      }}
+                      className="p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 text-left font-semibold text-[11px]"
+                    >
+                      🎓 Sarah Chen (Intern)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmail("admin@westbridge.edu");
+                        setPassword("wbu123");
+                        window.location.href = "/workspace";
+                      }}
+                      className="p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 text-left font-semibold text-[11px]"
+                    >
+                      🏛️ Westbridge Dean
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmail("superadmin@interndesk.com");
+                        setPassword("superadmin123");
+                        window.location.href = "/super-admin";
+                      }}
+                      className="p-2 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 text-left font-semibold text-[11px]"
+                    >
+                      🛡️ Super Admin
+                    </button>
+                  </div>
+                </div>
               </form>
             ) : (
               /* OTP Mode */

@@ -13,7 +13,6 @@ import {
   CheckCircle2,
   Clock,
   ShieldCheck,
-  CreditCard,
   BookOpen,
   Award,
   FileText,
@@ -41,7 +40,7 @@ interface StudentRecord {
   technology: string;
   program: string;
   enrollmentId: string;
-  paymentStatus: "VERIFIED" | "PENDING" | "FREE_REGISTRATION";
+  complianceStatus: "VERIFIED" | "PENDING";
   attendancePct: number;
   tasksCompleted: string;
   status: "ACTIVE" | "PENDING_APPROVAL" | "COMPLETED" | "SUSPENDED";
@@ -60,7 +59,7 @@ export default function AdminStudentsPage() {
       technology: "Full Stack Web Development",
       program: "Full Stack Development Cohort",
       enrollmentId: "ENR-748291",
-      paymentStatus: "VERIFIED",
+      complianceStatus: "VERIFIED",
       attendancePct: 94.2,
       tasksCompleted: "5/7",
       status: "ACTIVE",
@@ -76,7 +75,7 @@ export default function AdminStudentsPage() {
       technology: "Python & AI Engineering",
       program: "Python & AI Cohort",
       enrollmentId: "ENR-982134",
-      paymentStatus: "VERIFIED",
+      complianceStatus: "VERIFIED",
       attendancePct: 92.4,
       tasksCompleted: "14/16",
       status: "ACTIVE",
@@ -92,7 +91,7 @@ export default function AdminStudentsPage() {
       technology: "Data Science & Analytics",
       program: "Data Science Cohort",
       enrollmentId: "ENR-654321",
-      paymentStatus: "VERIFIED",
+      complianceStatus: "VERIFIED",
       attendancePct: 88.0,
       tasksCompleted: "12/14",
       status: "ACTIVE",
@@ -108,7 +107,7 @@ export default function AdminStudentsPage() {
       technology: "Cloud & DevOps",
       program: "Cloud & DevOps Track",
       enrollmentId: "ENR-112233",
-      paymentStatus: "FREE_REGISTRATION",
+      complianceStatus: "PENDING",
       attendancePct: 0.0,
       tasksCompleted: "0/0",
       status: "PENDING_APPROVAL",
@@ -124,7 +123,7 @@ export default function AdminStudentsPage() {
       technology: "Full Stack Web Development",
       program: "Full Stack Development Cohort",
       enrollmentId: "ENR-883319",
-      paymentStatus: "VERIFIED",
+      complianceStatus: "VERIFIED",
       attendancePct: 96.5,
       tasksCompleted: "7/7",
       status: "COMPLETED",
@@ -196,7 +195,7 @@ export default function AdminStudentsPage() {
       "Technology Track",
       "Enrolled Program",
       "Enrollment ID",
-      "Payment Status",
+      "Compliance Status",
       "Attendance %",
       "Tasks Completed",
       "Account Status",
@@ -213,7 +212,7 @@ export default function AdminStudentsPage() {
       `"${s.technology}"`,
       `"${s.program}"`,
       s.enrollmentId,
-      s.paymentStatus,
+      s.complianceStatus,
       s.attendancePct,
       `"${s.tasksCompleted}"`,
       s.status,
@@ -267,7 +266,7 @@ export default function AdminStudentsPage() {
     "Learning",
     "Assessments",
     "Documents",
-    "Payments",
+    "Compliance",
     "Activity",
   ];
 
@@ -448,7 +447,7 @@ export default function AdminStudentsPage() {
                   <th className="py-3 px-3">Technology</th>
                   <th className="py-3 px-3">Program</th>
                   <th className="py-3 px-3">Enrollment</th>
-                  <th className="py-3 px-3">Payment</th>
+                  <th className="py-3 px-3">Compliance</th>
                   <th className="py-3 px-3 text-center">Attendance</th>
                   <th className="py-3 px-3 text-center">Tasks</th>
                   <th className="py-3 px-3 text-center">Status</th>
@@ -505,12 +504,12 @@ export default function AdminStudentsPage() {
                       <td className="py-3.5 px-3">
                         <span
                           className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            s.paymentStatus === "VERIFIED"
+                            s.complianceStatus === "VERIFIED"
                               ? "bg-emerald-50 text-emerald-700"
                               : "bg-slate-100 text-slate-600"
                           }`}
                         >
-                          {s.paymentStatus === "VERIFIED" ? "Paid ✓" : "Free Reg"}
+                          {s.complianceStatus === "VERIFIED" ? "Verified ✓" : "Pending"}
                         </span>
                       </td>
                       <td className="py-3.5 px-3 text-center font-bold text-slate-900">
@@ -864,37 +863,38 @@ export default function AdminStudentsPage() {
               </div>
             )}
 
-            {/* TAB 11: PAYMENTS */}
-            {detailTab === "Payments" && (
+            {/* TAB 11: COMPLIANCE */}
+            {detailTab === "Compliance" && (
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 text-xs">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-2">
                   <span className="text-[10px] uppercase font-bold text-slate-500">
-                    Program Enrollment Payment Audit
+                    Enterprise Policy Compliance Audit
                   </span>
                   <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded text-[10px]">
-                    Verified ✓
+                    Verified Compliant ✓
                   </span>
                 </div>
                 <div className="space-y-1.5 text-slate-700">
                   <div className="flex justify-between">
-                    <span>Registration Charge:</span>
-                    <span className="font-bold text-emerald-700">₹0.00 (Free Registration)</span>
+                    <span>Registration Model:</span>
+                    <span className="font-bold text-emerald-700">100% Free (Zero Registration Charges)</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Program Enrollment Fee:</span>
-                    <span className="font-bold text-slate-900">₹4,999.00</span>
+                    <span>Course Fee Policy:</span>
+                    <span className="font-bold text-emerald-700">Zero Course Fees (No Payment Gateways)</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Gateway Reference:</span>
-                    <span className="font-mono text-slate-600">pay_razorpay_98214532</span>
+                    <span>Tenant Scope Isolation:</span>
+                    <span className="font-mono text-slate-600">Enforced by Server &amp; PostgreSQL RLS</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Receipt ID:</span>
-                    <span className="font-mono text-slate-600">RCPT-ENR-748291</span>
+                    <span>Enrollment ID:</span>
+                    <span className="font-mono text-slate-600">{selectedStudent.enrollmentId}</span>
                   </div>
                 </div>
               </div>
             )}
+
 
             {/* TAB 12: ACTIVITY */}
             {detailTab === "Activity" && (
@@ -912,7 +912,7 @@ export default function AdminStudentsPage() {
                     <span className="text-slate-400 text-[11px]">Yesterday, 05:20 PM</span>
                   </div>
                   <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex justify-between">
-                    <span>Program enrollment fee payment verified</span>
+                    <span>Program cohort enrollment verified</span>
                     <span className="text-slate-400 text-[11px]">Oct 01, 2026</span>
                   </div>
                   <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex justify-between">

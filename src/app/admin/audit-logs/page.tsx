@@ -54,13 +54,13 @@ export default function AdminAuditLogsPage() {
     },
     {
       id: "a4",
-      actor: "Payment Gateway",
+      actor: "Security Verifier",
       role: "SYSTEM",
-      action: "PAYMENT_SIGNATURE_VERIFIED",
-      entity: "PAYMENT (order_k29f93)",
+      action: "ORGANIZATION_CODE_VALIDATED",
+      entity: "ORGANIZATION (ORG-7K4P9X)",
       newStatus: "VERIFIED",
       timestamp: "2026-10-07T08:45:00Z",
-      ip: "Webhook API",
+      ip: "Auth API",
     },
     {
       id: "a5",

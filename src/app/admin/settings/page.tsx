@@ -88,11 +88,13 @@ export default function AdminSettingsPage() {
             <CardContent className="p-6 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
-                  label="Default Program Fee (INR ₹)"
+                  label="Expected Daily Working Hours (hrs)"
                   type="number"
-                  value={feeInr}
+                  min={1}
+                  max={12}
+                  value={feeInr === "1000" ? "8" : feeInr}
                   onChange={(e) => setFeeInr(e.target.value)}
-                  helperText="Configurable program enrollment fee. Student registration is 100% free."
+                  helperText="Configurable standard daily shift duration. 100% free with zero fees."
                   required
                 />
                 <Input
@@ -138,8 +140,8 @@ export default function AdminSettingsPage() {
                     className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
                   />
                   <div>
-                    <span className="font-bold text-slate-900 block">Email student upon Payment Verification</span>
-                    <span className="text-slate-500">Deliver immediate digital receipt and payment confirmation.</span>
+                    <span className="font-bold text-slate-900 block">Email student upon Certificate / Document Issuance</span>
+                    <span className="text-slate-500">Deliver immediate digital credential with verification link.</span>
                   </div>
                 </label>
               </div>

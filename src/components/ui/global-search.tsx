@@ -125,7 +125,7 @@ const SEARCH_DATABASE: SearchItem[] = [
     id: "a2",
     title: "Modern Web Architecture & Security Assessment",
     category: "ASSESSMENTS",
-    description: "Authentication, RLS, CSRF, and cryptographic payments",
+    description: "Authentication, RLS, CSRF, and multi-tenant data isolation",
     href: "/student/assessments",
     badge: "MCQ",
   },
