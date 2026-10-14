@@ -1,17 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import {
-  CheckCircle2,
-  Building2,
-  KeyRound,
-  ShieldCheck,
-  UserCheck,
-  Clock,
-  BookOpen,
-  Award,
-  ArrowRight,
-} from "lucide-react";
+import { Building2, UserCheck } from "lucide-react";
 
 export function HowItWorks() {
   const [activeTab, setActiveTab] = useState<"org" | "member">("org");

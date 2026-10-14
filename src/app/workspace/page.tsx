@@ -8,12 +8,7 @@ import {
   Sparkles,
   CheckSquare,
   Clock,
-  FileSpreadsheet,
-  BookOpen,
   Award,
-  BellRing,
-  BarChart3,
-  Settings,
   Plus,
   Search,
   CheckCircle2,
@@ -24,15 +19,12 @@ import {
   ExternalLink,
   Download,
   RefreshCw,
-  CalendarCheck,
   GraduationCap,
   MessageSquare,
   UserPlus,
   Power,
   Send,
   AlertTriangle,
-  Check,
-  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -62,7 +54,7 @@ import {
   MentorshipReview,
 } from "@/types/multitenant";
 import { hasPermission, getRoleDisplayName } from "@/lib/multitenant/permissions";
-import { getWorkforceAnalytics, WorkforceInsights } from "@/lib/multitenant/analytics";
+import { getWorkforceAnalytics } from "@/lib/multitenant/analytics";
 
 export default function WorkspacePage() {
   const [organizations, setOrganizations] = useState<Organization[]>(multiTenantStore.getOrganizations());
@@ -163,13 +155,11 @@ export default function WorkspacePage() {
   });
 
   // Deterministic Analytics Computation
-  const [insights, setInsights] = useState<WorkforceInsights>(() =>
-    getWorkforceAnalytics(organizations[0]?.id || "org-apex-01", "2026-10-13")
-  );
-
-  useEffect(() => {
-    const today = new Date().toISOString().split("T")[0];
-    setInsights(getWorkforceAnalytics(activeOrg.id, today));
+  const insights = useMemo(() => {
+    void members.length;
+    void tasks.length;
+    void workSessions.length;
+    return getWorkforceAnalytics(activeOrg.id);
   }, [activeOrg.id, members, tasks, workSessions]);
 
   // Load tenant-isolated data

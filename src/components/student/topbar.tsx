@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Bell, Clock, ShieldCheck, Coffee } from "lucide-react";
+import { Clock, ShieldCheck, Coffee } from "lucide-react";
 import Link from "next/link";
 import { useWorkTimer } from "@/hooks/use-work-timer";
 import { GlobalSearch } from "@/components/ui/global-search";

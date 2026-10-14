@@ -4,16 +4,13 @@ import React, { Suspense } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
-  ShieldCheck,
   CheckCircle2,
   AlertTriangle,
   Building2,
   Calendar,
   Award,
-  FileText,
   Lock,
   ArrowLeft,
-  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";

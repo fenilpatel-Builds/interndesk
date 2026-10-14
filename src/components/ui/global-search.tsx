@@ -9,10 +9,8 @@ import {
   FileText,
   Award,
   GraduationCap,
-  Clock,
   HelpCircle,
   ArrowRight,
-  Sparkles,
   X,
 } from "lucide-react";
 

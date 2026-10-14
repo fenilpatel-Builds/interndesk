@@ -5,20 +5,13 @@ import Link from "next/link";
 import {
   ShieldAlert,
   Building2,
-  Users,
-  CheckCircle2,
   XCircle,
-  AlertTriangle,
   RefreshCw,
   Search,
-  Activity,
   ArrowLeft,
-  KeyRound,
-  ShieldCheck,
   Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { AnimatedLogo } from "@/components/ui/animated-logo";
 import { multiTenantStore } from "@/lib/multitenant/store";
 import { Organization } from "@/types/multitenant";
@@ -171,6 +164,14 @@ export default function SuperAdminConsolePage() {
                       {org.official_email}
                     </td>
                     <td className="p-3.5 text-right space-x-1.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setSelectedOrg(org)}
+                        className="border-slate-700 text-blue-400 hover:bg-slate-800 text-[11px] font-bold px-2.5 py-1 rounded-lg"
+                      >
+                        Inspect
+                      </Button>
                       {org.status !== "APPROVED" && (
                         <Button
                           size="sm"
@@ -230,6 +231,92 @@ export default function SuperAdminConsolePage() {
             ))}
           </div>
         </div>
+
+        {/* Selected Organization Detail Inspection Modal */}
+        {selectedOrg && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+            <div className="relative max-w-lg w-full bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl text-xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <Building2 className="w-5 h-5 text-blue-400" />
+                  <h3 className="text-base font-bold text-white">{selectedOrg.name}</h3>
+                </div>
+                <button
+                  onClick={() => setSelectedOrg(null)}
+                  className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+                  aria-label="Close modal"
+                >
+                  <XCircle className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 font-mono">
+                <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
+                  <p className="text-[10px] text-slate-500 uppercase">Tenant ID</p>
+                  <p className="text-slate-200 font-bold truncate">{selectedOrg.id}</p>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
+                  <p className="text-[10px] text-slate-500 uppercase">Organization Code</p>
+                  <p className="text-blue-400 font-bold">{selectedOrg.code}</p>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
+                  <p className="text-[10px] text-slate-500 uppercase">Organization Type</p>
+                  <p className="text-slate-200">{selectedOrg.type}</p>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
+                  <p className="text-[10px] text-slate-500 uppercase">Joining Policy</p>
+                  <p className="text-amber-400">{selectedOrg.joining_policy}</p>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 text-slate-300">
+                <p><span className="text-slate-500 font-semibold">Official Email:</span> {selectedOrg.official_email}</p>
+                <p><span className="text-slate-500 font-semibold">Industry / Domain:</span> {selectedOrg.industry_or_category}</p>
+                <p><span className="text-slate-500 font-semibold">Country:</span> {selectedOrg.country}</p>
+                <p><span className="text-slate-500 font-semibold">Working Days:</span> {selectedOrg.settings?.workingDays?.join(", ") || "Mon-Fri"}</p>
+                <p><span className="text-slate-500 font-semibold">Expected Work Hours:</span> {selectedOrg.settings?.expectedDailyHours || 8} hrs/day</p>
+                <p><span className="text-slate-500 font-semibold">Timezone:</span> {selectedOrg.settings?.timeZone || "America/New_York"}</p>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-800">
+                {selectedOrg.status !== "APPROVED" && (
+                  <Button
+                    size="sm"
+                    onClick={() => { handleApprove(selectedOrg.id); setSelectedOrg(null); }}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs"
+                  >
+                    Approve Tenant
+                  </Button>
+                )}
+                {selectedOrg.status === "APPROVED" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => { handleSuspend(selectedOrg.id); setSelectedOrg(null); }}
+                    className="border-red-800 text-red-400 hover:bg-red-950 font-bold rounded-lg text-xs"
+                  >
+                    Suspend Tenant
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => { handleRotateCode(selectedOrg.id); setSelectedOrg(null); }}
+                  className="border-slate-700 text-slate-300 hover:bg-slate-800 font-bold rounded-lg text-xs"
+                >
+                  Rotate Code
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => setSelectedOrg(null)}
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg text-xs"
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
       <footer className="border-t border-slate-800 py-4 text-center text-xs text-slate-500">

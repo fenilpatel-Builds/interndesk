@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Menu, X, ArrowRight, Building2, Search, ShieldCheck } from "lucide-react";
+import { Menu, X, Building2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatedLogo } from "@/components/ui/animated-logo";
 

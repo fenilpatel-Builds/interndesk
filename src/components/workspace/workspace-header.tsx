@@ -10,13 +10,9 @@ import {
   Copy,
   Check,
   Plus,
-  ShieldCheck,
-  Users,
-  LogOut,
   UserCheck,
   Menu,
   X,
-  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatedLogo } from "@/components/ui/animated-logo";

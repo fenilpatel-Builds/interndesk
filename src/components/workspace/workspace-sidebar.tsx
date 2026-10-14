@@ -14,7 +14,6 @@ import {
   BellRing,
   BarChart3,
   Settings,
-  ShieldAlert,
   CalendarCheck,
   GraduationCap,
 } from "lucide-react";

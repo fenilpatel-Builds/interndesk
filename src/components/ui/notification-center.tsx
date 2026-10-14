@@ -5,12 +5,9 @@ import Link from "next/link";
 import {
   Bell,
   CheckCircle2,
-  AlertCircle,
   Clock,
-  BookOpen,
   Award,
   CheckCheck,
-  X,
   Sparkles,
 } from "lucide-react";
 

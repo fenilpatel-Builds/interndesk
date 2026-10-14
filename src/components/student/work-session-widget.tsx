@@ -4,12 +4,10 @@ import React, { useState } from "react";
 import {
   Clock,
   Play,
-  Pause,
   Square,
   Coffee,
   CheckCircle2,
   Sparkles,
-  Zap,
   TrendingUp,
   RotateCcw,
   Utensils,
@@ -18,7 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useWorkTimer, BreakCategory } from "@/hooks/use-work-timer";
+import { useWorkTimer } from "@/hooks/use-work-timer";
 
 interface WorkSessionWidgetProps {
   compact?: boolean;

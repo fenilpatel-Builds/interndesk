@@ -1,4 +1,4 @@
-import { ShieldCheck, Lock, KeyRound, Server, History, Layers } from "lucide-react";
+import { ShieldCheck, Lock, KeyRound, History, Layers } from "lucide-react";
 
 export function SecurityTrust() {
   const points = [

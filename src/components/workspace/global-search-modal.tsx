@@ -6,11 +6,9 @@ import {
   X,
   Users,
   CheckSquare,
-  BookOpen,
   Award,
   Sparkles,
   ArrowRight,
-  Building2,
 } from "lucide-react";
 import { multiTenantStore } from "@/lib/multitenant/store";
 import { Organization } from "@/types/multitenant";
