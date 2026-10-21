@@ -3,7 +3,6 @@
 import { cookies } from "next/headers";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendOtpEmail } from "@/lib/auth/email-service";
 
 export interface AuthResponse {
   success: boolean;
@@ -12,12 +11,8 @@ export interface AuthResponse {
   error?: string;
 }
 
-// In-memory OTP cache for active runtime
-// Guarantees instant 6-digit OTP verification even before SQL tables are created or in case of external network issues
-const localOtpCache = new Map<string, { code: string; expiresAt: number }>();
-
 /**
- * Send real 6-digit Email OTP & Trigger Supabase Auth
+ * Send 6-digit Email OTP exclusively via Supabase Auth
  */
 export async function sendEmailOtp(email: string): Promise<AuthResponse> {
   const cleanEmail = email.toLowerCase().trim();
@@ -25,55 +20,45 @@ export async function sendEmailOtp(email: string): Promise<AuthResponse> {
     return { success: false, message: "Please provide a valid email address." };
   }
 
-  const adminClient = createAdminClient();
-  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiresAtMs = Date.now() + 10 * 60 * 1000; // 10 minutes
-  const expiresAtIso = new Date(expiresAtMs).toISOString();
-
-  // 1. Store in runtime local memory cache (guaranteed immediate hit)
-  localOtpCache.set(cleanEmail, { code: otpCode, expiresAt: expiresAtMs });
-
-  // 2. Store in email_otps table in Supabase PostgreSQL (if table exists)
-  try {
-    await adminClient.from("email_otps").insert({
-      email: cleanEmail,
-      otp_code: otpCode,
-      expires_at: expiresAtIso,
-      consumed: false,
-    });
-  } catch (dbErr) {
-    console.warn("Notice: email_otps table insert skipped:", dbErr);
-  }
-
-  // 3. Deliver real 6-digit branded email directly to the student's personal inbox via EmailJS (Primary)
-  const emailResult = await sendOtpEmail(cleanEmail, otpCode);
-
-  // 4. Also notify Supabase Auth for session creation
   try {
     const supabase = await createServerSupabaseClient();
-    await supabase.auth.signInWithOtp({
+    const { error } = await supabase.auth.signInWithOtp({
       email: cleanEmail,
-      options: { shouldCreateUser: true },
+      options: {
+        shouldCreateUser: true,
+      },
     });
-  } catch (supaErr) {
-    console.warn("Supabase Auth sync notice:", supaErr);
-  }
 
-  if (!emailResult.success) {
+    if (error) {
+      console.error("[Supabase Auth signInWithOtp Error]:", error);
+      if (error.status === 429) {
+        return {
+          success: false,
+          message: "Email dispatch rate limit reached. Please wait a minute before requesting another code.",
+        };
+      }
+      return {
+        success: false,
+        message: error.message || "Failed to dispatch verification code via Supabase Auth.",
+      };
+    }
+
+    return {
+      success: true,
+      message: `6-Digit verification code has been dispatched to ${cleanEmail} via Supabase Auth. Please check your inbox!`,
+    };
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : "Failed to connect to Supabase Auth service.";
+    console.error("[Supabase Auth Exception]:", err);
     return {
       success: false,
-      message: emailResult.error || "Failed to dispatch verification code to email.",
+      message: errMsg,
     };
   }
-
-  return {
-    success: true,
-    message: `6-Digit verification code sent directly to ${cleanEmail}. Check your inbox!`,
-  };
 }
 
 /**
- * Verify 6-Digit Email OTP server-side
+ * Verify 6-Digit Email OTP exclusively via Supabase Auth
  */
 export async function verifyEmailOtp(
   email: string,
@@ -97,176 +82,128 @@ export async function verifyEmailOtp(
     return { success: false, message: "Please enter a valid 6-digit numeric OTP code." };
   }
 
-  const adminClient = createAdminClient();
-  let verified = false;
-
-  // 1. Verify via Supabase Auth OTP (from the email delivered to the user's inbox)
   try {
     const supabase = await createServerSupabaseClient();
-    const { data: supaVerify, error: supaErr } = await supabase.auth.verifyOtp({
+    const { data, error } = await supabase.auth.verifyOtp({
       email: cleanEmail,
       token: cleanToken,
       type: "email",
     });
 
-    if (!supaErr && supaVerify?.user) {
-      verified = true;
-      console.log(`[Supabase Auth OTP Verified]: Successfully verified code for ${cleanEmail}`);
+    if (error || !data?.user) {
+      console.warn("[Supabase Auth verifyOtp Error]:", error);
+      return {
+        success: false,
+        message: error?.message || "Invalid or expired OTP code. Please check your inbox or request a new code.",
+      };
     }
-  } catch (supaVerifyErr) {
-    console.warn("Supabase verifyOtp check:", supaVerifyErr);
-  }
 
-  // 2. Fallback: Check local runtime cache
-  if (!verified) {
-    const cached = localOtpCache.get(cleanEmail);
-    if (cached && cached.expiresAt > Date.now() && cached.code === cleanToken) {
-      verified = true;
-      localOtpCache.delete(cleanEmail);
-    }
-  }
+    const user = data.user;
+    const adminClient = createAdminClient();
 
-  // 3. Fallback: Check against email_otps table in Supabase
-  if (!verified) {
+    // Fetch or sync user profile
+    let profile = null;
     try {
-      const { data: activeOtp } = await adminClient
-        .from("email_otps")
+      const { data: existingProfile } = await adminClient
+        .from("profiles")
         .select("*")
         .eq("email", cleanEmail)
-        .eq("otp_code", cleanToken)
-        .eq("consumed", false)
-        .gt("expires_at", new Date().toISOString())
-        .order("created_at", { ascending: false })
-        .limit(1)
         .maybeSingle();
 
-      if (activeOtp) {
-        verified = true;
-        await adminClient
-          .from("email_otps")
-          .update({ consumed: true })
-          .eq("id", activeOtp.id);
+      if (existingProfile) {
+        profile = existingProfile;
+      } else {
+        const { data: newProfile } = await adminClient
+          .from("profiles")
+          .insert({
+            id: user.id,
+            full_name: user.user_metadata?.full_name || (cleanEmail === "fenil8918@gmail.com" ? "Fenil Patel" : cleanEmail.split("@")[0]),
+            email: cleanEmail,
+            mobile: user.user_metadata?.mobile || "9876543210",
+            role: cleanEmail === "fenil8918@gmail.com" ? "ADMIN" : (cleanEmail === "superadmin@interndesk.com" ? "SUPER_ADMIN" : "STUDENT"),
+            status: "ACTIVE",
+          })
+          .select()
+          .maybeSingle();
+        profile = newProfile;
       }
-    } catch {
-      // Fallback
+    } catch (dbErr) {
+      console.warn("[Profile Sync Notice]:", dbErr);
     }
-  }
 
-  // STRICT VERIFICATION: NO HARDCODED 123456 / 847291 CODES PERMITTED!
-  if (!verified) {
-    return {
-      success: false,
-      message: "Invalid or expired 6-digit OTP code. Please check your inbox or click Resend OTP.",
-    };
-  }
+    const role = profile?.role || (cleanEmail === "fenil8918@gmail.com" ? "ADMIN" : (cleanEmail === "superadmin@interndesk.com" ? "SUPER_ADMIN" : "STUDENT"));
 
-  // 5. Find or sync Profile
-  let profile = null;
-  const { data: existingProfile } = await adminClient
-    .from("profiles")
-    .select("*")
-    .eq("email", cleanEmail)
-    .maybeSingle();
+    // Record session audit log if deviceInfo is provided
+    if (deviceInfo) {
+      try {
+        await adminClient.from("user_sessions").insert({
+          user_id: user.id,
+          device_label: deviceInfo.deviceLabel || "Web Browser",
+          browser: deviceInfo.browser || "Browser",
+          os: deviceInfo.os || "Desktop",
+          ip_hash: deviceInfo.ipHash || "ip-hash",
+        });
 
-  if (existingProfile) {
-    profile = existingProfile;
-  } else {
-    // Create new profile with fallback phone
-    // ONLY fenil8918@gmail.com can ever have role ADMIN
-    const { data: newProfile } = await adminClient
-      .from("profiles")
-      .insert({
-        full_name: cleanEmail === "fenil8918@gmail.com" ? "Fenil Patel" : cleanEmail.split("@")[0],
-        email: cleanEmail,
-        mobile: "9876543210",
-        role: cleanEmail === "fenil8918@gmail.com" ? "ADMIN" : "STUDENT",
-        status: "ACTIVE",
-      })
-      .select()
-      .maybeSingle();
-    profile = newProfile;
-  }
+        await adminClient.from("audit_logs").insert({
+          actor_user_id: user.id,
+          actor_role: role,
+          action: "LOGIN_OTP_VERIFIED",
+          entity_type: "SESSION",
+          entity_id: user.id,
+          new_status: "ACTIVE",
+          metadata: { email: cleanEmail, auth_provider: "supabase" },
+        });
+      } catch {
+        // Non-blocking
+      }
+    }
 
-  // 6. Record device session if metadata provided
-  if (profile?.id && deviceInfo) {
+    // Set application session cookie for SSR multi-tenant context
     try {
-      await adminClient.from("user_sessions").insert({
-        user_id: profile.id,
-        device_label: deviceInfo.deviceLabel || "Web Browser",
-        browser: deviceInfo.browser || "Chrome / Browser",
-        os: deviceInfo.os || "Desktop",
-        ip_hash: deviceInfo.ipHash || "ip-hash",
-      });
-
-      await adminClient.from("audit_logs").insert({
-        actor_user_id: profile.id,
-        actor_role: profile.role || "STUDENT",
-        action: "LOGIN_OTP_VERIFIED",
-        entity_type: "SESSION",
-        entity_id: profile.id,
-        new_status: "ACTIVE",
-        metadata: { email: cleanEmail },
-      });
-    } catch {
-      // Non-blocking security log
+      const cookieStore = await cookies();
+      cookieStore.set(
+        "interndesk_user",
+        JSON.stringify({
+          id: user.id,
+          email: cleanEmail,
+          role: role,
+        }),
+        {
+          path: "/",
+          httpOnly: true,
+          maxAge: 60 * 60 * 24 * 7,
+          sameSite: "lax",
+        }
+      );
+    } catch (cErr) {
+      console.warn("Cookie set error:", cErr);
     }
-  }
 
-  // 7. Establish genuine Supabase Auth session & App Session Cookie
-  try {
-    const { data: linkData } = await adminClient.auth.admin.generateLink({
-      type: "magiclink",
-      email: cleanEmail,
-    });
-    if (linkData?.properties?.hashed_token) {
-      const serverSupabase = await createServerSupabaseClient();
-      await serverSupabase.auth.verifyOtp({
-        token_hash: linkData.properties.hashed_token,
-        type: "email",
-      });
+    if (role === "SUPER_ADMIN" || cleanEmail === "superadmin@interndesk.com") {
+      return {
+        success: true,
+        message: "Super Admin authenticated via Supabase. Directing to Super Admin Console...",
+        redirectTo: "/super-admin",
+      };
     }
-  } catch (sessErr) {
-    console.warn("Session establishment notice:", sessErr);
-  }
 
-  try {
-    const cookieStore = await cookies();
-    cookieStore.set(
-      "interndesk_user",
-      JSON.stringify({
-        id: profile?.id,
-        email: cleanEmail,
-        role: profile?.role || "STUDENT",
-      }),
-      {
-        path: "/",
-        httpOnly: true,
-        maxAge: 60 * 60 * 24 * 7,
-        sameSite: "lax",
-      }
-    );
-  } catch (cErr) {
-    console.warn("Cookie set notice:", cErr);
-  }
-
-  // 8. Multi-tenant routing
-  if (profile?.role === "SUPER_ADMIN" || cleanEmail === "superadmin@interndesk.com") {
     return {
       success: true,
-      message: "Super Admin authenticated successfully. Directing to Super Admin Console...",
-      redirectTo: "/super-admin",
+      message: "Authenticated successfully with Supabase. Directing to Organization Workspace...",
+      redirectTo: "/workspace",
+    };
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : "Verification failed via Supabase.";
+    console.error("[Supabase Auth verifyOtp Exception]:", err);
+    return {
+      success: false,
+      message: errMsg,
     };
   }
-
-  return {
-    success: true,
-    message: "Authenticated successfully. Directing to Organization Workspace...",
-    redirectTo: "/workspace",
-  };
 }
 
 /**
- * Sign in using Email and Password
+ * Sign in using Email and Password exclusively via Supabase Auth
  */
 export async function loginWithPassword(email: string, password: string): Promise<AuthResponse> {
   const cleanEmail = email.toLowerCase().trim();
@@ -274,83 +211,83 @@ export async function loginWithPassword(email: string, password: string): Promis
     return { success: false, message: "Email and password are required." };
   }
 
-  const supabase = await createServerSupabaseClient();
-  const adminClient = createAdminClient();
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email: cleanEmail,
+      password: password,
+    });
 
-  // Try authenticating with Supabase Auth
-  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-    email: cleanEmail,
-    password: password,
-  });
+    if (authError || !authData?.user) {
+      console.warn("[Supabase Auth signInWithPassword Error]:", authError?.message);
+      return {
+        success: false,
+        message: authError?.message || "Invalid email or password.",
+      };
+    }
 
-  let role = "STUDENT";
+    const user = authData.user;
+    const adminClient = createAdminClient();
 
-  if (!authError && authData.user) {
-    const { data: profile } = await adminClient
-      .from("profiles")
-      .select("*")
-      .eq("email", cleanEmail)
-      .maybeSingle();
-    role = cleanEmail === "fenil8918@gmail.com" && profile?.role === "ADMIN" ? "ADMIN" : "STUDENT";
-  } else {
-    // ONLY fenil8918@gmail.com is recognized as ADMIN
-    if (cleanEmail === "fenil8918@gmail.com") {
-      role = "ADMIN";
-    } else {
-      const { data: prof } = await adminClient
+    let profile = null;
+    try {
+      const { data: existingProfile } = await adminClient
         .from("profiles")
         .select("*")
         .eq("email", cleanEmail)
         .maybeSingle();
-
-      if (prof) {
-        role = "STUDENT";
-      } else {
-        return {
-          success: false,
-          message: "Account not found or password incorrect. Try logging in with OTP instead.",
-        };
-      }
+      profile = existingProfile;
+    } catch {
+      // Ignored
     }
-  }
 
-  // Set session cookie
-  try {
-    const cookieStore = await cookies();
-    cookieStore.set(
-      "interndesk_user",
-      JSON.stringify({
-        email: cleanEmail,
-        role: role,
-      }),
-      {
-        path: "/",
-        httpOnly: true,
-        maxAge: 60 * 60 * 24 * 7,
-        sameSite: "lax",
-      }
-    );
-  } catch {
-    // Ignored
-  }
+    const role = profile?.role || (cleanEmail === "fenil8918@gmail.com" ? "ADMIN" : (cleanEmail === "superadmin@interndesk.com" ? "SUPER_ADMIN" : "STUDENT"));
 
-  if (role === "SUPER_ADMIN" || cleanEmail === "superadmin@interndesk.com") {
+    try {
+      const cookieStore = await cookies();
+      cookieStore.set(
+        "interndesk_user",
+        JSON.stringify({
+          id: user.id,
+          email: cleanEmail,
+          role: role,
+        }),
+        {
+          path: "/",
+          httpOnly: true,
+          maxAge: 60 * 60 * 24 * 7,
+          sameSite: "lax",
+        }
+      );
+    } catch {
+      // Ignored
+    }
+
+    if (role === "SUPER_ADMIN" || cleanEmail === "superadmin@interndesk.com") {
+      return {
+        success: true,
+        message: "Super Admin authenticated successfully via Supabase. Directing to Super Admin Console...",
+        redirectTo: "/super-admin",
+      };
+    }
+
     return {
       success: true,
-      message: "Super Admin authenticated successfully. Directing to Super Admin Console...",
-      redirectTo: "/super-admin",
+      message: "Authenticated successfully with Supabase. Directing to Organization Workspace...",
+      redirectTo: "/workspace",
+    };
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : "Authentication failed with Supabase.";
+    console.error("[Supabase Auth signInWithPassword Exception]:", err);
+    return {
+      success: false,
+      message: errMsg,
     };
   }
-
-  return {
-    success: true,
-    message: "Authenticated successfully. Directing to Organization Workspace...",
-    redirectTo: "/workspace",
-  };
 }
 
 /**
- * Sign out session
+ * Sign out session exclusively via Supabase Auth
  */
 export async function signOutUser() {
   const supabase = await createServerSupabaseClient();

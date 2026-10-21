@@ -2,16 +2,14 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { GraduationCap, Mail, KeyRound, ArrowRight, ShieldCheck, CheckCircle2, Lock, Eye, EyeOff } from "lucide-react";
+import { GraduationCap, Mail, ArrowRight, ShieldCheck, CheckCircle2, Lock, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AnimatedLogo } from "@/components/ui/animated-logo";
 import { sendEmailOtp, verifyEmailOtp, loginWithPassword } from "@/lib/auth/actions";
 
 export default function LoginPage() {
-  const router = useRouter();
-  const [authMode, setAuthMode] = useState<"PASSWORD" | "OTP">("PASSWORD");
+  const [authMode, setAuthMode] = useState<"OTP" | "PASSWORD">("OTP");
   const [step, setStep] = useState<"EMAIL" | "OTP">("EMAIL");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -60,7 +58,7 @@ export default function LoginPage() {
         setErrorMessage(res.message);
       }
     } catch {
-      setErrorMessage("Authentication failed. Please verify your email and password.");
+      setErrorMessage("Authentication failed via Supabase. Please verify your email and password.");
     } finally {
       setIsLoading(false);
     }
@@ -88,7 +86,7 @@ export default function LoginPage() {
         setErrorMessage(res.message);
       }
     } catch {
-      setErrorMessage("Failed to send OTP code. Please try again.");
+      setErrorMessage("Failed to send OTP code via Supabase Auth. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -102,14 +100,14 @@ export default function LoginPage() {
     try {
       const res = await sendEmailOtp(email.toLowerCase().trim());
       if (res.success) {
-        setSuccessMessage("A fresh 6-digit verification code has been sent to your email.");
+        setSuccessMessage("A fresh 6-digit verification code has been dispatched via Supabase Auth.");
         setResendCooldown(30);
         setOtp("");
       } else {
         setErrorMessage(res.message);
       }
     } catch {
-      setErrorMessage("Failed to resend verification code. Please try again.");
+      setErrorMessage("Failed to resend verification code via Supabase Auth. Please try again.");
     } finally {
       setIsResending(false);
     }
@@ -122,7 +120,7 @@ export default function LoginPage() {
 
     const cleanOtp = otp.trim();
     if (!cleanOtp || cleanOtp.length !== 6 || !/^\d{6}$/.test(cleanOtp)) {
-      setErrorMessage("Please enter the complete 6-digit OTP code sent to your email.");
+      setErrorMessage("Please enter the complete 6-digit numeric OTP code sent to your email.");
       return;
     }
 
@@ -143,7 +141,7 @@ export default function LoginPage() {
         setErrorMessage(res.message);
       }
     } catch {
-      setErrorMessage("An unexpected verification error occurred. Please try again.");
+      setErrorMessage("An unexpected verification error occurred with Supabase Auth. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -154,25 +152,67 @@ export default function LoginPage() {
       {/* Background glow */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-blue-100/50 rounded-full blur-3xl -z-10 pointer-events-none" />
 
-      {/* Main 2-Column Auth Container Matching Screen 1 */}
+      {/* Main 2-Column Auth Container */}
       <div className="w-full max-w-4xl bg-white rounded-3xl shadow-xl border border-slate-200/90 overflow-hidden grid grid-cols-1 md:grid-cols-12">
         {/* Left Column: Form */}
         <div className="md:col-span-7 p-8 sm:p-12 space-y-6 flex flex-col justify-between">
           <div className="space-y-6">
             {/* Unified Logo */}
-            <AnimatedLogo size="md" />
+            <div className="flex items-center justify-between">
+              <AnimatedLogo size="md" />
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Supabase Auth
+              </span>
+            </div>
 
             <div>
               <h2 className="text-2xl font-black text-slate-900 tracking-tight">
                 Welcome Back!
               </h2>
               <p className="text-xs text-slate-500 mt-1">
-                Login to your account to continue your internship journey.
+                Authenticate securely through Supabase Auth to access your workspace.
               </p>
             </div>
 
+            {/* Segmented Auth Mode Switcher */}
+            <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode("OTP");
+                  setErrorMessage("");
+                  setSuccessMessage("");
+                }}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                  authMode === "OTP"
+                    ? "bg-white text-blue-600 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <Mail className="w-3.5 h-3.5" />
+                Email OTP
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode("PASSWORD");
+                  setErrorMessage("");
+                  setSuccessMessage("");
+                }}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                  authMode === "PASSWORD"
+                    ? "bg-white text-blue-600 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <Lock className="w-3.5 h-3.5" />
+                Password
+              </button>
+            </div>
+
             {errorMessage && (
-              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-medium">
+              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-medium leading-relaxed">
                 {errorMessage}
               </div>
             )}
@@ -193,7 +233,7 @@ export default function LoginPage() {
                   <div className="relative">
                     <input
                       type="email"
-                      placeholder="fenil@example.com"
+                      placeholder="intern@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
@@ -236,13 +276,6 @@ export default function LoginPage() {
                     />
                     <span>Remember me</span>
                   </label>
-                  <button
-                    type="button"
-                    onClick={() => setAuthMode("OTP")}
-                    className="font-semibold text-blue-600 hover:underline"
-                  >
-                    Login with OTP instead
-                  </button>
                 </div>
 
                 <Button
@@ -251,13 +284,13 @@ export default function LoginPage() {
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs"
                   isLoading={isLoading}
                 >
-                  Login
+                  Sign In with Supabase
                 </Button>
 
-                {/* Instant Demo Personas for Evaluation */}
+                {/* Pre-fill Credentials for Quick Testing */}
                 <div className="pt-2 border-t border-slate-100">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 text-center">
-                    Instant Demo Login Shortcuts
+                    Prefill Account Credentials
                   </p>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <button
@@ -265,7 +298,6 @@ export default function LoginPage() {
                       onClick={() => {
                         setEmail("admin@apextech.com");
                         setPassword("apex123");
-                        window.location.href = "/workspace";
                       }}
                       className="p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 text-left font-semibold text-[11px]"
                     >
@@ -276,7 +308,6 @@ export default function LoginPage() {
                       onClick={() => {
                         setEmail("sarah.chen@student.io");
                         setPassword("sarah123");
-                        window.location.href = "/workspace";
                       }}
                       className="p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 text-left font-semibold text-[11px]"
                     >
@@ -287,7 +318,6 @@ export default function LoginPage() {
                       onClick={() => {
                         setEmail("admin@westbridge.edu");
                         setPassword("wbu123");
-                        window.location.href = "/workspace";
                       }}
                       className="p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 text-left font-semibold text-[11px]"
                     >
@@ -298,7 +328,6 @@ export default function LoginPage() {
                       onClick={() => {
                         setEmail("superadmin@interndesk.com");
                         setPassword("superadmin123");
-                        window.location.href = "/super-admin";
                       }}
                       className="p-2 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 text-left font-semibold text-[11px]"
                     >
@@ -319,7 +348,7 @@ export default function LoginPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     disabled={isLoading}
-                    helperText="We'll send a 6-digit one-time code to this address."
+                    helperText="Supabase Auth will dispatch a 6-digit one-time code to your email."
                   />
 
                   <Button
@@ -328,25 +357,15 @@ export default function LoginPage() {
                     size="lg"
                     isLoading={isLoading}
                   >
-                    Send OTP Code
+                    Send OTP via Supabase
                     <ArrowRight className="w-4 h-4 ml-1.5" />
                   </Button>
-
-                  <div className="text-center pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setAuthMode("PASSWORD")}
-                      className="text-xs font-semibold text-blue-600 hover:underline"
-                    >
-                      ← Back to Password Login
-                    </button>
-                  </div>
                 </form>
               ) : (
                 <form onSubmit={handleVerifyOtp} className="space-y-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                      6-Digit Verification Code
+                      6-Digit Supabase Verification Code
                     </label>
                     <div className="relative">
                       <input
@@ -363,7 +382,7 @@ export default function LoginPage() {
                       />
                     </div>
                     <p className="text-[11px] text-slate-500 mt-1">
-                      Enter the 6-digit code delivered to <strong className="text-slate-700">{email}</strong>
+                      Enter the 6-digit code delivered to <strong className="text-slate-700">{email}</strong> by Supabase Auth.
                     </p>
                   </div>
 
@@ -389,7 +408,7 @@ export default function LoginPage() {
                         ? "Sending code..."
                         : resendCooldown > 0
                         ? `Resend OTP in ${resendCooldown}s`
-                        : "Resend OTP"}
+                        : "Resend Supabase OTP"}
                     </button>
                   </div>
 
@@ -399,7 +418,7 @@ export default function LoginPage() {
                     size="lg"
                     isLoading={isLoading}
                   >
-                    Verify &amp; Continue
+                    Verify with Supabase
                   </Button>
                 </form>
               )
@@ -413,16 +432,16 @@ export default function LoginPage() {
               href="/register"
               className="font-bold text-blue-600 hover:text-blue-800"
             >
-              Register
+              Register (100% Free)
             </Link>
           </div>
         </div>
 
-        {/* Right Column: Blue Illustration Banner Matching Screen 1 */}
+        {/* Right Column: Blue Illustration Banner */}
         <div className="hidden md:flex md:col-span-5 bg-gradient-to-br from-blue-50 via-indigo-50/70 to-blue-100/60 p-10 flex-col justify-between items-center text-center border-l border-slate-100">
           <div className="w-full flex justify-end">
             <span className="text-[10px] uppercase font-bold text-blue-600 bg-blue-100/80 px-2.5 py-1 rounded-full">
-              SaaS Portal
+              Enterprise SaaS
             </span>
           </div>
 
@@ -437,14 +456,14 @@ export default function LoginPage() {
                 Learn. Work. Grow.
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed max-w-xs mx-auto">
-                Gain real-world experience, build your skills and shape your future with InternDesk.
+                Direct Supabase Auth authentication ensures enterprise security, end-to-end data encryption, and instant session synchronization.
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span>256-Bit SSL Encrypted Access</span>
+            <span>Supabase Session Authentication</span>
           </div>
         </div>
       </div>
