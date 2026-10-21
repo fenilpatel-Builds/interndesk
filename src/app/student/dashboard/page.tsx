@@ -4,24 +4,21 @@ import React, { useState } from "react";
 import Link from "next/link";
 import {
   Clock,
-  TrendingUp,
   CheckCircle2,
   FileSpreadsheet,
   BookOpen,
   Award,
   ListTodo,
   FileText,
-  UserCheck,
   Sparkles,
   Zap,
   ShieldCheck,
   Check,
-  ArrowRight,
   Coffee,
   Calendar,
 } from "lucide-react";
 import { StudentTopbar } from "@/components/student/topbar";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { WorkSessionWidget } from "@/components/student/work-session-widget";
 import { useWorkTimer } from "@/hooks/use-work-timer";

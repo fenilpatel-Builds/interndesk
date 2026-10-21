@@ -2,17 +2,14 @@
 
 import React, { useState, useEffect } from "react";
 import {
-  UserCheck,
   CheckCircle2,
   XCircle,
   Eye,
   Search,
-  Filter,
-  AlertTriangle,
   Loader2,
 } from "lucide-react";
 import { AdminTopbar } from "@/components/admin/topbar";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";

@@ -10,10 +10,8 @@ import {
   Clock,
   Plus,
   Trash2,
-  FileCheck,
   Save,
   Send,
-  AlertCircle,
 } from "lucide-react";
 
 interface ReportSlot {

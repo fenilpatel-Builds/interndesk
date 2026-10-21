@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   ArrowLeft,
@@ -10,13 +9,11 @@ import {
   Building,
   User,
   FileCheck,
-  ShieldCheck,
   Mail,
   Clock,
   Sparkles,
   AlertCircle,
   RefreshCw,
-  GraduationCap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,14 +23,12 @@ import { sendEmailOtp, verifyEmailOtp } from "@/lib/auth/actions";
 import type { RegistrationFormData } from "@/validations/registration";
 
 export default function RegisterPage() {
-  const router = useRouter();
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [otpCode, setOtpCode] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [otpMessage, setOtpMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
@@ -134,7 +129,6 @@ export default function RegisterPage() {
     try {
       const res = await sendEmailOtp(email);
       if (res.success) {
-        setOtpSent(true);
         setResendCooldown(30);
         setOtpMessage({ text: res.message, type: "success" });
       } else {

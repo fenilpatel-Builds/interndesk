@@ -2,14 +2,12 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   Building2,
   GraduationCap,
   Laptop,
   Briefcase,
   CheckCircle2,
-  ShieldCheck,
   ArrowRight,
   ArrowLeft,
   Copy,
@@ -26,7 +24,6 @@ import { OrganizationType } from "@/types/multitenant";
 import { multiTenantStore } from "@/lib/multitenant/store";
 
 export default function OrganizationOnboardingPage() {
-  const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [copiedCode, setCopiedCode] = useState(false);
 
@@ -275,6 +272,17 @@ export default function OrganizationOnboardingPage() {
                   placeholder="e.g. Enterprise Cloud Computing"
                   value={industry}
                   onChange={(e) => setIndustry(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold uppercase text-slate-700">Country</label>
+                <input
+                  type="text"
+                  placeholder="e.g. India"
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-600 focus:outline-none"
                 />
               </div>

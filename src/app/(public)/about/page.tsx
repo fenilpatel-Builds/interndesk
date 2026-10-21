@@ -2,7 +2,7 @@ import React from "react";
 import { Navbar } from "@/components/landing/navbar";
 import { Footer } from "@/components/landing/footer";
 import { Card, CardContent } from "@/components/ui/card";
-import { GraduationCap, ShieldCheck, Target, Users, Award } from "lucide-react";
+import { ShieldCheck, Target, Users } from "lucide-react";
 
 export default function AboutPage() {
   return (

@@ -3,17 +3,10 @@
 import React, { useState } from "react";
 import { StudentTopbar } from "@/components/student/topbar";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
-  ChevronLeft,
-  ChevronRight,
-  Clock,
   Calendar,
   CheckCircle2,
-  TrendingUp,
-  Award,
   Zap,
-  Filter,
 } from "lucide-react";
 import { WorkSessionWidget } from "@/components/student/work-session-widget";
 import { useWorkTimer } from "@/hooks/use-work-timer";
@@ -27,7 +20,6 @@ export default function StudentAttendancePage() {
     minutesStr,
     secondsStr,
     progressPercent,
-    timeline,
   } = useWorkTimer();
 
   // Full attendance history records matching Section 20

@@ -3,13 +3,12 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { StudentTopbar } from "@/components/student/topbar";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   BookOpen,
   FileText,
   Video,
-  FileSpreadsheet,
   Link2,
   Presentation,
   ArrowRight,
@@ -17,7 +16,6 @@ import {
   Download,
   ExternalLink,
   Sparkles,
-  Layers,
   Search,
 } from "lucide-react";
 

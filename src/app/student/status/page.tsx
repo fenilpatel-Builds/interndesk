@@ -9,8 +9,6 @@ import {
   ArrowRight,
   Mail,
   RefreshCw,
-  Sparkles,
-  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";

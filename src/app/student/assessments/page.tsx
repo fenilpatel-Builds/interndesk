@@ -7,14 +7,9 @@ import { Button } from "@/components/ui/button";
 import {
   Clock,
   CheckCircle2,
-  XCircle,
   ArrowRight,
   ArrowLeft,
   RotateCcw,
-  Award,
-  AlertCircle,
-  HelpCircle,
-  Sparkles,
 } from "lucide-react";
 
 interface ExamQuestion {

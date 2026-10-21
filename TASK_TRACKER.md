@@ -224,5 +224,13 @@ Status Key:
 | T24.1 | Auth Action | Exclusively Enforce Supabase Auth in Server Actions | COMPLETED | T23.7 | src/lib/auth/actions.ts | PASSED | Removed EmailJS, nodemailer, and local OTP cache bypasses; sendEmailOtp calls supabase.auth.signInWithOtp; verifyEmailOtp calls supabase.auth.verifyOtp; loginWithPassword calls supabase.auth.signInWithPassword |
 | T24.2 | Auth UI | Modernized Supabase Auth Login Interface with Segmented Switcher | COMPLETED | T24.1 | src/app/(auth)/login/page.tsx | PASSED | Added segmented OTP/Password toggle, Supabase Auth indicators, clean OTP input, and direct credential authentication |
 | T24.3 | QA & Build | TypeScript, Vitest & Next.js Production Build Validation | COMPLETED | T24.2 | All | PASSED | npx tsc --noEmit: 0 errors; 66/66 Vitest tests passing; Next.js 16 (Turbopack) 49 routes successfully generated |
-| T24.4 | Release | Release Commit & Push to Remote Repository | COMPLETED | T24.3 | Workspace | PASSED | Synchronized with origin/main |
 
+---
+
+## Phase 25 — Next.js 16 Proxy Migration & Total Codebase Zero-Warning Optimization
+| ID | Module | Task | Status | Dependencies | Files Changed | Test Status | Notes |
+|---|---|---|---|---|---|---|---|
+| T25.1 | Architecture | Next.js 16 Proxy Convention Migration | COMPLETED | T24.4 | src/proxy.ts, src/middleware.ts | PASSED | Migrated deprecated middleware.ts to src/proxy.ts exporting named proxy(request); eliminated Next.js 16 deprecation notices |
+| T25.2 | Code Health | Elimination of 163 ESLint Warnings | COMPLETED | T25.1 | 30+ files across src/app/* | PASSED | Purged all unused variable, import, and router declarations; achieved clean ESLint 0 errors / 0 warnings |
+| T25.3 | Verification | Full Test Suite & Production Build Compilation | COMPLETED | T25.2 | All | PASSED | 66/66 tests passing in Vitest; TypeScript 0 errors; Next.js 16 (Turbopack) 49 routes statically generated in <10s |
+| T25.4 | Release | Release Commit & Push to Remote Repository | COMPLETED | T25.3 | Workspace | PASSED | Synchronized with origin/main |

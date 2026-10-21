@@ -2,16 +2,13 @@
 
 import React, { useState, Suspense } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import {
   ArrowLeft,
   CheckCircle2,
-  Calendar,
   Clock,
   Sparkles,
   ShieldCheck,
-  Building2,
-  Award,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -19,7 +16,6 @@ import { INTERNSHIP_PROGRAMS, getProgramById } from "@/lib/programs-data";
 
 function StudentEnrollContent() {
   const params = useParams();
-  const router = useRouter();
   const programId = params?.id as string;
   const program = getProgramById(programId) || INTERNSHIP_PROGRAMS[0];
 

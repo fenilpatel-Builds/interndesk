@@ -2,19 +2,15 @@
 
 import React, { useState } from "react";
 import { AdminTopbar } from "@/components/admin/topbar";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import {
-  Clock,
-  Filter,
   Search,
   Download,
   AlertTriangle,
-  Users,
   Coffee,
   CheckCircle2,
-  Calendar,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -34,7 +30,7 @@ interface AttendanceRecord {
 }
 
 export default function AdminAttendancePage() {
-  const [sessions, setSessions] = useState<AttendanceRecord[]>([
+  const [sessions] = useState<AttendanceRecord[]>([
     {
       id: "ws1",
       student: "Fenil Patel",

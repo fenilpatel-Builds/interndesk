@@ -2,9 +2,9 @@
 
 import React, { useState } from "react";
 import { AdminTopbar } from "@/components/admin/topbar";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Plus, FileText, Upload, Folder } from "lucide-react";
+import { Upload, Folder } from "lucide-react";
 
 export default function AdminLearningPage() {
   const [subjects] = useState([

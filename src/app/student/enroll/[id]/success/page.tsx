@@ -6,9 +6,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import {
   CheckCircle2,
   ArrowRight,
-  Calendar,
   Sparkles,
-  Award,
 } from "lucide-react";
 import { StudentTopbar } from "@/components/student/topbar";
 import { Card } from "@/components/ui/card";
@@ -23,7 +21,6 @@ function EnrollmentSuccessContent() {
 
   const enrollmentId = searchParams.get("enrollmentId") || "ENR-748291";
   const studentName = "Sarah Chen";
-  const currentDate = "2026-10-12T12:00:00Z";
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">

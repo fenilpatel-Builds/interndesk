@@ -4,8 +4,7 @@ import React, { useState } from "react";
 import { StudentTopbar } from "@/components/student/topbar";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Shield, Smartphone, Laptop, LogOut, CheckCircle2, History, AlertTriangle } from "lucide-react";
-import { formatDate } from "@/lib/utils";
+import { Shield, Smartphone, Laptop, LogOut, CheckCircle2 } from "lucide-react";
 
 interface SessionInfo {
   id: string;

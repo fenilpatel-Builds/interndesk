@@ -2,17 +2,14 @@
 
 import React, { useState } from "react";
 import { StudentTopbar } from "@/components/student/topbar";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  HelpCircle,
   MessageSquare,
   Send,
   CheckCircle2,
-  AlertCircle,
   ChevronDown,
   Clock,
-  ShieldCheck,
   FileQuestion,
   LifeBuoy,
 } from "lucide-react";

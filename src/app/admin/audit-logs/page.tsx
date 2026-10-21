@@ -2,10 +2,9 @@
 
 import React, { useState } from "react";
 import { AdminTopbar } from "@/components/admin/topbar";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { History, Search, Shield, Filter } from "lucide-react";
-import { formatDate } from "@/lib/utils";
+import { Search } from "lucide-react";
 
 interface AuditEntry {
   id: string;

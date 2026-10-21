@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { ArrowLeft, Home, Building2, Search } from "lucide-react";
+import { Home, Building2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function NotFound() {

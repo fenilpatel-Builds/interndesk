@@ -2,31 +2,19 @@
 
 import React, { useState } from "react";
 import { AdminTopbar } from "@/components/admin/topbar";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import {
   Search,
-  Filter,
   Eye,
   CheckCircle2,
-  Clock,
   ShieldCheck,
-  BookOpen,
-  Award,
-  FileText,
-  Activity,
-  User,
   Download,
   CheckSquare,
   Square,
-  Bell,
   UserX,
-  FileSpreadsheet,
-  Calendar,
-  AlertCircle,
-  ExternalLink,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 

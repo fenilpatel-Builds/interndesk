@@ -6,17 +6,13 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import {
-  Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
   Clock,
-  CheckCircle2,
   Award,
   Video,
   Flag,
   Coffee,
-  Filter,
-  Plus,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 

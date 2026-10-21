@@ -2,23 +2,16 @@
 
 import React, { useState } from "react";
 import { AdminTopbar } from "@/components/admin/topbar";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import {
-  BookOpen,
   Plus,
   Edit2,
-  Trash2,
-  CheckCircle2,
-  Clock,
-  Sparkles,
-  Layers,
   Search,
 } from "lucide-react";
 import { INTERNSHIP_PROGRAMS, type InternshipProgram } from "@/lib/programs-data";
-import { formatCurrencyINR } from "@/lib/utils";
 
 export default function AdminProgramsPage() {
   const [programs, setPrograms] = useState<InternshipProgram[]>(INTERNSHIP_PROGRAMS);

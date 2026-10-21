@@ -5,7 +5,7 @@ import { AdminTopbar } from "@/components/admin/topbar";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Settings, Shield, Building, Mail, CheckCircle2, Lock } from "lucide-react";
+import { Settings, Shield, Building, CheckCircle2 } from "lucide-react";
 
 export default function AdminSettingsPage() {
   const [saved, setSaved] = useState(false);

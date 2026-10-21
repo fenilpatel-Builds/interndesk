@@ -6,7 +6,7 @@ import { SecurityTrust } from "@/components/landing/security";
 import { FAQ } from "@/components/landing/faq";
 import { Footer } from "@/components/landing/footer";
 import Link from "next/link";
-import { ArrowRight, Building2, GraduationCap, Laptop, Briefcase, Network } from "lucide-react";
+import { ArrowRight, Building2, GraduationCap, Laptop, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function HomePage() {

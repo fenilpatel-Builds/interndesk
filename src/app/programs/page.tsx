@@ -3,23 +3,19 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import {
-  GraduationCap,
   Clock,
   Award,
   ArrowRight,
-  BookOpen,
   CheckCircle2,
-  Users,
   Search,
-  Filter,
   Sparkles,
   Layers,
 } from "lucide-react";
 import { Navbar } from "@/components/landing/navbar";
 import { Footer } from "@/components/landing/footer";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { INTERNSHIP_PROGRAMS, type InternshipProgram } from "@/lib/programs-data";
+import { Card } from "@/components/ui/card";
+import { INTERNSHIP_PROGRAMS } from "@/lib/programs-data";
 import { formatCurrencyINR } from "@/lib/utils";
 
 export default function ProgramsPage() {

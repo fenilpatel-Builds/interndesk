@@ -2,19 +2,11 @@
 
 import React, { useState } from "react";
 import { StudentTopbar } from "@/components/student/topbar";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import {
-  CheckSquare,
-  Clock,
-  AlertCircle,
-  CheckCircle2,
-  ChevronRight,
-  User,
-  Cpu,
-  Layers,
   Kanban,
   List,
 } from "lucide-react";

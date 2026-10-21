@@ -2,11 +2,11 @@
 
 import React, { useState } from "react";
 import { AdminTopbar } from "@/components/admin/topbar";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
-import { FileSpreadsheet, Eye, MessageSquare, CheckCircle2 } from "lucide-react";
+import { Eye, CheckCircle2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 interface DailyReportEntry {

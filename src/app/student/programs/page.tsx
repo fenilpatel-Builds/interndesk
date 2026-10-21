@@ -9,15 +9,11 @@ import {
   Award,
   CheckCircle2,
   ArrowRight,
-  BookOpen,
-  Layers,
-  GraduationCap,
 } from "lucide-react";
 import { StudentTopbar } from "@/components/student/topbar";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { INTERNSHIP_PROGRAMS, type InternshipProgram } from "@/lib/programs-data";
-import { formatCurrencyINR } from "@/lib/utils";
+import { Card } from "@/components/ui/card";
+import { INTERNSHIP_PROGRAMS } from "@/lib/programs-data";
 
 export default function StudentProgramsPage() {
   const [searchQuery, setSearchQuery] = useState("");

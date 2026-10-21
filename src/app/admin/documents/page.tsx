@@ -2,11 +2,10 @@
 
 import React, { useState } from "react";
 import { AdminTopbar } from "@/components/admin/topbar";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { Award, FileText, CheckCircle2, Download, Eye } from "lucide-react";
-import { formatDate } from "@/lib/utils";
+import { CheckCircle2, Eye } from "lucide-react";
 
 export default function AdminDocumentsPage() {
   const [documents, setDocuments] = useState([

@@ -2,34 +2,25 @@
 
 import React, { useState, Suspense } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import {
-  GraduationCap,
-  Clock,
   Award,
   ArrowRight,
   ArrowLeft,
   CheckCircle2,
-  Users,
   ChevronDown,
   ChevronUp,
-  ShieldCheck,
   Sparkles,
   BookOpen,
-  Calendar,
-  Briefcase,
-  Layers,
 } from "lucide-react";
 import { Navbar } from "@/components/landing/navbar";
 import { Footer } from "@/components/landing/footer";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { getProgramById, INTERNSHIP_PROGRAMS } from "@/lib/programs-data";
 import { formatCurrencyINR } from "@/lib/utils";
 
 function ProgramDetailContent() {
   const params = useParams();
-  const router = useRouter();
   const programId = params?.id as string;
   const program = getProgramById(programId) || INTERNSHIP_PROGRAMS[0];
 
