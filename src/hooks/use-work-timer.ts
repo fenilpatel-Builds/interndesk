@@ -14,6 +14,13 @@ export interface TimelineEntry {
   durationSeconds: number;
 }
 
+export interface PunchVerificationData {
+  selfieDataUrl: string;
+  location: string;
+  timestamp: string;
+  hash: string;
+}
+
 const STORAGE_KEY = "interndesk_timer_v3";
 const DAILY_TARGET_SECONDS = 8 * 3600; // 8 Hours (28,800s)
 
@@ -27,6 +34,8 @@ interface StoredTimerData {
   breakType: BreakCategory;
   timeline: TimelineEntry[];
   lastTick: number;
+  clockInVerification?: PunchVerificationData | null;
+  clockOutVerification?: PunchVerificationData | null;
 }
 
 // Gentle Web Audio API chime (zero external dependencies)
@@ -100,6 +109,8 @@ export function useWorkTimer() {
       breakType: "LUNCH",
       timeline: [],
       lastTick: 0,
+      clockInVerification: null,
+      clockOutVerification: null,
     };
   });
 
@@ -194,9 +205,11 @@ export function useWorkTimer() {
   const remainingFormatted = `${remHours}h ${remMinutes}m remaining`;
 
   // Start Work Session (Clock In)
-  const clockIn = useCallback(() => {
+  const clockIn = useCallback((verification?: PunchVerificationData | unknown) => {
     const timeNow = Date.now();
     const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const isPunchData = verification && typeof verification === "object" && "hash" in (verification as object);
+    const validVerification = isPunchData ? (verification as PunchVerificationData) : null;
     playChime("start");
 
     setState((prev) => ({
@@ -206,11 +219,13 @@ export function useWorkTimer() {
       clockInIso: timeStr,
       breakStartTime: null,
       totalBreakSeconds: 0,
+      clockInVerification: validVerification,
+      clockOutVerification: null,
       timeline: [
         {
           id: `t-${timeNow}`,
           type: "WORK",
-          label: "Productive Work Session",
+          label: validVerification ? "Productive Work Session (Biometrically Verified)" : "Productive Work Session",
           startTime: timeStr,
           durationSeconds: 0,
         },
@@ -309,9 +324,11 @@ export function useWorkTimer() {
   }, []);
 
   // Clock Out (Complete Shift)
-  const clockOut = useCallback(() => {
+  const clockOut = useCallback((verification?: PunchVerificationData | unknown) => {
     const timeNow = Date.now();
     const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const isPunchData = verification && typeof verification === "object" && "hash" in (verification as object);
+    const validVerification = isPunchData ? (verification as PunchVerificationData) : null;
     playChime("stop");
 
     setState((prev) => {
@@ -334,6 +351,7 @@ export function useWorkTimer() {
       return {
         ...prev,
         status: "COMPLETED",
+        clockOutVerification: validVerification,
         finalWorkedSeconds: finalProductive > 0 ? finalProductive : 4 * 3600 + 32 * 60 + 15,
         timeline: finalTimeline,
         lastTick: timeNow,
@@ -353,6 +371,8 @@ export function useWorkTimer() {
       breakType: "LUNCH",
       timeline: [],
       lastTick: 0,
+      clockInVerification: null,
+      clockOutVerification: null,
     });
   }, []);
 
@@ -372,6 +392,8 @@ export function useWorkTimer() {
     remainingFormatted,
     breakType: state.breakType,
     timeline: state.timeline,
+    clockInVerification: state.clockInVerification,
+    clockOutVerification: state.clockOutVerification,
     clockIn,
     takeBreak,
     resumeWork,

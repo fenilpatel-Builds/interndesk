@@ -31,6 +31,7 @@ import { Card } from "@/components/ui/card";
 import { WorkspaceHeader } from "@/components/workspace/workspace-header";
 import { WorkspaceSidebar } from "@/components/workspace/workspace-sidebar";
 import { GlobalSearchModal } from "@/components/workspace/global-search-modal";
+import { DocumentStudioModal } from "@/components/documents/document-studio-modal";
 import { multiTenantStore } from "@/lib/multitenant/store";
 import {
   Organization,
@@ -2014,18 +2015,33 @@ export default function WorkspacePage() {
           {/* TAB 12: DOCUMENTS & CERTIFICATES */}
           {activeTab === "documents" && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-2xl font-black text-slate-900 tracking-tight">Documents & Credentials</h2>
+                  <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                    Documents &amp; Tamper-Proof Credentials
+                    <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      SHA-256 Ledger
+                    </span>
+                  </h2>
                   <p className="text-xs text-slate-500 font-normal">
-                    Verified letters and certificates issued under {activeOrg.name}.
+                    Verified letters and certificates issued under {activeOrg.name} with official seals and cryptographic fingerprints.
                   </p>
                 </div>
+
+                {documents.length > 0 && (
+                  <Button
+                    onClick={() => setSelectedDocPreview(documents[0])}
+                    className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer self-start sm:self-auto"
+                  >
+                    <Award className="w-3.5 h-3.5 mr-1.5" />
+                    Launch Credential Studio
+                  </Button>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {documents.map((doc) => (
-                  <Card key={doc.id} className="p-6 border-slate-200 bg-white rounded-2xl shadow-sm space-y-4">
+                  <Card key={doc.id} className="p-6 border-slate-200 bg-white rounded-2xl shadow-sm space-y-4 hover:border-blue-200 transition-all">
                     <div className="flex items-start justify-between">
                       <div>
                         <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-100 text-blue-800">
@@ -2040,7 +2056,7 @@ export default function WorkspacePage() {
                     <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
                       <p>Recipient: <strong>{doc.recipient_name}</strong> ({doc.recipient_role})</p>
                       <p>Issued Date: <strong>{doc.issued_date}</strong></p>
-                      <p className="text-[10px] text-slate-400 font-mono">Code: {doc.verification_code}</p>
+                      <p className="text-[10px] text-slate-400 font-mono">Verification Code: {doc.verification_code}</p>
                     </div>
 
                     <div className="flex items-center justify-between pt-2">
@@ -2049,49 +2065,29 @@ export default function WorkspacePage() {
                           Public Verification <ExternalLink className="w-3.5 h-3.5" />
                         </span>
                       </Link>
-                      <Button size="sm" variant="outline" onClick={() => setSelectedDocPreview(doc)} className="rounded-xl text-xs font-bold">
-                        Preview Certificate
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setSelectedDocPreview(doc)}
+                          className="rounded-xl text-xs font-bold border-slate-300 hover:bg-slate-50 cursor-pointer"
+                        >
+                          Studio Preview
+                        </Button>
+                      </div>
                     </div>
                   </Card>
                 ))}
               </div>
 
-              {/* Document Preview Modal */}
+              {/* Rich Document Studio Modal */}
               {selectedDocPreview && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-                  <Card className="max-w-2xl w-full bg-white rounded-2xl p-8 space-y-6 shadow-2xl border-4 border-double border-slate-300 animate-fadeIn">
-                    <div className="text-center space-y-2 pb-6 border-b border-slate-200">
-                      <h2 className="text-2xl font-black text-slate-900 uppercase tracking-widest">{activeOrg.name}</h2>
-                      <p className="text-xs text-slate-500 font-mono">OFFICIAL WORKFORCE & INTERNSHIP CREDENTIAL</p>
-                      <p className="text-xs font-bold text-blue-600">ID: {selectedDocPreview.document_number}</p>
-                    </div>
-
-                    <div className="text-center py-4 space-y-3">
-                      <p className="text-xs text-slate-500 uppercase tracking-wider">This officially certifies that</p>
-                      <h3 className="text-3xl font-black text-slate-900">{selectedDocPreview.recipient_name}</h3>
-                      <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
-                        has successfully completed all requirements, active work sessions, and technical deliverables for the track &quot;
-                        <strong>{selectedDocPreview.template_data?.program_or_track}</strong>&quot;.
-                      </p>
-                    </div>
-
-                    <div className="pt-6 border-t border-slate-200 flex items-center justify-between text-xs">
-                      <div>
-                        <p className="font-bold text-slate-900">{selectedDocPreview.template_data?.signatory_name}</p>
-                        <p className="text-slate-500 text-[10px]">{selectedDocPreview.template_data?.signatory_title}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-mono text-emerald-600 font-bold">VERIFIED ON INTERNDESK</p>
-                        <p className="text-slate-400 text-[10px]">Code: {selectedDocPreview.verification_code}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end pt-2">
-                      <Button onClick={() => setSelectedDocPreview(null)} className="rounded-xl">Close Preview</Button>
-                    </div>
-                  </Card>
-                </div>
+                <DocumentStudioModal
+                  isOpen={!!selectedDocPreview}
+                  onClose={() => setSelectedDocPreview(null)}
+                  document={selectedDocPreview}
+                  organizationName={activeOrg.name}
+                />
               )}
             </div>
           )}

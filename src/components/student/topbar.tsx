@@ -46,7 +46,7 @@ export function StudentTopbar({ title, studentName = "Student Intern" }: Student
               </span>
             </div>
             <button
-              onClick={clockOut}
+              onClick={() => clockOut()}
               className="text-[11px] font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-lg border border-red-200 transition-colors cursor-pointer"
             >
               Clock Out
@@ -71,7 +71,7 @@ export function StudentTopbar({ title, studentName = "Student Intern" }: Student
 
         {status === "IDLE" && (
           <button
-            onClick={clockIn}
+            onClick={() => clockIn()}
             className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold transition-colors cursor-pointer"
           >
             <Clock className="w-3 h-3 text-blue-600" />

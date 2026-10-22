@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState } from "react";
 import {
   Clock,
@@ -13,10 +12,14 @@ import {
   Utensils,
   Smile,
   Droplets,
+  Camera,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useWorkTimer } from "@/hooks/use-work-timer";
+import { useWorkTimer, PunchVerificationData } from "@/hooks/use-work-timer";
+import { SelfiePunchModal } from "@/components/attendance/selfie-punch-modal";
+import { SelfieViewerModal } from "@/components/attendance/selfie-viewer-modal";
 
 interface WorkSessionWidgetProps {
   compact?: boolean;
@@ -34,6 +37,8 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
     progressPercent,
     remainingFormatted,
     breakType,
+    clockInVerification,
+    clockOutVerification,
     clockIn,
     takeBreak,
     resumeWork,
@@ -43,6 +48,12 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
 
   const [showBreakMenu, setShowBreakMenu] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [enableSelfieVerification, setEnableSelfieVerification] = useState(true);
+  const [selfieModalMode, setSelfieModalMode] = useState<"CLOCK_IN" | "CLOCK_OUT" | null>(null);
+  const [viewingVerification, setViewingVerification] = useState<{
+    data: PunchVerificationData;
+    label: string;
+  } | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -109,8 +120,20 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
             </div>
           </div>
 
-          {/* Live Status Pill */}
-          <div className="flex items-center gap-1.5">
+          {/* Live Status Pill & Biometric Verification Badge */}
+          <div className="flex items-center gap-2">
+            {clockInVerification && (
+              <button
+                type="button"
+                onClick={() => setViewingVerification({ data: clockInVerification, label: "Clock In Biometric Punch" })}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 shadow-2xs transition-colors cursor-pointer"
+                title="Click to view verified biometric selfie snapshot"
+              >
+                <Camera className="w-3 h-3 text-emerald-600" />
+                <span>📸 Selfie Verified</span>
+              </button>
+            )}
+
             {status === "WORKING" ? (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/90 shadow-2xs">
                 <span className="relative flex h-2 w-2">
@@ -280,23 +303,75 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
           </div>
         )}
 
+        {/* Biometric Verification Mode Switch & Micro Info */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 pt-1 border-t border-slate-100 text-xs text-slate-500">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setEnableSelfieVerification(!enableSelfieVerification)}
+              className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                enableSelfieVerification
+                  ? "bg-blue-50 text-blue-700 border-blue-200 shadow-2xs"
+                  : "bg-slate-100 text-slate-500 border-slate-200"
+              }`}
+            >
+              <Camera className="w-3.5 h-3.5" />
+              <span>{enableSelfieVerification ? "Biometric Selfie Punch Active" : "Selfie Punch Disabled"}</span>
+            </button>
+            <span className="text-[10px] text-slate-400 hidden sm:inline">
+              Audit-grade snapshot with GPS campus coordinates
+            </span>
+          </div>
+
+          {(clockInVerification || clockOutVerification) && (
+            <div className="flex items-center gap-2">
+              {clockInVerification && (
+                <button
+                  type="button"
+                  onClick={() => setViewingVerification({ data: clockInVerification, label: "Clock In Biometric Punch" })}
+                  className="text-[10px] font-bold text-blue-600 hover:text-blue-800 underline flex items-center gap-1 cursor-pointer"
+                >
+                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                  View Clock-In Proof
+                </button>
+              )}
+              {clockOutVerification && (
+                <button
+                  type="button"
+                  onClick={() => setViewingVerification({ data: clockOutVerification, label: "Clock Out Shift Exit Punch" })}
+                  className="text-[10px] font-bold text-blue-600 hover:text-blue-800 underline flex items-center gap-1 cursor-pointer"
+                >
+                  <ShieldCheck className="w-3 h-3 text-blue-600" />
+                  View Clock-Out Proof
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Dynamic Action Buttons */}
-        <div className="space-y-3 pt-2">
+        <div className="space-y-3 pt-1">
           {status === "IDLE" ? (
             <div className="space-y-2">
               <Button
                 size="lg"
                 className="w-full bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md shadow-blue-500/25 py-6 transition-all duration-200 hover:scale-[1.01] cursor-pointer"
                 onClick={() => {
-                  clockIn();
-                  showToast("Work session started! Live timer is actively recording your hours.");
+                  if (enableSelfieVerification) {
+                    setSelfieModalMode("CLOCK_IN");
+                  } else {
+                    clockIn();
+                    showToast("Work session started! Live timer is actively recording your hours.");
+                  }
                 }}
               >
                 <Play className="w-5 h-5 mr-2 fill-current" />
                 Clock In &amp; Start Work Session
               </Button>
               <p className="text-center text-[11px] text-slate-400 font-medium">
-                Click above to start your shift. Real-time timer logs productive hours with certified attendance.
+                {enableSelfieVerification
+                  ? "Biometric camera snapshot will verify attendance before starting your shift."
+                  : "Click above to start your shift. Real-time timer logs productive hours."}
               </p>
             </div>
           ) : status === "WORKING" ? (
@@ -314,8 +389,12 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
                 <Button
                   className="w-full bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-xs py-5 transition-all cursor-pointer"
                   onClick={() => {
-                    clockOut();
-                    showToast("Clocked out successfully! Total productive hours saved to database.");
+                    if (enableSelfieVerification) {
+                      setSelfieModalMode("CLOCK_OUT");
+                    } else {
+                      clockOut();
+                      showToast("Clocked out successfully! Total productive hours saved to database.");
+                    }
                   }}
                 >
                   <Square className="w-4 h-4 mr-2 fill-current" />
@@ -421,8 +500,12 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
                   variant="outline"
                   className="w-full border-slate-300 hover:border-red-300 text-slate-700 hover:text-red-700 font-bold rounded-xl hover:bg-red-50/50 py-5 transition-all cursor-pointer"
                   onClick={() => {
-                    clockOut();
-                    showToast("Clocked out from break. Today's shift logged.");
+                    if (enableSelfieVerification) {
+                      setSelfieModalMode("CLOCK_OUT");
+                    } else {
+                      clockOut();
+                      showToast("Clocked out from break. Today's shift logged.");
+                    }
                   }}
                 >
                   <Square className="w-4 h-4 mr-2 text-slate-500" />
@@ -448,8 +531,12 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
                   size="lg"
                   className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md shadow-blue-500/20 py-5 transition-all cursor-pointer"
                   onClick={() => {
-                    clockIn();
-                    showToast("New shift started! Timer is now actively logging.");
+                    if (enableSelfieVerification) {
+                      setSelfieModalMode("CLOCK_IN");
+                    } else {
+                      clockIn();
+                      showToast("New shift started! Timer is now actively logging.");
+                    }
                   }}
                 >
                   <Play className="w-4 h-4 mr-2 fill-current" />
@@ -472,6 +559,47 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
           )}
         </div>
       </div>
+
+      {/* Selfie Punch Verification Modal */}
+      {selfieModalMode && (
+        <SelfiePunchModal
+          isOpen={!!selfieModalMode}
+          mode={selfieModalMode}
+          internName="Fenil Patel"
+          onClose={() => setSelfieModalMode(null)}
+          onConfirm={(verificationData) => {
+            if (selfieModalMode === "CLOCK_IN") {
+              clockIn(verificationData);
+              showToast("Work session started! Biometric photo punch cryptographically verified.");
+            } else {
+              clockOut(verificationData);
+              showToast("Shift completed! Exit photo punch cryptographically verified and recorded.");
+            }
+            setSelfieModalMode(null);
+          }}
+          onSkip={() => {
+            if (selfieModalMode === "CLOCK_IN") {
+              clockIn();
+              showToast("Work session started without photo verification.");
+            } else {
+              clockOut();
+              showToast("Shift ended without exit photo verification.");
+            }
+            setSelfieModalMode(null);
+          }}
+        />
+      )}
+
+      {/* Selfie Punch Viewer Modal */}
+      {viewingVerification && (
+        <SelfieViewerModal
+          isOpen={!!viewingVerification}
+          onClose={() => setViewingVerification(null)}
+          verification={viewingVerification.data}
+          modeLabel={viewingVerification.label}
+          internName="Fenil Patel"
+        />
+      )}
     </Card>
   );
 }

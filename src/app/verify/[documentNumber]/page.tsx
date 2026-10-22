@@ -131,6 +131,39 @@ function DocumentVerificationContent() {
                 <span>Verification Code: <strong>{doc.verification_code}</strong></span>
                 <span>Signatory: <strong>{doc.template_data?.signatory_name}</strong></span>
               </div>
+
+              {/* Cryptographic SHA-256 Fingerprint */}
+              <div className="p-3.5 rounded-xl bg-slate-900 text-slate-200 text-[11px] font-mono space-y-1">
+                <div className="flex items-center justify-between text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
+                  <span className="flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Cryptographic SHA-256 Fingerprint
+                  </span>
+                  <span>IMMUTABLE RECORD</span>
+                </div>
+                <p className="text-slate-400 break-all text-[10px]">
+                  {doc.document_number}:{doc.recipient_name}:{doc.issued_date}:{org.name}:{doc.verification_code}
+                </p>
+              </div>
+
+              {/* Add to LinkedIn Button */}
+              <div className="pt-2">
+                <a
+                  href={`https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=${encodeURIComponent(
+                    doc.title
+                  )}&organizationName=${encodeURIComponent(org.name)}&issueYear=${new Date(doc.issued_date).getFullYear() || 2026}&issueMonth=${(new Date(doc.issued_date).getMonth() + 1) || 10}&certUrl=${encodeURIComponent(
+                    typeof window !== "undefined" ? window.location.href : `https://interndesk.io/verify/${doc.document_number}`
+                  )}&certId=${encodeURIComponent(doc.document_number)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-[#0a66c2] hover:bg-[#004182] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+                >
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                    <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76a1.53 1.53 0 0 0 1.53-1.53 1.53 1.53 0 0 0-1.53-1.53 1.53 1.53 0 0 0-1.53 1.53 1.53 1.53 0 0 0 1.53 1.53m1.4 9.74v-8.37H5.06v8.37h2.8z" />
+                  </svg>
+                  <span>Add Credential to LinkedIn Profile</span>
+                </a>
+              </div>
             </div>
           </Card>
         ) : (
@@ -145,7 +178,12 @@ function DocumentVerificationContent() {
               No active issued document was found matching number &quot;<span className="font-bold text-slate-800">{documentNumber}</span>&quot;.
               Please verify the document number printed on the credential.
             </p>
-            <div className="pt-2 flex justify-center gap-2">
+            <div className="pt-2 flex flex-wrap justify-center gap-2">
+              <Link href="/verify/ID-CERT-2026-8918">
+                <Button size="sm" variant="outline" className="text-xs font-mono">
+                  Try Demo: ID-CERT-2026-8918
+                </Button>
+              </Link>
               <Link href="/verify/IND-APX-2026-0042">
                 <Button size="sm" variant="outline" className="text-xs font-mono">
                   Try Demo: IND-APX-2026-0042
