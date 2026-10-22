@@ -128,7 +128,7 @@ export function DocumentStudioModal({
 
   const orgName = doc.template_data?.organization_name || organizationName;
   const verifyPath = `/verify/${encodeURIComponent(doc.document_number)}`;
-  const fullVerifyUrl = typeof window !== "undefined" ? `${window.location.origin}${verifyPath}` : `https://interndesk.io${verifyPath}`;
+  const fullVerifyUrl = `https://interndesk.io${verifyPath}`;
 
   // Deterministic Cryptographic Fingerprint
   const sha256Fingerprint = computeDeterministicSha256(
@@ -149,7 +149,8 @@ export function DocumentStudioModal({
 
   const handleCopyUrl = () => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
-      navigator.clipboard.writeText(fullVerifyUrl);
+      const liveUrl = typeof window !== "undefined" ? `${window.location.origin}${verifyPath}` : fullVerifyUrl;
+      navigator.clipboard.writeText(liveUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     }

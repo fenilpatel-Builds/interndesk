@@ -152,7 +152,7 @@ function DocumentVerificationContent() {
                   href={`https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=${encodeURIComponent(
                     doc.title
                   )}&organizationName=${encodeURIComponent(org.name)}&issueYear=${new Date(doc.issued_date).getFullYear() || 2026}&issueMonth=${(new Date(doc.issued_date).getMonth() + 1) || 10}&certUrl=${encodeURIComponent(
-                    typeof window !== "undefined" ? window.location.href : `https://interndesk.io/verify/${doc.document_number}`
+                    `https://interndesk.io/verify/${doc.document_number}`
                   )}&certId=${encodeURIComponent(doc.document_number)}`}
                   target="_blank"
                   rel="noopener noreferrer"

@@ -104,9 +104,7 @@ export default function StudentDocumentsPage() {
   const certLinkedInUrl = `https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=${encodeURIComponent(
     certificateDoc.title
   )}&organizationName=${encodeURIComponent("Apex Technologies")}&issueYear=2026&issueMonth=10&certUrl=${encodeURIComponent(
-    typeof window !== "undefined"
-      ? `${window.location.origin}/verify/${certificateDoc.document_number}`
-      : `https://interndesk.io/verify/${certificateDoc.document_number}`
+    `https://interndesk.io/verify/${certificateDoc.document_number}`
   )}&certId=${encodeURIComponent(certificateDoc.document_number)}`;
 
   return (
