@@ -167,6 +167,7 @@ export default function WorkspacePage() {
   const [newDocGrade, setNewDocGrade] = useState("Grade: Outstanding (98.4% Efficiency)");
   const [newDocRequireApproval, setNewDocRequireApproval] = useState<boolean>(true);
   const [docFilterTab, setDocFilterTab] = useState<"ALL" | "PENDING" | "ISSUED">("ALL");
+  const [docSearchQuery, setDocSearchQuery] = useState("");
 
   // Organization Profile & Branding Studio Form State
   const [brandOrgName, setBrandOrgName] = useState(organizations[0]?.name || "Apex Technologies");
@@ -2189,46 +2190,69 @@ export default function WorkspacePage() {
                 </div>
               </div>
 
-              {/* Document Filter & Approval Tabs */}
-              <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
-                <button
-                  type="button"
-                  id="filter-all-docs"
-                  onClick={() => setDocFilterTab("ALL")}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    docFilterTab === "ALL"
-                      ? "bg-slate-900 text-white shadow-xs"
-                      : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
-                  }`}
-                >
-                  All Documents ({documents.length})
-                </button>
-                <button
-                  type="button"
-                  id="filter-pending-docs"
-                  onClick={() => setDocFilterTab("PENDING")}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                    docFilterTab === "PENDING"
-                      ? "bg-amber-600 text-white shadow-xs"
-                      : "bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200"
-                  }`}
-                >
-                  <Lock className="w-3 h-3" />
-                  Pending Approval ({documents.filter((d) => d.status === "PENDING_APPROVAL" || d.approval_status === "PENDING").length})
-                </button>
-                <button
-                  type="button"
-                  id="filter-issued-docs"
-                  onClick={() => setDocFilterTab("ISSUED")}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                    docFilterTab === "ISSUED"
-                      ? "bg-emerald-600 text-white shadow-xs"
-                      : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200"
-                  }`}
-                >
-                  <Check className="w-3 h-3" />
-                  Issued &amp; Released ({documents.filter((d) => d.status === "ISSUED").length})
-                </button>
+              {/* Document Filter & Approval Tabs with Quick Search */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    id="filter-all-docs"
+                    onClick={() => setDocFilterTab("ALL")}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      docFilterTab === "ALL"
+                        ? "bg-slate-900 text-white shadow-xs"
+                        : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                    }`}
+                  >
+                    All Documents ({documents.length})
+                  </button>
+                  <button
+                    type="button"
+                    id="filter-pending-docs"
+                    onClick={() => setDocFilterTab("PENDING")}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                      docFilterTab === "PENDING"
+                        ? "bg-amber-600 text-white shadow-xs"
+                        : "bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200"
+                    }`}
+                  >
+                    <Lock className="w-3 h-3" />
+                    Pending Approval ({documents.filter((d) => d.status === "PENDING_APPROVAL" || d.approval_status === "PENDING").length})
+                  </button>
+                  <button
+                    type="button"
+                    id="filter-issued-docs"
+                    onClick={() => setDocFilterTab("ISSUED")}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                      docFilterTab === "ISSUED"
+                        ? "bg-emerald-600 text-white shadow-xs"
+                        : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200"
+                    }`}
+                  >
+                    <Check className="w-3 h-3" />
+                    Issued &amp; Released ({documents.filter((d) => d.status === "ISSUED").length})
+                  </button>
+                </div>
+
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    id="doc-search-input"
+                    value={docSearchQuery}
+                    onChange={(e) => setDocSearchQuery(e.target.value)}
+                    placeholder="Search by recipient or ID..."
+                    className="w-full h-8 pl-8 pr-3 rounded-xl border border-slate-200 bg-white text-xs placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500 shadow-2xs"
+                  />
+                  {docSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setDocSearchQuery("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2237,6 +2261,16 @@ export default function WorkspacePage() {
                     if (docFilterTab === "PENDING") return d.status === "PENDING_APPROVAL" || d.approval_status === "PENDING";
                     if (docFilterTab === "ISSUED") return d.status === "ISSUED";
                     return true;
+                  })
+                  .filter((d) => {
+                    if (!docSearchQuery.trim()) return true;
+                    const q = docSearchQuery.toLowerCase();
+                    return (
+                      d.recipient_name.toLowerCase().includes(q) ||
+                      d.document_number.toLowerCase().includes(q) ||
+                      d.title.toLowerCase().includes(q) ||
+                      d.recipient_role.toLowerCase().includes(q)
+                    );
                   })
                   .map((doc) => {
                     const isPending = doc.status === "PENDING_APPROVAL" || doc.approval_status === "PENDING";
@@ -2930,6 +2964,80 @@ export default function WorkspacePage() {
                       placeholder="e.g. This offer is contingent upon satisfactory completion of background verification. The intern agrees to strictly abide by confidentiality and proprietary assignment covenants..."
                       className="w-full p-3 rounded-xl border border-slate-300 text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500 leading-relaxed"
                     />
+                  </div>
+
+                  {/* Live Letterhead & Document Styling Preview */}
+                  <div className="space-y-2 pt-2 border-t border-slate-100">
+                    <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                      <span>Live Letterhead &amp; Document Styling Preview</span>
+                      <span className="text-[10px] font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                        Dynamic Output
+                      </span>
+                    </label>
+
+                    <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 shadow-2xs space-y-4">
+                      {/* Letterhead Top Banner */}
+                      <div
+                        className="flex items-center justify-between pb-3 border-b-2"
+                        style={{ borderColor: brandColor }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center p-1.5 shadow-2xs overflow-hidden">
+                            {brandLogoUrl ? (
+                              <img src={brandLogoUrl} alt="Logo" className="max-h-full max-w-full object-contain" />
+                            ) : (
+                              <Building className="w-5 h-5 text-slate-400" />
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-black text-slate-900 tracking-tight">{brandOrgName || activeOrg.name}</h4>
+                            <p className="text-[10px] text-slate-500">{brandAddress || "104 Tech Boulevard, Suite 500, San Francisco, CA"}</p>
+                          </div>
+                        </div>
+
+                        <div className="text-right text-[10px] text-slate-400 font-mono space-y-0.5">
+                          <p>{brandWebsite || "https://interndesk.io"}</p>
+                          <p>{brandEmail || "hr@interndesk.io"}</p>
+                        </div>
+                      </div>
+
+                      {/* Sample Letter Body */}
+                      <div className="text-xs text-slate-600 space-y-2">
+                        <div className="flex justify-between items-center text-[11px] font-semibold text-slate-700">
+                          <span>Ref: IND-OFFER-2026-DEMO</span>
+                          <span className="font-mono text-slate-400">{new Date().toLocaleDateString()}</span>
+                        </div>
+                        <p className="font-bold text-slate-800">Subject: Official Internship Appointment &amp; Practicum Letter</p>
+                        <p className="text-[11px] leading-relaxed text-slate-600 line-clamp-2">
+                          {brandOfferTerms || "We are thrilled to offer you the internship appointment. This credential confirms your formal enrollment with full verification rights and cryptographic ledger tracking."}
+                        </p>
+                      </div>
+
+                      {/* Signatory Preview */}
+                      <div className="flex items-end justify-between pt-2 border-t border-slate-200/80">
+                        <div className="space-y-1">
+                          {brandSignatureUrl ? (
+                            <img src={brandSignatureUrl} alt="Signature" className="h-7 max-w-[120px] object-contain" />
+                          ) : (
+                            <svg className="w-24 h-6 text-slate-700 stroke-current fill-none stroke-[2]" viewBox="0 0 120 40">
+                              <path d="M 10 25 Q 30 5 50 25 T 90 20 Q 110 35 115 15" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          )}
+                          <div className="w-28 h-0.5 bg-slate-300" />
+                          <p className="text-[11px] font-bold text-slate-900">{brandSignatoryName || "Dr. Rajesh Sharma"}</p>
+                          <p className="text-[9px] text-slate-500">{brandSignatoryTitle || "Senior Director of People & Culture"}</p>
+                        </div>
+
+                        <div className="text-right">
+                          <span
+                            className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full text-white shadow-2xs"
+                            style={{ backgroundColor: brandColor }}
+                          >
+                            <ShieldCheck className="w-3 h-3" /> Official Organization Seal
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </Card>

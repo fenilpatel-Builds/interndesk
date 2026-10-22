@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense } from "react";
+import React, { useState, Suspense } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -11,6 +11,9 @@ import {
   Award,
   Lock,
   ArrowLeft,
+  Copy,
+  Check,
+  Printer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -21,6 +24,21 @@ function DocumentVerificationContent() {
   const params = useParams();
   const rawDocNumber = (params?.documentNumber as string) || "";
   const documentNumber = decodeURIComponent(rawDocNumber);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const handleCopyLink = () => {
+    if (typeof window !== "undefined") {
+      navigator.clipboard.writeText(window.location.href);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    }
+  };
+
+  const handlePrint = () => {
+    if (typeof window !== "undefined") {
+      window.print();
+    }
+  };
 
   const doc = multiTenantStore.findDocumentByNumber(documentNumber);
   const org = doc ? multiTenantStore.getOrganizationById(doc.organization_id) : null;
@@ -165,6 +183,28 @@ function DocumentVerificationContent() {
                   </svg>
                   <span>Add Credential to LinkedIn Profile</span>
                 </a>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopyLink}
+                    className="rounded-xl border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-bold h-10 flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                  >
+                    {copiedLink ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-slate-500" />}
+                    {copiedLink ? "Link Copied!" : "Copy Verification Link"}
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePrint}
+                    className="rounded-xl border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-bold h-10 flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                  >
+                    <Printer className="w-4 h-4 text-slate-500" />
+                    Print Official Dossier
+                  </Button>
+                </div>
               </div>
             </div>
           </Card>

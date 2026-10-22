@@ -95,10 +95,8 @@ export default function StudentDocumentsPage() {
   const [activeTab, setActiveTab] = useState<"ALL" | "OFFER" | "INTERN" | "CERT">("ALL");
   const [selectedStudioDoc, setSelectedStudioDoc] = useState<IssuedDocument | null>(null);
 
-  const [docsList] = useState<IssuedDocument[]>(() => {
-    const storeDocs = multiTenantStore.getIssuedDocuments("org-apex-01", "usr-student-fenil");
-    return storeDocs.length > 0 ? storeDocs : STUDENT_DOCUMENTS;
-  });
+  const storeDocs = multiTenantStore.getIssuedDocuments("org-apex-01", "usr-student-fenil");
+  const docsList = storeDocs.length > 0 ? storeDocs : STUDENT_DOCUMENTS;
 
   const filteredDocs = docsList.filter((doc) => {
     if (activeTab === "OFFER") return doc.document_type === "OFFER_LETTER";
@@ -116,22 +114,25 @@ export default function StudentDocumentsPage() {
     `https://interndesk.io/verify/${certificateDoc?.document_number || "ID-CERT-2026-8918"}`
   )}&certId=${encodeURIComponent(certificateDoc?.document_number || "ID-CERT-2026-8918")}`;
 
+  const approvedCount = docsList.filter((d) => d.status === "ISSUED").length;
+  const pendingCount = docsList.filter((d) => d.status === "PENDING_APPROVAL").length;
+
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
       <StudentTopbar title="Documents & Credentials" studentName="Fenil Patel" />
 
       <main className="flex-1 overflow-y-auto p-6 space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Header & Portfolio Stats */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-              Documents &amp; Tamper-Proof Certificates
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+              Documents &amp; Tamper-Proof Portfolio
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                SHA-256 Verified
+                SHA-256 Ledger
               </span>
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Access and export your certified offer letters and blockchain-grade internship certificates.
+            <p className="text-xs text-slate-500 mt-1">
+              Access, verify, and export your accredited offer letters and tamper-proof internship certificates.
             </p>
           </div>
 
@@ -144,6 +145,45 @@ export default function StudentDocumentsPage() {
             <Eye className="w-3.5 h-3.5 mr-1.5" />
             Launch Certificate Studio
           </Button>
+        </div>
+
+        {/* Quick Portfolio Stats Metric Strip */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <Card className="p-4 bg-white rounded-2xl border-slate-200 shadow-2xs space-y-1">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Issued Credentials</span>
+            <div className="flex items-center justify-between">
+              <span className="text-2xl font-black text-slate-900">{approvedCount}</span>
+              <Award className="w-5 h-5 text-emerald-600" />
+            </div>
+            <p className="text-[10px] text-emerald-700 font-medium">Publicly verifiable</p>
+          </Card>
+
+          <Card className="p-4 bg-white rounded-2xl border-slate-200 shadow-2xs space-y-1">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Awaiting Release</span>
+            <div className="flex items-center justify-between">
+              <span className="text-2xl font-black text-amber-600">{pendingCount}</span>
+              <Lock className="w-5 h-5 text-amber-600" />
+            </div>
+            <p className="text-[10px] text-amber-700 font-medium">Pending HR approval</p>
+          </Card>
+
+          <Card className="p-4 bg-white rounded-2xl border-slate-200 shadow-2xs space-y-1">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Verification Node</span>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-mono font-bold text-blue-600">SHA-256</span>
+              <ShieldCheck className="w-5 h-5 text-blue-600" />
+            </div>
+            <p className="text-[10px] text-slate-500 font-medium">Crockford Base32</p>
+          </Card>
+
+          <Card className="p-4 bg-white rounded-2xl border-slate-200 shadow-2xs space-y-1">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Issuer Authority</span>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-900 truncate">Apex Tech</span>
+              <GraduationCap className="w-5 h-5 text-indigo-600" />
+            </div>
+            <p className="text-[10px] text-indigo-700 font-medium">Enterprise Verified</p>
+          </Card>
         </div>
 
         {/* Tabs */}
