@@ -34,6 +34,10 @@ import {
   Check,
   Lock,
   Building,
+  Layers,
+  CheckCheck,
+  FileSpreadsheet,
+  Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -63,6 +67,7 @@ import {
   LeaveType,
   MentorshipReview,
   DocumentType,
+  TemplateTheme,
 } from "@/types/multitenant";
 import { hasPermission, getRoleDisplayName } from "@/lib/multitenant/permissions";
 import { getWorkforceAnalytics } from "@/lib/multitenant/analytics";
@@ -183,6 +188,20 @@ export default function WorkspacePage() {
   const [brandRequireApproval, setBrandRequireApproval] = useState<boolean>(organizations[0]?.settings?.requireDocumentApproval ?? true);
   const [brandOfferTerms, setBrandOfferTerms] = useState(organizations[0]?.branding?.customOfferTerms || "");
   const [brandSavedToast, setBrandSavedToast] = useState(false);
+  const [brandTemplateTheme, setBrandTemplateTheme] = useState<TemplateTheme>(
+    () => organizations[0]?.branding?.templateTheme || "CLASSIC_IVY"
+  );
+
+  // Batch Credential Generator State
+  const [isBatchIssueOpen, setIsBatchIssueOpen] = useState(false);
+  const [batchDocType, setBatchDocType] = useState<DocumentType>("OFFER_LETTER");
+  const [batchSelectedMembers, setBatchSelectedMembers] = useState<string[]>([]);
+  const [batchProgramTrack, setBatchProgramTrack] = useState("Full Stack Cloud Platform Internship");
+  const [batchEvaluation, setBatchEvaluation] = useState("Grade: Outstanding (98.2%)");
+  const [batchAutoApprove, setBatchAutoApprove] = useState(false);
+  const [batchToast, setBatchToast] = useState<string | null>(null);
+  const [isLedgerModalOpen, setIsLedgerModalOpen] = useState(false);
+  const [ledgerCopied, setLedgerCopied] = useState(false);
   // Live Timer State for Attendance
   const [timerSeconds, setTimerSeconds] = useState(14400); // 4 hours demo
   const [activeSession, setActiveSession] = useState<WorkSession | null>(() => {
@@ -235,6 +254,7 @@ export default function WorkspacePage() {
     setBrandSignatureUrl(org.branding?.signatorySignatureUrl || "");
     setBrandRequireApproval(org.settings?.requireDocumentApproval ?? true);
     setBrandOfferTerms(org.branding?.customOfferTerms || "");
+    setBrandTemplateTheme(org.branding?.templateTheme || "CLASSIC_IVY");
     setNewDocRequireApproval(org.settings?.requireDocumentApproval ?? true);
     reloadTenantData(org.id);
   };
@@ -435,6 +455,7 @@ export default function WorkspacePage() {
         signatory_signature: brandSignatureUrl || activeOrg.branding?.signatorySignatureUrl,
         brand_color: brandColor || activeOrg.branding?.brandColor,
         custom_terms: brandOfferTerms || activeOrg.branding?.customOfferTerms,
+        template_theme: brandTemplateTheme,
       },
     });
 
@@ -453,6 +474,85 @@ export default function WorkspacePage() {
     setDocuments(multiTenantStore.getIssuedDocuments(activeOrg.id));
   };
 
+  const handleBatchApproveAll = () => {
+    const pendingDocIds = documents
+      .filter((d) => d.status === "PENDING_APPROVAL" || d.approval_status === "PENDING")
+      .map((d) => d.id);
+    if (pendingDocIds.length === 0) return;
+
+    multiTenantStore.approveBatchDocuments(activeOrg.id, pendingDocIds, currentUser.name);
+    setDocuments(multiTenantStore.getIssuedDocuments(activeOrg.id));
+    setBatchToast(`Successfully authorized & released ${pendingDocIds.length} credentials!`);
+    setTimeout(() => setBatchToast(null), 3500);
+  };
+
+  const handleRunBatchIssue = () => {
+    if (batchSelectedMembers.length === 0) return;
+
+    const issued = multiTenantStore.issueBatchDocuments(
+      activeOrg.id,
+      batchSelectedMembers,
+      batchDocType,
+      {
+        programOrTrack: batchProgramTrack,
+        gradeOrEvaluation: batchEvaluation,
+        autoApprove: batchAutoApprove,
+        approvedBy: currentUser.name,
+      }
+    );
+
+    setDocuments(multiTenantStore.getIssuedDocuments(activeOrg.id));
+    setIsBatchIssueOpen(false);
+    setBatchSelectedMembers([]);
+    setBatchToast(`Batch issuance complete: ${issued.length} credentials generated!`);
+    setTimeout(() => setBatchToast(null), 4000);
+  };
+
+  const handleExportLedgerCSV = () => {
+    const headers = [
+      "Document Number",
+      "Recipient Name",
+      "Recipient Role",
+      "Document Type",
+      "Issue Date",
+      "Status",
+      "Approval Status",
+      "Approved By",
+      "Verification Code",
+      "Verified Work Hours",
+      "Attendance Percentage",
+      "Mentor Rubric Score",
+      "Organization Code",
+    ];
+
+    const rows = documents.map((doc) => [
+      `"${doc.document_number}"`,
+      `"${doc.recipient_name}"`,
+      `"${doc.recipient_role}"`,
+      `"${doc.document_type}"`,
+      `"${doc.issued_date}"`,
+      `"${doc.status}"`,
+      `"${doc.approval_status || "APPROVED"}"`,
+      `"${doc.approved_by || "System"}"`,
+      `"${doc.verification_code}"`,
+      doc.template_data?.verified_work_hours || 0,
+      `"${doc.template_data?.attendance_percentage || 100}%"`,
+      `"${doc.template_data?.mentor_scores?.overall || 98.4}%"`,
+      `"${activeOrg.code}"`,
+    ]);
+
+    const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${activeOrg.code}-accreditation-ledger-${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const handleSaveBranding = () => {
     multiTenantStore.updateOrganizationBranding(activeOrg.id, {
       logoUrl: brandLogoUrl,
@@ -464,6 +564,7 @@ export default function WorkspacePage() {
       signatoryName: brandSignatoryName,
       signatoryTitle: brandSignatoryTitle,
       signatorySignatureUrl: brandSignatureUrl,
+      templateTheme: brandTemplateTheme,
       customOfferTerms: brandOfferTerms,
     });
 
@@ -2164,7 +2265,20 @@ export default function WorkspacePage() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 self-start sm:self-auto">
+                <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                  <Button
+                    id="workspace-batch-issue-btn"
+                    onClick={() => {
+                      const internIds = members.filter((m) => m.member_type === "INTERN").map((m) => m.id);
+                      setBatchSelectedMembers(internIds.length > 0 ? internIds : members.map((m) => m.id));
+                      setIsBatchIssueOpen(true);
+                    }}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
+                  >
+                    <Layers className="w-3.5 h-3.5 mr-1.5" />
+                    Batch Issue
+                  </Button>
+
                   <Button
                     id="workspace-issue-credential-btn"
                     onClick={() => {
@@ -2175,6 +2289,16 @@ export default function WorkspacePage() {
                   >
                     <Plus className="w-3.5 h-3.5 mr-1.5" />
                     Issue Credential
+                  </Button>
+
+                  <Button
+                    id="workspace-export-ledger-btn"
+                    onClick={() => setIsLedgerModalOpen(true)}
+                    variant="outline"
+                    className="border-slate-300 text-slate-700 hover:bg-slate-100 rounded-xl text-xs font-bold shadow-2xs cursor-pointer"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
+                    Accreditation Ledger
                   </Button>
 
                   {documents.length > 0 && (
@@ -2254,6 +2378,38 @@ export default function WorkspacePage() {
                   )}
                 </div>
               </div>
+
+              {/* Batch Toast Notice */}
+              {batchToast && (
+                <div className="p-3 bg-emerald-50 text-emerald-800 text-xs font-bold rounded-2xl border border-emerald-200 flex items-center justify-between gap-2 animate-in fade-in">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{batchToast}</span>
+                  </div>
+                  <button type="button" onClick={() => setBatchToast(null)} className="text-slate-400 hover:text-slate-600">×</button>
+                </div>
+              )}
+
+              {/* Batch Action Toolbar when filtering Pending Approval */}
+              {docFilterTab === "PENDING" && documents.filter((d) => d.status === "PENDING_APPROVAL" || d.approval_status === "PENDING").length > 0 && (
+                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <p className="text-xs text-amber-900 font-semibold">
+                      <strong>{documents.filter((d) => d.status === "PENDING_APPROVAL" || d.approval_status === "PENDING").length}</strong> credentials are held in security gate awaiting authorization.
+                    </p>
+                  </div>
+                  <Button
+                    id="batch-approve-all-btn"
+                    size="sm"
+                    onClick={handleBatchApproveAll}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer flex items-center gap-1.5 shrink-0"
+                  >
+                    <CheckCheck className="w-4 h-4" />
+                    Batch Approve &amp; Release All
+                  </Button>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {documents
@@ -2556,6 +2712,399 @@ export default function WorkspacePage() {
                 </div>
               )}
 
+              {/* Batch Credential Generator Modal */}
+              {isBatchIssueOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200">
+                  <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto">
+                    <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-indigo-600/30 border border-indigo-400/40 flex items-center justify-center text-indigo-400">
+                          <Layers className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold tracking-tight">Batch Credential Issuance Engine</h3>
+                          <p className="text-[11px] text-slate-400">Generate verified documents for entire student and intern cohorts simultaneously</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsBatchIssueOpen(false)}
+                        className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                      {/* Document Type Selection */}
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700">Credential Type to Generate</label>
+                        <select
+                          id="batch-doc-type-select"
+                          value={batchDocType}
+                          onChange={(e) => setBatchDocType(e.target.value as DocumentType)}
+                          className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-medium bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="OFFER_LETTER">Official Internship Offer Letter</option>
+                          <option value="INTERNSHIP_LETTER">Internship Appointment &amp; Enrollment Letter</option>
+                          <option value="COMPLETION_CERTIFICATE">Certificate of Internship Excellence</option>
+                          <option value="PERFORMANCE_TRANSCRIPT">Performance Transcript &amp; Skill Dossier</option>
+                          <option value="EXPERIENCE_LETTER">Verified Professional Experience Certificate</option>
+                          <option value="TRAINING_CERTIFICATE">Professional Practicum Completion Certificate</option>
+                        </select>
+                      </div>
+
+                      {/* Cohort Member Selection */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                            <Users className="w-3.5 h-3.5 text-blue-600" />
+                            Select Cohort Recipients ({batchSelectedMembers.length} selected)
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              id="batch-select-interns-btn"
+                              onClick={() => {
+                                const internIds = members.filter((m) => m.member_type === "INTERN").map((m) => m.id);
+                                setBatchSelectedMembers(internIds);
+                              }}
+                              className="text-[11px] font-bold text-indigo-600 hover:underline cursor-pointer"
+                            >
+                              Select All Interns
+                            </button>
+                            <span className="text-slate-300">•</span>
+                            <button
+                              type="button"
+                              onClick={() => setBatchSelectedMembers(members.map((m) => m.id))}
+                              className="text-[11px] font-bold text-blue-600 hover:underline cursor-pointer"
+                            >
+                              Select All
+                            </button>
+                            <span className="text-slate-300">•</span>
+                            <button
+                              type="button"
+                              onClick={() => setBatchSelectedMembers([])}
+                              className="text-[11px] font-bold text-rose-600 hover:underline cursor-pointer"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Members Multi-Select Box */}
+                        <div className="border border-slate-200 rounded-2xl p-3 max-h-48 overflow-y-auto space-y-2 bg-slate-50/50">
+                          {members.map((mem) => {
+                            const isChecked = batchSelectedMembers.includes(mem.id);
+                            return (
+                              <label
+                                key={mem.id}
+                                className={`flex items-center justify-between p-2 rounded-xl border text-xs cursor-pointer transition-all ${
+                                  isChecked
+                                    ? "bg-indigo-50 border-indigo-200 text-indigo-900 shadow-2xs"
+                                    : "bg-white border-slate-200 hover:bg-slate-50 text-slate-700"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setBatchSelectedMembers([...batchSelectedMembers, mem.id]);
+                                      } else {
+                                        setBatchSelectedMembers(batchSelectedMembers.filter((id) => id !== mem.id));
+                                      }
+                                    }}
+                                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                  />
+                                  <div>
+                                    <span className="font-bold block text-slate-900">{mem.user_full_name}</span>
+                                    <span className="text-[10px] text-slate-500">{mem.user_email} • {mem.role}</span>
+                                  </div>
+                                </div>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                  mem.member_type === "INTERN"
+                                    ? "bg-purple-100 text-purple-800"
+                                    : "bg-blue-100 text-blue-800"
+                                }`}>
+                                  {mem.member_type}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Practicum Track / Program */}
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700">Practicum / Curriculum Track</label>
+                        <input
+                          type="text"
+                          value={batchProgramTrack}
+                          onChange={(e) => setBatchProgramTrack(e.target.value)}
+                          placeholder="e.g. Cloud Backend Engineering Practicum"
+                          className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      {/* Evaluation Grade (if transcript or certificate) */}
+                      {(batchDocType === "COMPLETION_CERTIFICATE" || batchDocType === "PERFORMANCE_TRANSCRIPT") && (
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-700">Cohort Evaluation / Grade</label>
+                          <input
+                            type="text"
+                            value={batchEvaluation}
+                            onChange={(e) => setBatchEvaluation(e.target.value)}
+                            placeholder="e.g. Grade: Outstanding (98.2%)"
+                            className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                      )}
+
+                      {/* Approval Security Gate Option */}
+                      <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/80 flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          id="batch-auto-approve-toggle"
+                          checked={!batchAutoApprove}
+                          onChange={(e) => setBatchAutoApprove(!e.target.checked)}
+                          className="mt-0.5 rounded border-slate-300 text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer shrink-0"
+                        />
+                        <label htmlFor="batch-auto-approve-toggle" className="text-xs text-slate-700 cursor-pointer">
+                          <span className="font-bold block text-slate-900">Hold Batch Credentials in Security Gate (Require Admin Approval)</span>
+                          When checked, all generated credentials remain in <code className="bg-amber-100 px-1 py-0.5 rounded text-[10px] font-bold">PENDING_APPROVAL</code> until approved. Uncheck for instant release.
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+                      <span className="text-xs font-mono font-bold text-slate-500">
+                        {batchSelectedMembers.length} Recipients Selected
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => setIsBatchIssueOpen(false)}
+                          className="rounded-xl text-xs font-bold border-slate-300 hover:bg-slate-100 cursor-pointer"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          id="workspace-run-batch-issue-btn"
+                          onClick={handleRunBatchIssue}
+                          disabled={batchSelectedMembers.length === 0}
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer disabled:opacity-50"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                          Generate {batchSelectedMembers.length} Credentials
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Accreditation & Cohort Audit Ledger Modal */}
+              {isLedgerModalOpen && (
+                <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
+                  <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-scaleUp">
+                    {/* Header */}
+                    <div className="px-6 py-5 bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white flex items-center justify-between border-b border-slate-700">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-400 flex items-center justify-center">
+                          <FileSpreadsheet className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-base font-black tracking-tight">Accreditation &amp; Cohort Audit Ledger</h3>
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                              SHA-256 IMMUTABLE
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-300">
+                            Accredited institutional credential register for {activeOrg.name} ({activeOrg.code})
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setIsLedgerModalOpen(false)}
+                        className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    {/* Modal Content */}
+                    <div className="p-6 space-y-5 overflow-y-auto flex-1">
+                      {/* Metric Strip */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Issued</span>
+                          <span className="text-xl font-black text-slate-900 mt-0.5 block">{documents.length} Records</span>
+                        </div>
+                        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Practicum Hours</span>
+                          <span className="text-xl font-black text-blue-600 mt-0.5 block">
+                            {documents.reduce((acc, d) => acc + (d.template_data?.verified_work_hours || 0), 0)} Hours
+                          </span>
+                        </div>
+                        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">Avg Attendance</span>
+                          <span className="text-xl font-black text-emerald-600 mt-0.5 block">
+                            {(documents.reduce((acc, d) => acc + (d.template_data?.attendance_percentage || 100), 0) / (documents.length || 1)).toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">Avg Mentor Rubric</span>
+                          <span className="text-xl font-black text-purple-600 mt-0.5 block">
+                            {(documents.reduce((acc, d) => acc + (d.template_data?.mentor_scores?.overall || 98.4), 0) / (documents.length || 1)).toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Cryptographic Ledger Summary Box */}
+                      <div className="p-3.5 rounded-xl bg-slate-950 text-slate-200 text-xs font-mono space-y-1.5 border border-slate-800">
+                        <div className="flex items-center justify-between text-[11px] text-emerald-400 font-bold uppercase tracking-wider">
+                          <span className="flex items-center gap-1.5">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                            Cryptographic Institutional Root
+                          </span>
+                          <span className="text-slate-400">RFC-4180 COMPLIANT</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] text-slate-300 pt-1">
+                          <div>
+                            <span className="text-slate-500">Institution Code:</span> <span className="text-white font-bold">{activeOrg.code}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500">Signatory Authority:</span> <span className="text-white font-bold">{activeOrg.branding?.signatoryName || "Elena Rostova"}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500">Ledger Hash:</span> <span className="text-emerald-400 break-all">urn:sha256:{activeOrg.code}:ledger:{documents.length}:2026</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500">Accreditation Standard:</span> <span className="text-indigo-300">W3C Verifiable Credentials Registry</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Records Table */}
+                      <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+                        <div className="max-h-64 overflow-y-auto">
+                          <table className="w-full text-left text-xs text-slate-600">
+                            <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold uppercase tracking-wider text-slate-400 sticky top-0">
+                              <tr>
+                                <th className="p-3">Doc #</th>
+                                <th className="p-3">Recipient</th>
+                                <th className="p-3">Type</th>
+                                <th className="p-3">Hours</th>
+                                <th className="p-3">Rubric</th>
+                                <th className="p-3">Status</th>
+                                <th className="p-3">Verification Code</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 font-medium">
+                              {documents.map((doc) => (
+                                <tr key={doc.id} className="hover:bg-slate-50/80 transition-colors">
+                                  <td className="p-3 font-mono font-bold text-blue-600">
+                                    <Link href={`/verify/${doc.document_number}`} target="_blank" className="hover:underline flex items-center gap-1">
+                                      {doc.document_number}
+                                      <ExternalLink className="w-2.5 h-2.5 text-slate-400" />
+                                    </Link>
+                                  </td>
+                                  <td className="p-3">
+                                    <div className="font-bold text-slate-900">{doc.recipient_name}</div>
+                                    <div className="text-[10px] text-slate-400">{doc.recipient_role}</div>
+                                  </td>
+                                  <td className="p-3">
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">
+                                      {doc.document_type.replace(/_/g, " ")}
+                                    </span>
+                                  </td>
+                                  <td className="p-3 font-mono font-bold text-slate-800">
+                                    {doc.template_data?.verified_work_hours ? `${doc.template_data.verified_work_hours}h` : "—"}
+                                  </td>
+                                  <td className="p-3 font-mono font-bold text-purple-600">
+                                    {doc.template_data?.mentor_scores?.overall ? `${doc.template_data.mentor_scores.overall}%` : "—"}
+                                  </td>
+                                  <td className="p-3">
+                                    <span
+                                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                        doc.status === "ISSUED"
+                                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                          : "bg-amber-50 text-amber-700 border border-amber-200"
+                                      }`}
+                                    >
+                                      {doc.status}
+                                    </span>
+                                  </td>
+                                  <td className="p-3 font-mono text-[11px] text-slate-500">
+                                    {doc.verification_code}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            const cohortPayload = {
+                              "@context": "https://www.w3.org/2018/credentials/v1",
+                              id: `urn:uuid:ledger:${activeOrg.code}:2026`,
+                              type: ["VerifiablePresentation", "CohortAccreditationLedger"],
+                              issuer: activeOrg.name,
+                              organizationCode: activeOrg.code,
+                              totalCredentials: documents.length,
+                              records: documents.map((d) => ({
+                                documentNumber: d.document_number,
+                                recipientName: d.recipient_name,
+                                type: d.document_type,
+                                issuedDate: d.issued_date,
+                                verificationCode: d.verification_code,
+                                hours: d.template_data?.verified_work_hours || 0,
+                                attendancePercentage: d.template_data?.attendance_percentage || 100,
+                              })),
+                            };
+                            navigator.clipboard.writeText(JSON.stringify(cohortPayload, null, 2));
+                            setLedgerCopied(true);
+                            setTimeout(() => setLedgerCopied(false), 2500);
+                          }}
+                          className="text-xs font-bold text-slate-700 hover:text-slate-900 flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-300 hover:bg-slate-100 cursor-pointer"
+                        >
+                          {ledgerCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
+                          {ledgerCopied ? "JSON Copied!" : "Copy JSON-LD Ledger"}
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => setIsLedgerModalOpen(false)}
+                          className="rounded-xl text-xs font-bold border-slate-300 hover:bg-slate-100 cursor-pointer"
+                        >
+                          Close
+                        </Button>
+
+                        <Button
+                          id="download-ledger-csv-btn"
+                          onClick={handleExportLedgerCSV}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          Download CSV Ledger ({documents.length})
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Rich Document Studio Modal */}
               {selectedDocPreview && (
                 <DocumentStudioModal
@@ -2842,6 +3391,122 @@ export default function WorkspacePage() {
                   </div>
                 </div>
 
+                {/* Multi-Theme Template Switcher Cards */}
+                <div className="border-t border-slate-100 pt-5 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <div>
+                      <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                        <Palette className="w-3.5 h-3.5 text-blue-600" />
+                        Credential Design &amp; Template Themes
+                      </h4>
+                      <p className="text-xs text-slate-500 font-normal">
+                        Select which aesthetic theme will be rendered when generating certificates and letters for your organization.
+                      </p>
+                    </div>
+                    <span className="text-xs font-bold text-blue-700 font-mono bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200 self-start sm:self-auto">
+                      Active: {brandTemplateTheme.replace("_", " ")}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+                    {/* Theme 1: Classic Ivy Prestige */}
+                    <div
+                      id="theme-card-classic-ivy"
+                      onClick={() => setBrandTemplateTheme("CLASSIC_IVY")}
+                      className={`p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                        brandTemplateTheme === "CLASSIC_IVY"
+                          ? "border-amber-500 bg-amber-50/40 shadow-sm ring-2 ring-amber-400/20"
+                          : "border-slate-200 bg-white hover:border-slate-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-black text-slate-900 font-serif">Classic Ivy Prestige</span>
+                        {brandTemplateTheme === "CLASSIC_IVY" && (
+                          <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-bold">
+                            ✓
+                          </span>
+                        )}
+                      </div>
+                      <div className="h-16 rounded-xl bg-gradient-to-b from-[#fdfbf7] via-white to-[#fbf7ee] border-2 border-double border-amber-600/40 p-2 flex flex-col justify-between mb-2">
+                        <div className="w-12 h-1 bg-amber-600/60 rounded-full mx-auto" />
+                        <div className="text-[8px] font-serif font-bold text-amber-900 text-center">HONORS CERTIFICATE</div>
+                        <div className="flex justify-between items-center px-1">
+                          <div className="w-8 h-0.5 bg-slate-300" />
+                          <div className="w-3 h-3 rounded-full bg-amber-500" />
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-tight">
+                        Traditional academic honors with ornate double gold filigree, serif typography, and royal gold foil seal.
+                      </p>
+                    </div>
+
+                    {/* Theme 2: Modern Tech Grid */}
+                    <div
+                      id="theme-card-modern-tech"
+                      onClick={() => setBrandTemplateTheme("MODERN_TECH")}
+                      className={`p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                        brandTemplateTheme === "MODERN_TECH"
+                          ? "border-cyan-500 bg-slate-900 text-white shadow-sm ring-2 ring-cyan-400/20"
+                          : "border-slate-200 bg-white hover:border-slate-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={`text-xs font-black ${brandTemplateTheme === "MODERN_TECH" ? "text-cyan-300" : "text-slate-900"}`}>
+                          Modern Tech Grid
+                        </span>
+                        {brandTemplateTheme === "MODERN_TECH" && (
+                          <span className="w-5 h-5 rounded-full bg-cyan-500 text-black flex items-center justify-center text-[10px] font-bold">
+                            ✓
+                          </span>
+                        )}
+                      </div>
+                      <div className="h-16 rounded-xl bg-[#0a0f1d] border border-cyan-500/40 p-2 flex flex-col justify-between mb-2">
+                        <div className="text-[7px] font-mono text-cyan-400">[LEDGER_NODE_01]</div>
+                        <div className="text-[8px] font-mono font-bold text-cyan-300 text-center">CYBER VERIFIED TECH</div>
+                        <div className="flex justify-between items-center px-1">
+                          <div className="w-8 h-0.5 bg-cyan-500/50" />
+                          <div className="w-3 h-3 rounded-xs bg-cyan-400" />
+                        </div>
+                      </div>
+                      <p className={`text-[11px] leading-tight ${brandTemplateTheme === "MODERN_TECH" ? "text-slate-400" : "text-slate-500"}`}>
+                        Futuristic dark grid with cyan accent bars, telemetry telemetry badges, and cybernetic verification block.
+                      </p>
+                    </div>
+
+                    {/* Theme 3: Executive Sovereign */}
+                    <div
+                      id="theme-card-executive-sovereign"
+                      onClick={() => setBrandTemplateTheme("EXECUTIVE_SOVEREIGN")}
+                      className={`p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                        brandTemplateTheme === "EXECUTIVE_SOVEREIGN"
+                          ? "border-indigo-600 bg-indigo-50/40 shadow-sm ring-2 ring-indigo-400/20"
+                          : "border-slate-200 bg-white hover:border-slate-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-black text-slate-900 font-serif">Executive Sovereign</span>
+                        {brandTemplateTheme === "EXECUTIVE_SOVEREIGN" && (
+                          <span className="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px] font-bold">
+                            ✓
+                          </span>
+                        )}
+                      </div>
+                      <div className="h-16 rounded-xl bg-white border border-amber-400/50 overflow-hidden flex flex-col justify-between mb-2">
+                        <div className="bg-gradient-to-r from-slate-950 via-[#0c1e3d] to-slate-950 text-amber-200 text-[7px] font-serif font-bold text-center py-1">
+                          SOVEREIGN EMBLEM
+                        </div>
+                        <div className="p-1 flex justify-between items-center">
+                          <div className="w-8 h-0.5 bg-slate-300" />
+                          <div className="w-3 h-3 rounded-full bg-amber-600" />
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-tight">
+                        Regal deep navy header with gold embellishments, sovereign seal, and corporate executive finish.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Signatory & Signature Stamp */}
                 <div className="border-t border-slate-100 pt-5 space-y-4">
                   <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
@@ -2970,9 +3635,14 @@ export default function WorkspacePage() {
                   <div className="space-y-2 pt-2 border-t border-slate-100">
                     <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
                       <span>Live Letterhead &amp; Document Styling Preview</span>
-                      <span className="text-[10px] font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
-                        Dynamic Output
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                          Theme: {brandTemplateTheme.replace("_", " ")}
+                        </span>
+                        <span className="text-[10px] font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                          Live Output
+                        </span>
+                      </div>
                     </label>
 
                     <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 shadow-2xs space-y-4">

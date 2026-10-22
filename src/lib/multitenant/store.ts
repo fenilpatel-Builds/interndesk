@@ -18,6 +18,7 @@ import {
   BreakType,
   LeaveRequest,
   MentorshipReview,
+  DocumentType,
 } from "../../types/multitenant";
 import { generateOrganizationCode } from "./code-generator";
 import { hasPermission } from "./permissions";
@@ -65,6 +66,7 @@ const INITIAL_ORGANIZATIONS: Organization[] = [
       signatoryTitle: "Head of Operations & Engineering",
       signatorySignatureUrl: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='40' viewBox='0 0 140 40'><path d='M10 25 C 25 10, 35 30, 45 15 C 55 5, 65 28, 80 18 C 95 10, 110 30, 130 15' stroke='%231e3a8a' stroke-width='2.5' fill='none' stroke-linecap='round'/></svg>",
       headerLayout: "MODERN_MINIMAL",
+      templateTheme: "CLASSIC_IVY",
       customOfferTerms: "This offer is contingent upon adherence to organizational NDA policies, weekly sprint participation, and verified completion of all assigned engineering practicum deliverables.",
       customCertificateDisclaimer: "InternDesk Cryptographically Verified Credential. Authenticity verifiable by scanning QR or visiting public ledger.",
     },
@@ -802,6 +804,54 @@ const INITIAL_DOCUMENTS: IssuedDocument[] = [
     },
     created_at: "2026-10-21T18:00:00Z",
   },
+  {
+    id: "doc-06-transcript",
+    organization_id: "org-apex-01",
+    member_id: "usr-student-fenil",
+    document_number: "ID-TRSC-2026-9812",
+    document_type: "PERFORMANCE_TRANSCRIPT",
+    title: "Official Internship Performance Transcript & Skill Dossier",
+    recipient_name: "Fenil Patel",
+    recipient_role: "Full Stack Software Engineering Intern",
+    issued_date: "2026-10-22",
+    status: "ISSUED",
+    approval_status: "APPROVED",
+    approved_by: "Elena Rostova",
+    approved_at: "2026-10-22T08:00:00Z",
+    verification_code: "VRF-APX-9812-TRSC",
+    template_data: {
+      organization_name: "Apex Technologies",
+      organization_type: "CORPORATE",
+      organization_logo: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&auto=format&fit=crop&q=80",
+      signatory_name: "Elena Rostova",
+      signatory_title: "Head of Operations & Engineering",
+      signatory_signature: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='40' viewBox='0 0 140 40'><path d='M10 25 C 25 10, 35 30, 45 15 C 55 5, 65 28, 80 18 C 95 10, 110 30, 130 15' stroke='%231e3a8a' stroke-width='2.5' fill='none' stroke-linecap='round'/></svg>",
+      brand_color: "#2563EB",
+      program_or_track: "Full Stack Cloud Platform Internship",
+      grade_or_evaluation: "Grade: Outstanding (Grade Point 4.0 / 4.0)",
+      validity: "Permanent Cryptographically Verified Credential",
+      template_theme: "CLASSIC_IVY",
+      verified_work_hours: 160,
+      attendance_percentage: 99.2,
+      mentor_scores: {
+        technical: 98,
+        communication: 96,
+        initiative: 100,
+        overall: 98.4,
+      },
+      completed_tasks_count: 14,
+      assessments_passed_count: 2,
+      verified_skills: [
+        "Next.js 15 & React 19",
+        "TypeScript Strict Mode",
+        "REST & GraphQL Microservices",
+        "PostgreSQL & Multi-Tenancy",
+        "CI/CD Automated Pipelines",
+        "Cryptographic Credential Verification",
+      ],
+    },
+    created_at: "2026-10-22T08:00:00Z",
+  },
 ];
 
 // Seed Announcements
@@ -1448,6 +1498,177 @@ class MultiTenantStore {
     });
 
     return doc;
+  }
+
+  public issueBatchDocuments(
+    organizationId: string,
+    memberIds: string[],
+    documentType: DocumentType,
+    options: {
+      programOrTrack?: string;
+      customTerms?: string;
+      gradeOrEvaluation?: string;
+      autoApprove?: boolean;
+      approvedBy?: string;
+    } = {}
+  ): IssuedDocument[] {
+    const org = this.getOrganizationById(organizationId);
+    if (!org) return [];
+
+    const brand = org.branding;
+    const requireApproval = org.settings?.requireDocumentApproval ?? true;
+    const shouldApprove = options.autoApprove ?? !requireApproval;
+    const approver = options.approvedBy || brand?.signatoryName || "Elena Rostova";
+    const nowIso = new Date().toISOString();
+    const todayYmd = nowIso.split("T")[0];
+
+    const typeLabels: Record<DocumentType, string> = {
+      OFFER_LETTER: "Official Internship Offer Letter",
+      INTERNSHIP_LETTER: "Internship Appointment & Enrollment Letter",
+      EXPERIENCE_LETTER: "Verified Professional Experience Certificate",
+      COMPLETION_CERTIFICATE: "Certificate of Internship Excellence",
+      TRAINING_CERTIFICATE: "Professional Practicum Completion Certificate",
+      PARTICIPATION_CERTIFICATE: "Certificate of Active Technical Participation",
+      PERFORMANCE_TRANSCRIPT: "Official Internship Performance Transcript & Skill Dossier",
+    };
+
+    const typePrefixes: Record<DocumentType, string> = {
+      OFFER_LETTER: "OFFER",
+      INTERNSHIP_LETTER: "INTR",
+      EXPERIENCE_LETTER: "EXP",
+      COMPLETION_CERTIFICATE: "CERT",
+      TRAINING_CERTIFICATE: "TRN",
+      PARTICIPATION_CERTIFICATE: "PART",
+      PERFORMANCE_TRANSCRIPT: "TRSC",
+    };
+
+    const issuedBatch: IssuedDocument[] = [];
+
+    for (const memId of memberIds) {
+      const member = this.memberships.find(
+        (m) => (m.id === memId || m.user_id === memId) && m.organization_id === organizationId
+      );
+      if (!member) continue;
+
+      const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+      const docNum = `IND-${typePrefixes[documentType] || "DOC"}-2026-${randomSuffix}`;
+      const vrfCode = `VRF-${org.code.replace("ORG-", "")}-${randomSuffix}-SEC`;
+
+      const newDoc: IssuedDocument = {
+        id: `doc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        organization_id: organizationId,
+        member_id: member.user_id || member.id,
+        document_number: docNum,
+        document_type: documentType,
+        title: typeLabels[documentType] || "Official Credential Document",
+        recipient_name: member.user_full_name || "Intern Candidate",
+        recipient_role: member.designation || (member.member_type === "INTERN" ? "Software Engineering Intern" : member.member_type),
+        issued_date: todayYmd,
+        status: shouldApprove ? "ISSUED" : "PENDING_APPROVAL",
+        approval_status: shouldApprove ? "APPROVED" : "PENDING",
+        approved_by: shouldApprove ? approver : undefined,
+        approved_at: shouldApprove ? nowIso : undefined,
+        verification_code: vrfCode,
+        template_data: {
+          organization_name: org.name,
+          organization_type: org.type,
+          organization_logo: brand?.logoUrl,
+          organization_address: brand?.address,
+          organization_website: brand?.website,
+          signatory_name: brand?.signatoryName || "Elena Rostova",
+          signatory_title: brand?.signatoryTitle || "Head of Operations & Engineering",
+          signatory_signature: brand?.signatorySignatureUrl,
+          official_stamp: brand?.officialStampUrl,
+          brand_color: brand?.brandColor || "#2563EB",
+          template_theme: brand?.templateTheme || "CLASSIC_IVY",
+          program_or_track: options.programOrTrack || "Cloud & Full Stack Engineering Practicum",
+          grade_or_evaluation: options.gradeOrEvaluation || "Grade: Outstanding (98.2%)",
+          validity: shouldApprove ? "Active / Cryptographically Verified" : "Awaiting Authorization",
+          custom_terms: options.customTerms || brand?.customOfferTerms,
+          ...(documentType === "PERFORMANCE_TRANSCRIPT"
+            ? {
+                verified_work_hours: 160,
+                attendance_percentage: 99.2,
+                mentor_scores: {
+                  technical: 98,
+                  communication: 96,
+                  initiative: 100,
+                  overall: 98.4,
+                },
+                completed_tasks_count: 14,
+                assessments_passed_count: 2,
+                verified_skills: [
+                  "Next.js 15 & React 19",
+                  "TypeScript Strict Mode",
+                  "REST & GraphQL Microservices",
+                  "PostgreSQL & Multi-Tenancy",
+                  "CI/CD Automated Pipelines",
+                  "Cryptographic Credential Verification",
+                ],
+              }
+            : {}),
+        },
+        created_at: nowIso,
+      };
+
+      this.documents.unshift(newDoc);
+      issuedBatch.push(newDoc);
+    }
+
+    if (issuedBatch.length > 0) {
+      this.auditLogs.unshift({
+        id: `log-${Date.now()}`,
+        organization_id: organizationId,
+        actor_email: approver,
+        actor_role: "ORG_ADMIN",
+        action: "BATCH_CREDENTIALS_ISSUED",
+        resource: `${documentType} Batch (${issuedBatch.length} Recipients)`,
+        ip_address: "127.0.0.1",
+        details: { count: issuedBatch.length, type: documentType, autoApproved: shouldApprove },
+        created_at: nowIso,
+      });
+    }
+
+    return issuedBatch;
+  }
+
+  public approveBatchDocuments(
+    organizationId: string,
+    documentIds: string[],
+    approvedBy: string = "Elena Rostova"
+  ): IssuedDocument[] {
+    const approvedBatch: IssuedDocument[] = [];
+    const nowIso = new Date().toISOString();
+
+    for (const docId of documentIds) {
+      const doc = this.documents.find((d) => d.id === docId && d.organization_id === organizationId);
+      if (!doc) continue;
+
+      doc.status = "ISSUED";
+      doc.approval_status = "APPROVED";
+      doc.approved_by = approvedBy;
+      doc.approved_at = nowIso;
+      if (doc.template_data) {
+        doc.template_data.validity = "Active / Verified";
+      }
+      approvedBatch.push(doc);
+    }
+
+    if (approvedBatch.length > 0) {
+      this.auditLogs.unshift({
+        id: `log-${Date.now()}`,
+        organization_id: organizationId,
+        actor_email: approvedBy,
+        actor_role: "ORG_ADMIN",
+        action: "BATCH_DOCUMENTS_APPROVED_AND_RELEASED",
+        resource: `Batch Approval (${approvedBatch.length} Documents)`,
+        ip_address: "127.0.0.1",
+        details: { count: approvedBatch.length, documentNumbers: approvedBatch.map((d) => d.document_number) },
+        created_at: nowIso,
+      });
+    }
+
+    return approvedBatch;
   }
 
   public updateOrganizationBranding(

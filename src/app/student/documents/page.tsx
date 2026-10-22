@@ -16,6 +16,11 @@ import {
   Lock,
   Clock,
   AlertTriangle,
+  Share2,
+  Copy,
+  Check,
+  Code,
+  X,
 } from "lucide-react";
 import { DocumentStudioModal } from "@/components/documents/document-studio-modal";
 import { IssuedDocument } from "@/types/multitenant";
@@ -89,11 +94,55 @@ const STUDENT_DOCUMENTS: IssuedDocument[] = [
     },
     created_at: "2026-10-15T12:00:00Z",
   },
+  {
+    id: "doc-transcript",
+    organization_id: "org-apex-01",
+    member_id: "usr-student-fenil",
+    document_number: "ID-TRSC-2026-9812",
+    document_type: "PERFORMANCE_TRANSCRIPT",
+    title: "Official Internship Performance Transcript & Skill Dossier",
+    recipient_name: "Fenil Patel",
+    recipient_role: "Full Stack Software Engineering Intern",
+    issued_date: "2026-10-22",
+    status: "ISSUED",
+    verification_code: "VRF-APX-9812-TRSC",
+    template_data: {
+      organization_name: "Apex Technologies",
+      organization_type: "CORPORATE",
+      signatory_name: "Elena Rostova",
+      signatory_title: "Head of Engineering Operations",
+      program_or_track: "Full Stack Cloud Platform Internship",
+      grade_or_evaluation: "Grade: Outstanding (Grade Point 4.0 / 4.0)",
+      validity: "Verified Permanent Credential",
+      template_theme: "CLASSIC_IVY",
+      verified_work_hours: 160,
+      attendance_percentage: 99.2,
+      mentor_scores: {
+        technical: 98,
+        communication: 96,
+        initiative: 100,
+        overall: 98.4,
+      },
+      completed_tasks_count: 14,
+      assessments_passed_count: 2,
+      verified_skills: [
+        "Next.js 15 & React 19",
+        "TypeScript Strict Mode",
+        "REST & GraphQL Microservices",
+        "PostgreSQL & Multi-Tenancy",
+        "CI/CD Automated Pipelines",
+        "Cryptographic Credential Verification",
+      ],
+    },
+    created_at: "2026-10-22T08:00:00Z",
+  },
 ];
 
 export default function StudentDocumentsPage() {
-  const [activeTab, setActiveTab] = useState<"ALL" | "OFFER" | "INTERN" | "CERT">("ALL");
+  const [activeTab, setActiveTab] = useState<"ALL" | "OFFER" | "INTERN" | "CERT" | "TRANSCRIPT">("ALL");
   const [selectedStudioDoc, setSelectedStudioDoc] = useState<IssuedDocument | null>(null);
+  const [sharingDoc, setSharingDoc] = useState<IssuedDocument | null>(null);
+  const [copiedType, setCopiedType] = useState<string | null>(null);
 
   const storeDocs = multiTenantStore.getIssuedDocuments("org-apex-01", "usr-student-fenil");
   const docsList = storeDocs.length > 0 ? storeDocs : STUDENT_DOCUMENTS;
@@ -102,6 +151,7 @@ export default function StudentDocumentsPage() {
     if (activeTab === "OFFER") return doc.document_type === "OFFER_LETTER";
     if (activeTab === "INTERN") return doc.document_type === "INTERNSHIP_LETTER";
     if (activeTab === "CERT") return doc.document_type === "COMPLETION_CERTIFICATE";
+    if (activeTab === "TRANSCRIPT") return doc.document_type === "PERFORMANCE_TRANSCRIPT";
     return true;
   });
 
@@ -187,16 +237,17 @@ export default function StudentDocumentsPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+        <div className="flex items-center gap-2 border-b border-slate-200 pb-2 flex-wrap">
           {[
             { id: "ALL", label: "All Documents" },
             { id: "OFFER", label: "Offer Letter" },
             { id: "INTERN", label: "Internship Letter" },
-            { id: "CERT", label: "Certificate" },
+            { id: "CERT", label: "Certificates" },
+            { id: "TRANSCRIPT", label: "Performance Transcripts" },
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as "ALL" | "OFFER" | "INTERN" | "CERT")}
+              onClick={() => setActiveTab(tab.id as "ALL" | "OFFER" | "INTERN" | "CERT" | "TRANSCRIPT")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                 activeTab === tab.id
                   ? "bg-white text-blue-600 font-extrabold shadow-2xs border border-slate-200"
@@ -232,12 +283,16 @@ export default function StudentDocumentsPage() {
                 <div className="flex items-center gap-3">
                   <div
                     className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                      doc.document_type === "COMPLETION_CERTIFICATE"
+                      doc.document_type === "PERFORMANCE_TRANSCRIPT"
+                        ? "bg-indigo-50 text-indigo-600 border border-indigo-200"
+                        : doc.document_type === "COMPLETION_CERTIFICATE"
                         ? "bg-amber-50 text-amber-600 border border-amber-200"
                         : "bg-blue-50 text-blue-600 border border-blue-200"
                     }`}
                   >
-                    {doc.document_type === "COMPLETION_CERTIFICATE" ? (
+                    {doc.document_type === "PERFORMANCE_TRANSCRIPT" ? (
+                      <GraduationCap className="w-5 h-5" />
+                    ) : doc.document_type === "COMPLETION_CERTIFICATE" ? (
                       <Award className="w-5 h-5" />
                     ) : (
                       <FileText className="w-5 h-5" />
@@ -275,14 +330,27 @@ export default function StudentDocumentsPage() {
                         onClick={() => setSelectedStudioDoc(doc)}
                         className="text-xs h-8 px-3 rounded-xl border-slate-300 hover:bg-slate-50 font-bold cursor-pointer"
                       >
-                        Preview
+                        {doc.document_type === "PERFORMANCE_TRANSCRIPT" ? "View Dossier" : "Preview"}
                       </Button>
                       <Button
                         size="sm"
                         onClick={() => setSelectedStudioDoc(doc)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8 px-3 rounded-xl font-bold cursor-pointer shadow-2xs"
+                        className={`${
+                          doc.document_type === "PERFORMANCE_TRANSCRIPT"
+                            ? "bg-indigo-600 hover:bg-indigo-700"
+                            : "bg-blue-600 hover:bg-blue-700"
+                        } text-white text-xs h-8 px-3 rounded-xl font-bold cursor-pointer shadow-2xs`}
                       >
                         <Download className="w-3 h-3 mr-1" /> PDF
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setSharingDoc(doc)}
+                        className="text-xs h-8 px-2.5 rounded-xl border-slate-300 hover:bg-slate-50 font-bold cursor-pointer text-slate-700"
+                        title="Share & embed verified badge"
+                      >
+                        <Share2 className="w-3.5 h-3.5" />
                       </Button>
                     </>
                   )}
@@ -393,23 +461,183 @@ export default function StudentDocumentsPage() {
                   </Link>
                 </div>
 
-                {/* Add to LinkedIn Button */}
-                <a
-                  href={certLinkedInUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-[#0a66c2] hover:bg-[#004182] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
-                >
-                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                    <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76a1.53 1.53 0 0 0 1.53-1.53 1.53 1.53 0 0 0-1.53-1.53 1.53 1.53 0 0 0-1.53 1.53 1.53 1.53 0 0 0 1.53 1.53m1.4 9.74v-8.37H5.06v8.37h2.8z" />
-                  </svg>
-                  <span>Add Certificate to LinkedIn Profile</span>
-                </a>
+                {/* Add to LinkedIn & Share Embed Buttons */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <a
+                    href={certLinkedInUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#0a66c2] hover:bg-[#004182] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+                  >
+                    <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                      <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76a1.53 1.53 0 0 0 1.53-1.53 1.53 1.53 0 0 0-1.53-1.53 1.53 1.53 0 0 0-1.53 1.53 1.53 1.53 0 0 0 1.53 1.53m1.4 9.74v-8.37H5.06v8.37h2.8z" />
+                    </svg>
+                    <span>LinkedIn</span>
+                  </a>
+
+                  <Button
+                    id="share-embed-btn"
+                    onClick={() => setSharingDoc(certificateDoc)}
+                    variant="outline"
+                    className="w-full border-slate-300 text-slate-700 hover:bg-slate-100 font-bold rounded-xl py-2.5 cursor-pointer text-xs flex items-center justify-center gap-1.5"
+                  >
+                    <Share2 className="w-3.5 h-3.5 text-blue-600" />
+                    Share &amp; Embed Badge
+                  </Button>
+                </div>
               </div>
             </Card>
           </div>
         </div>
       </main>
+
+      {/* Share & Embed Credential Studio Modal */}
+      {sharingDoc && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-xl flex flex-col overflow-hidden animate-scaleUp">
+            {/* Header */}
+            <div className="px-6 py-5 bg-gradient-to-r from-blue-700 to-indigo-800 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white">
+                  <Share2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black tracking-tight">Share &amp; Embed Credential</h3>
+                  <p className="text-xs text-blue-100 font-mono">
+                    ID: {sharingDoc.document_number}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSharingDoc(null)}
+                className="text-white/80 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-5">
+              {/* Live Badge Preview Card */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block">
+                  Live Verified SVG Badge Preview
+                </span>
+                
+                {/* Visual badge card */}
+                <div className="p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between shadow-2xs">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs">
+                      ID
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-black text-slate-900">InternDesk Verified</span>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-mono">{sharingDoc.document_number}</p>
+                    </div>
+                  </div>
+                  <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    AUTHENTIC
+                  </span>
+                </div>
+              </div>
+
+              {/* Embed Code Snippets */}
+              <div className="space-y-3">
+                {/* Markdown for GitHub */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1">
+                      <Code className="w-3.5 h-3.5 text-indigo-600" />
+                      GitHub Markdown Badge
+                    </span>
+                    <button
+                      onClick={() => {
+                        const snippet = `[![InternDesk Verified](https://img.shields.io/badge/InternDesk-${encodeURIComponent(sharingDoc.title)}-2563EB?logo=checkmarx&logoColor=white)](https://interndesk.io/verify/${sharingDoc.document_number})`;
+                        navigator.clipboard.writeText(snippet);
+                        setCopiedType("markdown");
+                        setTimeout(() => setCopiedType(null), 2000);
+                      }}
+                      className="text-[11px] font-bold text-blue-600 hover:text-blue-800 cursor-pointer flex items-center gap-1"
+                    >
+                      {copiedType === "markdown" ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedType === "markdown" ? "Copied!" : "Copy Markdown"}
+                    </button>
+                  </div>
+                  <pre className="p-2.5 rounded-xl bg-slate-900 text-slate-200 text-[10px] font-mono overflow-x-auto whitespace-pre-wrap break-all">
+                    {`[![InternDesk Verified](https://img.shields.io/badge/InternDesk-${encodeURIComponent(sharingDoc.title)}-2563EB?logo=checkmarx)](https://interndesk.io/verify/${sharingDoc.document_number})`}
+                  </pre>
+                </div>
+
+                {/* HTML Embed for Portfolio */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1">
+                      <Code className="w-3.5 h-3.5 text-blue-600" />
+                      HTML Web Embed
+                    </span>
+                    <button
+                      onClick={() => {
+                        const snippet = `<a href="https://interndesk.io/verify/${sharingDoc.document_number}" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/InternDesk-Verified%20Credential-2563EB?logo=checkmarx&logoColor=white" alt="InternDesk Verified Credential" /></a>`;
+                        navigator.clipboard.writeText(snippet);
+                        setCopiedType("html");
+                        setTimeout(() => setCopiedType(null), 2000);
+                      }}
+                      className="text-[11px] font-bold text-blue-600 hover:text-blue-800 cursor-pointer flex items-center gap-1"
+                    >
+                      {copiedType === "html" ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedType === "html" ? "Copied!" : "Copy HTML"}
+                    </button>
+                  </div>
+                  <pre className="p-2.5 rounded-xl bg-slate-900 text-slate-200 text-[10px] font-mono overflow-x-auto whitespace-pre-wrap break-all">
+                    {`<a href="https://interndesk.io/verify/${sharingDoc.document_number}" target="_blank"><img src="https://img.shields.io/badge/InternDesk-Verified-2563EB" alt="Verified" /></a>`}
+                  </pre>
+                </div>
+
+                {/* Direct Verification URL */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                      Public Verification Link
+                    </span>
+                    <button
+                      onClick={() => {
+                        const url = typeof window !== "undefined" ? `${window.location.origin}/verify/${sharingDoc.document_number}` : `https://interndesk.io/verify/${sharingDoc.document_number}`;
+                        navigator.clipboard.writeText(url);
+                        setCopiedType("link");
+                        setTimeout(() => setCopiedType(null), 2000);
+                      }}
+                      className="text-[11px] font-bold text-blue-600 hover:text-blue-800 cursor-pointer flex items-center gap-1"
+                    >
+                      {copiedType === "link" ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedType === "link" ? "Copied!" : "Copy Link"}
+                    </button>
+                  </div>
+                  <p className="p-2 rounded-xl bg-slate-100 text-slate-700 text-[11px] font-mono">
+                    https://interndesk.io/verify/{sharingDoc.document_number}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+              <span className="text-[11px] text-slate-500 font-medium">
+                SHA-256 Immutable Digital Credential
+              </span>
+              <Button
+                onClick={() => setSharingDoc(null)}
+                className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold"
+              >
+                Done
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Rich Document Studio Modal */}
       {selectedStudioDoc && (

@@ -16,9 +16,15 @@ import {
   Lock,
   Code,
   AlertTriangle,
+  Clock,
+  GraduationCap,
+  Sparkles,
+  BarChart3,
+  ShieldCheck,
+  TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { IssuedDocument } from "@/types/multitenant";
+import { IssuedDocument, TemplateTheme } from "@/types/multitenant";
 
 interface DocumentStudioModalProps {
   isOpen: boolean;
@@ -119,6 +125,74 @@ function OfficialGoldSeal() {
   );
 }
 
+// Official Modern Tech Cyber Badge Seal
+function OfficialModernTechSeal() {
+  return (
+    <div className="relative w-28 h-28 flex items-center justify-center shrink-0 drop-shadow-md select-none">
+      <svg viewBox="0 0 120 120" className="w-full h-full">
+        <defs>
+          <linearGradient id="cyberGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#06b6d4" />
+            <stop offset="50%" stopColor="#3b82f6" />
+            <stop offset="100%" stopColor="#8b5cf6" />
+          </linearGradient>
+        </defs>
+        <circle cx="60" cy="60" r="48" fill="#0f172a" stroke="url(#cyberGrad)" strokeWidth="3" />
+        <circle cx="60" cy="60" r="43" fill="none" stroke="#06b6d4" strokeWidth="1" strokeDasharray="4,2" />
+        <circle cx="60" cy="60" r="38" fill="#0b0f19" stroke="#334155" strokeWidth="1" />
+        <polygon points="60,28 88,44 88,76 60,92 32,76 32,44" fill="none" stroke="url(#cyberGrad)" strokeWidth="1.5" />
+        <circle cx="60" cy="60" r="14" fill="#06b6d4" fillOpacity="0.2" stroke="#06b6d4" strokeWidth="1.5" />
+        <text x="60" y="63" textAnchor="middle" fontSize="6" fontWeight="900" fill="#38bdf8" letterSpacing="1">
+          VERIFIED
+        </text>
+        <text x="60" y="71" textAnchor="middle" fontSize="4.5" fontWeight="700" fill="#94a3b8" letterSpacing="0.8">
+          TECH STACK
+        </text>
+      </svg>
+    </div>
+  );
+}
+
+// Official Sovereign Executive Seal
+function OfficialExecutiveSovereignSeal() {
+  return (
+    <div className="relative w-28 h-28 flex items-center justify-center shrink-0 drop-shadow-md select-none">
+      <svg viewBox="0 0 120 120" className="w-full h-full">
+        <defs>
+          <radialGradient id="sovereignGold" cx="35%" cy="35%" r="65%">
+            <stop offset="0%" stopColor="#fef08a" />
+            <stop offset="45%" stopColor="#d97706" />
+            <stop offset="85%" stopColor="#92400e" />
+            <stop offset="100%" stopColor="#451a03" />
+          </radialGradient>
+        </defs>
+        <circle cx="60" cy="60" r="48" fill="url(#sovereignGold)" />
+        <circle cx="60" cy="60" r="44" fill="#0c192c" stroke="#fef08a" strokeWidth="1.5" />
+        <circle cx="60" cy="60" r="39" fill="none" stroke="#d97706" strokeWidth="1" strokeDasharray="3,1.5" />
+        <path
+          d="M48 64 L45 52 L54 57 L60 48 L66 57 L75 52 L72 64 Z"
+          fill="url(#sovereignGold)"
+          stroke="#78350f"
+          strokeWidth="0.8"
+        />
+        <rect x="47" y="65" width="26" height="3" rx="1.5" fill="#fef08a" />
+        <text x="60" y="38" textAnchor="middle" fontSize="4.5" fontWeight="900" fill="#fef08a" letterSpacing="1.2">
+          SOVEREIGN SEAL
+        </text>
+        <text x="60" y="78" textAnchor="middle" fontSize="4" fontWeight="800" fill="#d97706" letterSpacing="1">
+          EXECUTIVE ACCREDITED
+        </text>
+      </svg>
+    </div>
+  );
+}
+
+function ThemeSeal({ theme }: { theme?: TemplateTheme }) {
+  if (theme === "MODERN_TECH") return <OfficialModernTechSeal />;
+  if (theme === "EXECUTIVE_SOVEREIGN") return <OfficialExecutiveSovereignSeal />;
+  return <OfficialGoldSeal />;
+}
+
 export function DocumentStudioModal({
   isOpen,
   onClose,
@@ -174,7 +248,12 @@ export function DocumentStudioModal({
     }
   };
 
-  const isCertificate = doc.document_type === "COMPLETION_CERTIFICATE";
+  const isTranscript = doc.document_type === "PERFORMANCE_TRANSCRIPT";
+  const isCertificate =
+    doc.document_type === "COMPLETION_CERTIFICATE" ||
+    doc.document_type === "TRAINING_CERTIFICATE" ||
+    doc.document_type === "PARTICIPATION_CERTIFICATE";
+  const theme: TemplateTheme = doc.template_data?.template_theme || "CLASSIC_IVY";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200">
@@ -206,8 +285,14 @@ export function DocumentStudioModal({
         {/* Studio Action Header */}
         <div className="px-6 py-4 bg-slate-900 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-600/30 border border-blue-400/40 flex items-center justify-center text-blue-400">
-              {isCertificate ? <Award className="w-5 h-5 text-amber-400" /> : <FileText className="w-5 h-5 text-blue-400" />}
+            <div className="w-9 h-9 rounded-xl bg-blue-600/30 border border-blue-400/40 flex items-center justify-center text-blue-400 shrink-0">
+              {isTranscript ? (
+                <GraduationCap className="w-5 h-5 text-indigo-400" />
+              ) : isCertificate ? (
+                <Award className="w-5 h-5 text-amber-400" />
+              ) : (
+                <FileText className="w-5 h-5 text-blue-400" />
+              )}
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -215,6 +300,17 @@ export function DocumentStudioModal({
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-900/60 text-blue-300 border border-blue-700/50">
                   {doc.document_number}
                 </span>
+                {isTranscript && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-900/60 text-indigo-300 border border-indigo-700/50 flex items-center gap-1">
+                    <Sparkles className="w-2.5 h-2.5" />
+                    ACADEMIC DOSSIER
+                  </span>
+                )}
+                {isCertificate && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-900/60 text-amber-300 border border-amber-700/50">
+                    THEME: {theme.replace("_", " ")}
+                  </span>
+                )}
                 {isPendingApproval && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">
                     <AlertTriangle className="w-3 h-3 text-amber-400" />
@@ -223,7 +319,11 @@ export function DocumentStudioModal({
                 )}
               </div>
               <p className="text-[11px] text-slate-400">
-                {isPendingApproval ? "Awaiting HR / Admin Authorization • Release Pending" : "Tamper-Proof Credential Studio • Cryptographically Sealed"}
+                {isPendingApproval
+                  ? "Awaiting HR / Admin Authorization • Release Pending"
+                  : isTranscript
+                  ? "Audit-Grade Performance Transcript & Verified Skills Dossier • Cryptographically Sealed"
+                  : "Tamper-Proof Credential Studio • Cryptographically Sealed"}
               </p>
             </div>
           </div>
@@ -281,7 +381,7 @@ export function DocumentStudioModal({
             </Button>
 
             {/* Embed Badge Button for Developers / Interns */}
-            {isCertificate && (
+            {(isCertificate || isTranscript) && (
               <Button
                 id="studio-embed-badge-btn"
                 size="sm"
@@ -334,145 +434,599 @@ export function DocumentStudioModal({
               </div>
             )}
 
-            {isCertificate ? (
-              // ================= CERTIFICATE TEMPLATE =================
-              <div className="p-8 sm:p-12 relative overflow-hidden bg-gradient-to-b from-amber-50/20 via-white to-blue-50/20">
-                {/* Ornate Double Border */}
-                <div className="border-4 border-double border-amber-600/40 p-6 sm:p-8 rounded-xl relative space-y-6">
-                  {/* Watermark Crest Background */}
-                  <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
-                    <Award className="w-96 h-96 text-blue-900" />
+            {isTranscript ? (
+              // ================= OFFICIAL PERFORMANCE TRANSCRIPT & SKILL DOSSIER =================
+              <div className="p-6 sm:p-10 space-y-6 relative bg-white">
+                {/* Institutional Letterhead Header */}
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between pb-6 border-b-2 gap-4" style={{ borderColor: brandColor }}>
+                  <div className="flex items-start gap-4">
+                    {orgLogo ? (
+                      <img
+                        src={orgLogo}
+                        alt={orgName}
+                        className="w-14 h-14 rounded-xl object-contain border border-slate-200 bg-white p-1 shadow-xs"
+                      />
+                    ) : (
+                      <div
+                        className="w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-xs"
+                        style={{ backgroundColor: brandColor }}
+                      >
+                        {orgName.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">{orgName}</h2>
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          OFFICIAL TRANSCRIPT
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 font-medium">{orgAddress}</p>
+                      <p className="text-[11px] font-medium" style={{ color: brandColor }}>{orgWebsite}</p>
+                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">TRANSCRIPT SERIAL: {doc.document_number}</p>
+                    </div>
+                  </div>
+                  <ThemeSeal theme={theme} />
+                </div>
+
+                {/* Candidate Academic Profile Card */}
+                <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Candidate Name</span>
+                    <h3 className="text-base font-black text-slate-900">{doc.recipient_name}</h3>
+                    <p className="text-slate-600 font-medium">{doc.recipient_role}</p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Practicum Track</span>
+                    <strong className="text-slate-900 text-xs block">{doc.template_data?.program_or_track || "Full Stack Cloud Platform"}</strong>
+                    <span className="text-emerald-700 font-bold text-[11px] block mt-0.5">
+                      {doc.template_data?.grade_or_evaluation || "Grade: Outstanding (4.0 / 4.0)"}
+                    </span>
+                  </div>
+                  <div className="sm:text-right">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Issuance &amp; Ledger</span>
+                    <p className="font-bold text-slate-900">{doc.issued_date}</p>
+                    <span className="inline-block mt-0.5 text-[10px] font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                      {doc.verification_code}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Key Verified Milestone Metrics Strip */}
+                <div>
+                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                    <BarChart3 className="w-3.5 h-3.5 text-blue-600" />
+                    Verified Practicum Milestones &amp; Reliability Telemetry
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="p-3.5 rounded-xl bg-blue-50/60 border border-blue-100">
+                      <span className="text-[10px] uppercase font-bold text-blue-700 block flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-blue-600" /> Verified Work
+                      </span>
+                      <div className="text-xl font-black text-blue-900 mt-1">
+                        {doc.template_data?.verified_work_hours || 160} hrs
+                      </div>
+                      <p className="text-[10px] text-blue-600 font-medium mt-0.5">100% Biometric Punch</p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-100">
+                      <span className="text-[10px] uppercase font-bold text-emerald-700 block flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Attendance
+                      </span>
+                      <div className="text-xl font-black text-emerald-900 mt-1">
+                        {doc.template_data?.attendance_percentage || 99.2}%
+                      </div>
+                      <p className="text-[10px] text-emerald-600 font-medium mt-0.5">On-Time Shift Record</p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-purple-50/60 border border-purple-100">
+                      <span className="text-[10px] uppercase font-bold text-purple-700 block flex items-center gap-1">
+                        <Check className="w-3 h-3 text-purple-600" /> Deliverables
+                      </span>
+                      <div className="text-xl font-black text-purple-900 mt-1">
+                        {doc.template_data?.completed_tasks_count || 14} Sprints
+                      </div>
+                      <p className="text-[10px] text-purple-600 font-medium mt-0.5">Tasks &amp; PRs Completed</p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-amber-50/60 border border-amber-100">
+                      <span className="text-[10px] uppercase font-bold text-amber-700 block flex items-center gap-1">
+                        <Award className="w-3 h-3 text-amber-600" /> Assessments
+                      </span>
+                      <div className="text-xl font-black text-amber-900 mt-1">
+                        {doc.template_data?.assessments_passed_count || 2} Passed
+                      </div>
+                      <p className="text-[10px] text-amber-600 font-medium mt-0.5">Technical Evaluations</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Mentor Rubric Scorecard */}
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                      <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+                      Mentor Practicum Rubric Scorecard
+                    </h4>
+                    <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      Overall: {doc.template_data?.mentor_scores?.overall || 98.4}%
+                    </span>
                   </div>
 
-                  {/* Header: Organization Crest & Title */}
-                  <div className="text-center space-y-2 relative">
-                    <div className="flex items-center justify-center gap-2 mb-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="font-semibold text-slate-700">Technical Code Quality</span>
+                        <strong className="text-blue-700">{doc.template_data?.mentor_scores?.technical || 98}%</strong>
+                      </div>
+                      <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                        <div className="bg-blue-600 h-full rounded-full" style={{ width: `${doc.template_data?.mentor_scores?.technical || 98}%` }} />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="font-semibold text-slate-700">Engineering Collaboration</span>
+                        <strong className="text-indigo-700">{doc.template_data?.mentor_scores?.communication || 96}%</strong>
+                      </div>
+                      <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                        <div className="bg-indigo-600 h-full rounded-full" style={{ width: `${doc.template_data?.mentor_scores?.communication || 96}%` }} />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="font-semibold text-slate-700">Initiative &amp; Velocity</span>
+                        <strong className="text-emerald-700">{doc.template_data?.mentor_scores?.initiative || 100}%</strong>
+                      </div>
+                      <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                        <div className="bg-emerald-600 h-full rounded-full" style={{ width: `${doc.template_data?.mentor_scores?.initiative || 100}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Verified Competencies & Skills Dossier Badges */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                    Verified Skills &amp; Competencies Endorsement
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {(doc.template_data?.verified_skills || [
+                      "Next.js 15 & React 19",
+                      "TypeScript Strict Mode",
+                      "REST & GraphQL Microservices",
+                      "PostgreSQL & Multi-Tenancy",
+                      "CI/CD Automated Pipelines",
+                      "Cryptographic Credential Verification",
+                    ]).map((skill) => (
+                      <span
+                        key={skill}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 text-blue-800 border border-blue-200 text-xs font-bold shadow-2xs"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Authorized Signatory & Verification QR */}
+                <div className="pt-6 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-6 items-end">
+                  <div className="space-y-1 text-xs">
+                    {signatorySig ? (
+                      <div className="h-9 flex items-center">
+                        <img src={signatorySig} alt="Signatory Signature" className="h-8 max-w-[130px] object-contain" />
+                      </div>
+                    ) : (
+                      <div className="h-7 flex items-center">
+                        <svg className="w-28 h-6 text-blue-900" viewBox="0 0 140 40">
+                          <path d="M10 25 C 25 10, 35 30, 45 15 C 55 5, 65 28, 80 18 C 95 10, 110 30, 130 15" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+                        </svg>
+                      </div>
+                    )}
+                    <div className="w-36 h-0.5 bg-slate-300 my-1" />
+                    <p className="font-bold text-slate-900">{doc.template_data?.signatory_name || "Elena Rostova"}</p>
+                    <p className="text-slate-500 text-[11px]">{doc.template_data?.signatory_title || "Head of Operations & Engineering"}</p>
+                    <p className="text-[10px] text-slate-400 font-mono">Certified on: {doc.issued_date}</p>
+                  </div>
+
+                  <div className="flex flex-col sm:items-end">
+                    <Link
+                      href={verifyPath}
+                      target="_blank"
+                      className="flex items-center gap-2.5 p-2 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors"
+                    >
+                      <div className="w-11 h-11 bg-white p-1 rounded-lg border border-slate-300 flex flex-col justify-between shrink-0">
+                        <div className="flex justify-between">
+                          <div className="w-2.5 h-2.5 bg-slate-900 rounded-xs" />
+                          <div className="w-2.5 h-2.5 bg-slate-900 rounded-xs" />
+                        </div>
+                        <div className="w-2 h-2 bg-indigo-600 mx-auto rounded-full" />
+                        <div className="flex justify-between">
+                          <div className="w-2.5 h-2.5 bg-slate-900 rounded-xs" />
+                          <div className="w-2 h-2 bg-emerald-600 rounded-xs" />
+                        </div>
+                      </div>
+                      <div className="text-left text-[9px] leading-tight">
+                        <span className="font-bold text-slate-900 block">Scan to Verify Transcript</span>
+                        <span className="text-blue-600 font-mono block mt-0.5">{doc.document_number}</span>
+                        <span className="text-emerald-600 font-bold block">✓ Verified Academic Ledger</span>
+                      </div>
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Cryptographic SHA-256 Strip */}
+                <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between text-[9px] font-mono text-slate-500 gap-1.5">
+                  <span className="flex items-center gap-1 font-bold text-slate-700">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                    SHA-256: <span className="font-normal text-slate-600">{sha256Fingerprint}</span>
+                  </span>
+                  <span className="text-blue-600 font-bold">VERIFICATION CODE: {doc.verification_code}</span>
+                </div>
+              </div>
+            ) : isCertificate ? (
+              // ================= CERTIFICATE TEMPLATE WITH 3 THEMES =================
+              theme === "MODERN_TECH" ? (
+                // 1. MODERN TECH GRID THEME
+                <div className="p-8 sm:p-12 relative overflow-hidden bg-[#0a0f1d] text-slate-100 shadow-2xl">
+                  {/* Cyber Grid Background */}
+                  <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:24px_24px] opacity-40 pointer-events-none" />
+
+                  {/* High-Tech Frame */}
+                  <div className="border-2 border-cyan-500/40 p-6 sm:p-8 rounded-2xl relative space-y-6 bg-slate-900/70 backdrop-blur-xs shadow-inner">
+                    <div className="flex items-center justify-between text-[10px] font-mono text-cyan-400 border-b border-cyan-500/30 pb-2">
+                      <span>[SYS_NODE: INTERNDESK_LEDGER]</span>
+                      <span>[BLOCK: {doc.document_number}]</span>
+                    </div>
+
+                    {/* Header */}
+                    <div className="text-center space-y-2 relative">
+                      <div className="flex items-center justify-center gap-2 mb-1">
+                        {orgLogo && (
+                          <img
+                            src={orgLogo}
+                            alt={orgName}
+                            className="w-10 h-10 rounded-lg object-contain border border-cyan-500/40 bg-slate-900 p-0.5 inline-block"
+                          />
+                        )}
+                        <span className="px-3 py-1 rounded-full text-xs font-mono font-bold uppercase tracking-widest text-cyan-300 border border-cyan-500/40 bg-cyan-950/50">
+                          {orgName}
+                        </span>
+                      </div>
+
+                      <h1 className="text-2xl sm:text-4xl font-sans font-black tracking-tight pt-1 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400">
+                        Certificate of Technical Excellence
+                      </h1>
+                      <p className="text-xs uppercase tracking-widest text-cyan-400 font-mono font-bold">
+                        Verified Software Engineering Achievement
+                      </p>
+                    </div>
+
+                    {/* Recipient */}
+                    <div className="text-center space-y-2 py-2">
+                      <p className="text-xs text-slate-400 font-mono">PROUDLY CONFERRED UPON</p>
+                      <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                        {doc.recipient_name}
+                      </h2>
+                      <div className="w-32 h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent mx-auto" />
+                      <p className="text-xs font-mono text-cyan-300 pt-1">{doc.recipient_role}</p>
+                    </div>
+
+                    {/* Description */}
+                    <div className="text-center max-w-xl mx-auto space-y-2 text-xs sm:text-sm text-slate-300">
+                      <p className="leading-relaxed">
+                        for distinguished technical execution and milestone mastery within the curriculum track:
+                      </p>
+                      <p className="text-sm sm:text-base font-bold text-white font-mono">
+                        [{doc.template_data?.program_or_track || "Software Engineering Practicum"}]
+                      </p>
+                      {doc.template_data?.grade_or_evaluation && (
+                        <span className="inline-block text-xs font-mono font-bold text-cyan-300 bg-cyan-950/80 border border-cyan-500/50 px-3 py-1 rounded-full">
+                          {doc.template_data.grade_or_evaluation}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Tri-Column Footer */}
+                    <div className="pt-6 mt-6 border-t border-cyan-500/30 grid grid-cols-1 sm:grid-cols-3 gap-6 items-center">
+                      <div className="text-center sm:text-left space-y-1">
+                        {signatorySig ? (
+                          <div className="h-9 flex items-center">
+                            <img src={signatorySig} alt="Signatory" className="h-8 max-w-[130px] object-contain filter invert" />
+                          </div>
+                        ) : (
+                          <div className="h-7 flex items-center">
+                            <svg className="w-28 h-6 text-cyan-400" viewBox="0 0 140 40">
+                              <path d="M10 25 C 25 10, 35 30, 45 15 C 55 5, 65 28, 80 18 C 95 10, 110 30, 130 15" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+                            </svg>
+                          </div>
+                        )}
+                        <div className="w-32 h-0.5 bg-cyan-500/50 my-0.5" />
+                        <div className="font-mono font-bold text-white text-xs">{doc.template_data?.signatory_name || "Elena Rostova"}</div>
+                        <p className="text-[10px] text-slate-400 font-mono">{doc.template_data?.signatory_title || "Head of Engineering Operations"}</p>
+                      </div>
+
+                      <div className="flex justify-center">
+                        <OfficialModernTechSeal />
+                      </div>
+
+                      <div className="flex flex-col items-center sm:items-end text-right">
+                        <Link
+                          href={verifyPath}
+                          target="_blank"
+                          className="flex items-center gap-2.5 p-2 rounded-xl bg-slate-900 border border-cyan-500/40 hover:border-cyan-400 transition-colors"
+                        >
+                          <div className="w-10 h-10 bg-black p-1 rounded border border-cyan-500/50 flex flex-col justify-between shrink-0">
+                            <div className="flex justify-between">
+                              <div className="w-2.5 h-2.5 bg-cyan-400 rounded-xs" />
+                              <div className="w-2.5 h-2.5 bg-cyan-400 rounded-xs" />
+                            </div>
+                            <div className="w-1.5 h-1.5 bg-blue-500 mx-auto rounded-full" />
+                            <div className="flex justify-between">
+                              <div className="w-2.5 h-2.5 bg-cyan-400 rounded-xs" />
+                              <div className="w-2.5 h-2.5 bg-emerald-400 rounded-xs" />
+                            </div>
+                          </div>
+                          <div className="text-left text-[9px] font-mono leading-tight">
+                            <span className="font-bold text-cyan-300 block">Ledger Verification</span>
+                            <span className="text-slate-300 block">{doc.document_number}</span>
+                            <span className="text-emerald-400 font-bold block">✓ VERIFIED BLOCK</span>
+                          </div>
+                        </Link>
+                      </div>
+                    </div>
+
+                    {/* SHA-256 Strip */}
+                    <div className="pt-2 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between text-[9px] font-mono text-slate-400 gap-1.5">
+                      <span className="truncate max-w-sm">SHA-256: {sha256Fingerprint}</span>
+                      <span className="text-cyan-400 font-bold">VRF: {doc.verification_code}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : theme === "EXECUTIVE_SOVEREIGN" ? (
+                // 2. EXECUTIVE SOVEREIGN THEME
+                <div className="p-8 sm:p-12 relative overflow-hidden bg-white shadow-2xl">
+                  {/* Sovereign Header Banner */}
+                  <div className="bg-gradient-to-r from-slate-950 via-[#0c1e3d] to-slate-950 text-white -mx-8 -mt-8 sm:-mx-12 sm:-mt-12 p-6 sm:p-8 border-b-2 border-amber-400 text-center space-y-2">
+                    <div className="flex items-center justify-center gap-2">
                       {orgLogo && (
                         <img
                           src={orgLogo}
                           alt={orgName}
-                          className="w-10 h-10 rounded-lg object-contain border border-slate-200 bg-white p-0.5 shadow-2xs inline-block"
+                          className="w-10 h-10 rounded-lg object-contain border border-amber-400/50 bg-white p-0.5 inline-block"
                         />
                       )}
-                      <div
-                        className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest text-white shadow-2xs"
-                        style={{ backgroundColor: brandColor }}
-                      >
-                        <Lock className="w-3 h-3 text-white" />
-                        <span>{orgName}</span>
-                      </div>
-                    </div>
-
-                    <h1 className="text-2xl sm:text-4xl font-serif font-black text-slate-900 tracking-tight pt-1">
-                      Certificate of Completion
-                    </h1>
-                    <p className="text-xs uppercase tracking-widest text-amber-700 font-bold">
-                      Honors &amp; Technical Achievement
-                    </p>
-                  </div>
-
-                  {/* Recipient Announcement */}
-                  <div className="text-center space-y-2 py-3">
-                    <p className="text-xs text-slate-500 font-medium italic">
-                      This is officially presented to certify that
-                    </p>
-                    <h2 className="text-2xl sm:text-3xl font-serif font-black text-blue-700 tracking-tight">
-                      {doc.recipient_name}
-                    </h2>
-                    <div className="w-32 h-0.5 bg-gradient-to-r from-transparent via-amber-500 to-transparent mx-auto" />
-                    <p className="text-xs font-semibold text-slate-600 pt-1">
-                      {doc.recipient_role}
-                    </p>
-                  </div>
-
-                  {/* Program Description */}
-                  <div className="text-center max-w-xl mx-auto space-y-2">
-                    <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                      has successfully satisfied all rigorous curriculum milestones, productive work sessions, and technical project deliverables for the program:
-                    </p>
-                    <p className="text-sm sm:text-base font-bold text-slate-900 font-serif">
-                      &ldquo;{doc.template_data?.program_or_track || "Software Engineering Practicum"}&rdquo;
-                    </p>
-                    {doc.template_data?.grade_or_evaluation && (
-                      <span className="inline-block text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
-                        {doc.template_data.grade_or_evaluation}
+                      <span className="font-serif text-sm tracking-widest uppercase text-amber-200 font-bold">
+                        {orgName}
                       </span>
-                    )}
+                    </div>
+                    <h1 className="text-2xl sm:text-4xl font-serif font-black tracking-tight text-white">
+                      Executive Certificate of Achievement
+                    </h1>
+                    <p className="text-xs uppercase tracking-widest text-amber-300 font-medium">
+                      Sovereign Credential Accreditation
+                    </p>
                   </div>
 
-                  {/* Tri-Column Footer: Signatory, Gold Seal & Verification QR */}
-                  <div className="pt-8 mt-6 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-6 items-center">
-                    {/* Authorized Signatory */}
-                    <div className="text-center sm:text-left space-y-1">
-                      {signatorySig ? (
-                        <div className="h-9 flex items-center">
-                          <img src={signatorySig} alt="Signatory" className="h-8 max-w-[130px] object-contain" />
-                        </div>
-                      ) : (
-                        <div className="h-7 flex items-center">
-                          <svg className="w-28 h-6 text-blue-900" viewBox="0 0 140 40">
-                            <path d="M10 25 C 25 10, 35 30, 45 15 C 55 5, 65 28, 80 18 C 95 10, 110 30, 130 15" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" />
-                          </svg>
-                        </div>
+                  {/* Body Frame */}
+                  <div className="border border-amber-400/40 p-6 sm:p-8 rounded-xl relative space-y-6 mt-6 bg-slate-50/30">
+                    <div className="text-center space-y-2 py-2">
+                      <p className="text-xs text-slate-500 font-serif italic">This honor is formally bestowed upon</p>
+                      <h2 className="text-2xl sm:text-3xl font-serif font-black text-slate-900 tracking-tight">
+                        {doc.recipient_name}
+                      </h2>
+                      <div className="w-32 h-0.5 bg-gradient-to-r from-transparent via-amber-600 to-transparent mx-auto" />
+                      <p className="text-xs font-semibold text-slate-600 pt-1">{doc.recipient_role}</p>
+                    </div>
+
+                    <div className="text-center max-w-xl mx-auto space-y-2 text-xs sm:text-sm text-slate-700 leading-relaxed">
+                      <p>in recognition of outstanding professional standards and exceptional mastery during:</p>
+                      <p className="text-sm sm:text-base font-serif font-bold text-slate-900">
+                        &ldquo;{doc.template_data?.program_or_track || "Software Engineering Practicum"}&rdquo;
+                      </p>
+                      {doc.template_data?.grade_or_evaluation && (
+                        <span className="inline-block text-xs font-bold text-amber-900 bg-amber-50 border border-amber-300 px-3 py-1 rounded-full">
+                          {doc.template_data.grade_or_evaluation}
+                        </span>
                       )}
-                      <div className="w-32 h-0.5 bg-slate-300 my-0.5" />
-                      <div className="font-serif font-bold text-slate-900 text-sm">
-                        {doc.template_data?.signatory_name || "Elena Rostova"}
+                    </div>
+
+                    {/* Tri-Column Footer */}
+                    <div className="pt-6 mt-6 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-6 items-center">
+                      <div className="text-center sm:text-left space-y-1">
+                        {signatorySig ? (
+                          <div className="h-9 flex items-center">
+                            <img src={signatorySig} alt="Signatory" className="h-8 max-w-[130px] object-contain" />
+                          </div>
+                        ) : (
+                          <div className="h-7 flex items-center">
+                            <svg className="w-28 h-6 text-slate-900" viewBox="0 0 140 40">
+                              <path d="M10 25 C 25 10, 35 30, 45 15 C 55 5, 65 28, 80 18 C 95 10, 110 30, 130 15" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+                            </svg>
+                          </div>
+                        )}
+                        <div className="w-32 h-0.5 bg-slate-300 my-0.5" />
+                        <div className="font-serif font-bold text-slate-900 text-sm">{doc.template_data?.signatory_name || "Elena Rostova"}</div>
+                        <p className="text-[11px] text-slate-500 font-medium">{doc.template_data?.signatory_title || "Head of Operations & Engineering"}</p>
+                        <p className="text-[10px] text-slate-400 font-mono">Issued: {doc.issued_date}</p>
                       </div>
-                      <p className="text-[11px] text-slate-500 font-medium">
-                        {doc.template_data?.signatory_title || "Head of Engineering Operations"}
-                      </p>
-                      <p className="text-[10px] text-slate-400 font-mono">
-                        Issue Date: {doc.issued_date}
-                      </p>
-                    </div>
 
-                    {/* Official Gold Foil Seal */}
-                    <div className="flex justify-center">
-                      <OfficialGoldSeal />
-                    </div>
+                      <div className="flex justify-center">
+                        <OfficialExecutiveSovereignSeal />
+                      </div>
 
-                    {/* QR Code & Direct Verification Link */}
-                    <div className="flex flex-col items-center sm:items-end text-right">
-                      <Link
-                        href={verifyPath}
-                        target="_blank"
-                        className="flex items-center gap-2.5 p-2 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors"
-                        title="Scan or click to verify authentically on public ledger"
-                      >
-                        {/* Interactive SVG QR Glyph */}
-                        <div className="w-12 h-12 bg-white p-1 rounded-lg border border-slate-300 flex flex-col justify-between shrink-0">
-                          <div className="flex justify-between">
-                            <div className="w-3 h-3 bg-slate-900 rounded-xs" />
-                            <div className="w-3 h-3 bg-slate-900 rounded-xs" />
+                      <div className="flex flex-col items-center sm:items-end text-right">
+                        <Link
+                          href={verifyPath}
+                          target="_blank"
+                          className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 transition-colors shadow-2xs"
+                        >
+                          <div className="w-11 h-11 bg-white p-1 rounded-lg border border-slate-300 flex flex-col justify-between shrink-0">
+                            <div className="flex justify-between">
+                              <div className="w-2.5 h-2.5 bg-slate-900 rounded-xs" />
+                              <div className="w-2.5 h-2.5 bg-slate-900 rounded-xs" />
+                            </div>
+                            <div className="w-2 h-2 bg-amber-600 mx-auto rounded-full" />
+                            <div className="flex justify-between">
+                              <div className="w-2.5 h-2.5 bg-slate-900 rounded-xs" />
+                              <div className="w-2 h-2 bg-emerald-600 rounded-xs" />
+                            </div>
                           </div>
-                          <div className="w-2 h-2 bg-blue-600 mx-auto rounded-full" />
-                          <div className="flex justify-between">
-                            <div className="w-3 h-3 bg-slate-900 rounded-xs" />
-                            <div className="w-2 h-2 bg-emerald-600 rounded-xs" />
+                          <div className="text-left text-[9px] leading-tight">
+                            <span className="font-bold text-slate-900 block">Sovereign Ledger</span>
+                            <span className="text-blue-600 font-mono block mt-0.5">{doc.document_number}</span>
+                            <span className="text-emerald-600 font-bold block">✓ Accredited</span>
                           </div>
-                        </div>
-                        <div className="text-left text-[9px] leading-tight">
-                          <span className="font-bold text-slate-900 block">Scan to Verify</span>
-                          <span className="text-blue-600 font-mono block mt-0.5">{doc.document_number}</span>
-                          <span className="text-emerald-600 font-bold block">✓ Verified Credential</span>
-                        </div>
-                      </Link>
+                        </Link>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Cryptographic SHA-256 Fingerprint Security Strip */}
-                  <div className="pt-3 mt-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between text-[9px] font-mono text-slate-500 gap-1.5">
-                    <span className="flex items-center gap-1 font-bold text-slate-700">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-                      SHA-256: <span className="font-normal text-slate-600">{sha256Fingerprint}</span>
-                    </span>
-                    <span className="text-blue-600 font-bold">
-                      VERIFICATION CODE: {doc.verification_code}
-                    </span>
+                    <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between text-[9px] font-mono text-slate-500 gap-1.5">
+                      <span className="flex items-center gap-1 font-bold text-slate-700">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                        SHA-256: <span className="font-normal text-slate-600">{sha256Fingerprint}</span>
+                      </span>
+                      <span className="text-amber-800 font-bold">SOVEREIGN CODE: {doc.verification_code}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                // 3. CLASSIC IVY THEME (Default)
+                <div className="p-8 sm:p-12 relative overflow-hidden bg-gradient-to-b from-[#fdfbf7] via-white to-[#fbf7ee]">
+                  {/* Ornate Double Border */}
+                  <div className="border-4 border-double border-amber-600/40 p-6 sm:p-8 rounded-xl relative space-y-6">
+                    {/* Watermark Crest Background */}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
+                      <Award className="w-96 h-96 text-blue-900" />
+                    </div>
+
+                    {/* Header: Organization Crest & Title */}
+                    <div className="text-center space-y-2 relative">
+                      <div className="flex items-center justify-center gap-2 mb-1">
+                        {orgLogo && (
+                          <img
+                            src={orgLogo}
+                            alt={orgName}
+                            className="w-10 h-10 rounded-lg object-contain border border-slate-200 bg-white p-0.5 shadow-2xs inline-block"
+                          />
+                        )}
+                        <div
+                          className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest text-white shadow-2xs"
+                          style={{ backgroundColor: brandColor }}
+                        >
+                          <Lock className="w-3 h-3 text-white" />
+                          <span>{orgName}</span>
+                        </div>
+                      </div>
+
+                      <h1 className="text-2xl sm:text-4xl font-serif font-black text-slate-900 tracking-tight pt-1">
+                        Certificate of Completion
+                      </h1>
+                      <p className="text-xs uppercase tracking-widest text-amber-700 font-bold">
+                        Honors &amp; Technical Achievement
+                      </p>
+                    </div>
+
+                    {/* Recipient Announcement */}
+                    <div className="text-center space-y-2 py-3">
+                      <p className="text-xs text-slate-500 font-medium italic">
+                        This is officially presented to certify that
+                      </p>
+                      <h2 className="text-2xl sm:text-3xl font-serif font-black text-blue-700 tracking-tight">
+                        {doc.recipient_name}
+                      </h2>
+                      <div className="w-32 h-0.5 bg-gradient-to-r from-transparent via-amber-500 to-transparent mx-auto" />
+                      <p className="text-xs font-semibold text-slate-600 pt-1">
+                        {doc.recipient_role}
+                      </p>
+                    </div>
+
+                    {/* Program Description */}
+                    <div className="text-center max-w-xl mx-auto space-y-2">
+                      <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                        has successfully satisfied all rigorous curriculum milestones, productive work sessions, and technical project deliverables for the program:
+                      </p>
+                      <p className="text-sm sm:text-base font-bold text-slate-900 font-serif">
+                        &ldquo;{doc.template_data?.program_or_track || "Software Engineering Practicum"}&rdquo;
+                      </p>
+                      {doc.template_data?.grade_or_evaluation && (
+                        <span className="inline-block text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
+                          {doc.template_data.grade_or_evaluation}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Tri-Column Footer */}
+                    <div className="pt-8 mt-6 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-6 items-center">
+                      <div className="text-center sm:text-left space-y-1">
+                        {signatorySig ? (
+                          <div className="h-9 flex items-center">
+                            <img src={signatorySig} alt="Signatory" className="h-8 max-w-[130px] object-contain" />
+                          </div>
+                        ) : (
+                          <div className="h-7 flex items-center">
+                            <svg className="w-28 h-6 text-blue-900" viewBox="0 0 140 40">
+                              <path d="M10 25 C 25 10, 35 30, 45 15 C 55 5, 65 28, 80 18 C 95 10, 110 30, 130 15" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+                            </svg>
+                          </div>
+                        )}
+                        <div className="w-32 h-0.5 bg-slate-300 my-0.5" />
+                        <div className="font-serif font-bold text-slate-900 text-sm">
+                          {doc.template_data?.signatory_name || "Elena Rostova"}
+                        </div>
+                        <p className="text-[11px] text-slate-500 font-medium">
+                          {doc.template_data?.signatory_title || "Head of Engineering Operations"}
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-mono">
+                          Issue Date: {doc.issued_date}
+                        </p>
+                      </div>
+
+                      <div className="flex justify-center">
+                        <OfficialGoldSeal />
+                      </div>
+
+                      <div className="flex flex-col items-center sm:items-end text-right">
+                        <Link
+                          href={verifyPath}
+                          target="_blank"
+                          className="flex items-center gap-2.5 p-2 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors"
+                        >
+                          <div className="w-12 h-12 bg-white p-1 rounded-lg border border-slate-300 flex flex-col justify-between shrink-0">
+                            <div className="flex justify-between">
+                              <div className="w-3 h-3 bg-slate-900 rounded-xs" />
+                              <div className="w-3 h-3 bg-slate-900 rounded-xs" />
+                            </div>
+                            <div className="w-2 h-2 bg-blue-600 mx-auto rounded-full" />
+                            <div className="flex justify-between">
+                              <div className="w-3 h-3 bg-slate-900 rounded-xs" />
+                              <div className="w-2 h-2 bg-emerald-600 rounded-xs" />
+                            </div>
+                          </div>
+                          <div className="text-left text-[9px] leading-tight">
+                            <span className="font-bold text-slate-900 block">Scan to Verify</span>
+                            <span className="text-blue-600 font-mono block mt-0.5">{doc.document_number}</span>
+                            <span className="text-emerald-600 font-bold block">✓ Verified Credential</span>
+                          </div>
+                        </Link>
+                      </div>
+                    </div>
+
+                    <div className="pt-3 mt-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between text-[9px] font-mono text-slate-500 gap-1.5">
+                      <span className="flex items-center gap-1 font-bold text-slate-700">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                        SHA-256: <span className="font-normal text-slate-600">{sha256Fingerprint}</span>
+                      </span>
+                      <span className="text-blue-600 font-bold">
+                        VERIFICATION CODE: {doc.verification_code}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )
             ) : (
               // ================= OFFICIAL OFFER / INTERNSHIP LETTER TEMPLATE =================
               <div className="p-8 sm:p-12 space-y-6 relative bg-white">
@@ -506,7 +1060,7 @@ export function DocumentStudioModal({
                       </p>
                     </div>
                   </div>
-                  <OfficialGoldSeal />
+                  <ThemeSeal theme={theme} />
                 </div>
 
                 {/* Candidate Address Block & Date */}

@@ -698,5 +698,130 @@ describe("Phase 21: End-to-End Multi-Tenant Workflows & Security Validation", ()
       expect(rejected?.rejection_reason).toBe("Missing mentor evaluation metrics");
     });
   });
+
+  // ================= JOURNEY 23 =================
+  describe("Journey 23: Batch Credential Issuance Engine", () => {
+    it("generates credentials simultaneously across multiple members with unique IDs and audit trails", () => {
+      const members = multiTenantStore.getMemberships(APEX_ORG);
+      const targetMemberIds = members.slice(0, 3).map((m) => m.id);
+
+      const batchDocs = multiTenantStore.issueBatchDocuments(
+        APEX_ORG,
+        targetMemberIds,
+        "COMPLETION_CERTIFICATE",
+        {
+          autoApprove: false,
+          programOrTrack: "Autonomous Systems & AI Engineering Cohort",
+          gradeOrEvaluation: "Exemplary capstone project and peer code review.",
+        }
+      );
+
+      expect(batchDocs.length).toBe(targetMemberIds.length);
+
+      // Verify each generated document has unique document_number and verification_code
+      const docNumbers = new Set(batchDocs.map((d) => d.document_number));
+      const vrfCodes = new Set(batchDocs.map((d) => d.verification_code));
+      expect(docNumbers.size).toBe(targetMemberIds.length);
+      expect(vrfCodes.size).toBe(targetMemberIds.length);
+
+      // Verify each doc adheres to security gate requirements
+      for (const doc of batchDocs) {
+        expect(doc.status).toBe("PENDING_APPROVAL");
+        expect(doc.approval_status).toBe("PENDING");
+        expect(doc.template_data.program_or_track).toBe("Autonomous Systems & AI Engineering Cohort");
+        expect(doc.template_data.grade_or_evaluation).toContain("Exemplary capstone project");
+      }
+    });
+
+    it("issues immediately active credentials when autoApprove is true", () => {
+      const members = multiTenantStore.getMemberships(WESTBRIDGE_ORG);
+      const targetMemberIds = [members[0].id];
+
+      const batchDocs = multiTenantStore.issueBatchDocuments(
+        WESTBRIDGE_ORG,
+        targetMemberIds,
+        "INTERNSHIP_LETTER",
+        {
+          autoApprove: true,
+          programOrTrack: "Academic Cloud Practicum",
+        }
+      );
+
+      expect(batchDocs.length).toBe(1);
+      expect(batchDocs[0].status).toBe("ISSUED");
+      expect(batchDocs[0].approval_status).toBe("APPROVED");
+    });
+  });
+
+  // ================= JOURNEY 24 =================
+  describe("Journey 24: Batch Document Approval Pipeline", () => {
+    it("approves and releases an entire batch of pending credentials atomically", () => {
+      // 1. Issue a batch of 2 pending documents
+      const members = multiTenantStore.getMemberships(APEX_ORG);
+      const targetIds = members.slice(0, 2).map((m) => m.id);
+      const batchDocs = multiTenantStore.issueBatchDocuments(APEX_ORG, targetIds, "OFFER_LETTER", {
+        autoApprove: false,
+      });
+
+      const pendingDocIds = batchDocs.map((d) => d.id);
+      expect(pendingDocIds.length).toBe(2);
+
+      // 2. Batch approve
+      const approvedDocs = multiTenantStore.approveBatchDocuments(
+        APEX_ORG,
+        pendingDocIds,
+        "Dr. Marcus Vance (Director of HR)"
+      );
+
+      expect(approvedDocs.length).toBe(2);
+
+      // 3. Verify status update in store
+      for (const id of pendingDocIds) {
+        const doc = multiTenantStore.getIssuedDocuments(APEX_ORG).find((d) => d.id === id);
+        expect(doc?.status).toBe("ISSUED");
+        expect(doc?.approval_status).toBe("APPROVED");
+        expect(doc?.approved_by).toBe("Dr. Marcus Vance (Director of HR)");
+        expect(doc?.approved_at).toBeDefined();
+      }
+    });
+  });
+
+  // ================= JOURNEY 25 =================
+  describe("Journey 25: Multi-Theme Template Switcher & Performance Transcript Dossier", () => {
+    it("persists and verifies template theme switching across CLASSIC_IVY, MODERN_TECH, and EXECUTIVE_SOVEREIGN", () => {
+      // Update to MODERN_TECH
+      const modernOrg = multiTenantStore.updateOrganizationBranding(APEX_ORG, {
+        templateTheme: "MODERN_TECH",
+      });
+      expect(modernOrg?.branding?.templateTheme).toBe("MODERN_TECH");
+
+      // Update to EXECUTIVE_SOVEREIGN
+      const execOrg = multiTenantStore.updateOrganizationBranding(APEX_ORG, {
+        templateTheme: "EXECUTIVE_SOVEREIGN",
+      });
+      expect(execOrg?.branding?.templateTheme).toBe("EXECUTIVE_SOVEREIGN");
+
+      // Update to CLASSIC_IVY
+      const classicOrg = multiTenantStore.updateOrganizationBranding(APEX_ORG, {
+        templateTheme: "CLASSIC_IVY",
+      });
+      expect(classicOrg?.branding?.templateTheme).toBe("CLASSIC_IVY");
+    });
+
+    it("verifies the academic performance transcript and skill dossier structure", () => {
+      const documents = multiTenantStore.getIssuedDocuments(APEX_ORG);
+      const transcriptDoc = documents.find((d) => d.document_type === "PERFORMANCE_TRANSCRIPT");
+
+      expect(transcriptDoc).toBeDefined();
+      expect(transcriptDoc?.recipient_name).toBe("Fenil Patel");
+      expect(transcriptDoc?.template_data.verified_work_hours).toBe(160);
+      expect(transcriptDoc?.template_data.attendance_percentage).toBe(99.2);
+      expect(transcriptDoc?.template_data.mentor_scores).toBeDefined();
+      expect(transcriptDoc?.template_data.mentor_scores?.overall).toBe(98.4);
+      expect(transcriptDoc?.template_data.verified_skills?.length).toBeGreaterThan(0);
+      expect(transcriptDoc?.template_data.verified_skills).toContain("Next.js 15 & React 19");
+    });
+  });
 });
+
 

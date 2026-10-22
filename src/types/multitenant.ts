@@ -85,7 +85,8 @@ export type DocumentType =
   | "EXPERIENCE_LETTER"
   | "COMPLETION_CERTIFICATE"
   | "TRAINING_CERTIFICATE"
-  | "PARTICIPATION_CERTIFICATE";
+  | "PARTICIPATION_CERTIFICATE"
+  | "PERFORMANCE_TRANSCRIPT";
 
 export type DocumentStatus =
   | "NOT_ELIGIBLE"
@@ -94,6 +95,8 @@ export type DocumentStatus =
   | "APPROVED"
   | "ISSUED"
   | "REVOKED";
+
+export type TemplateTheme = "CLASSIC_IVY" | "MODERN_TECH" | "EXECUTIVE_SOVEREIGN";
 
 export interface OrganizationBranding {
   logoUrl?: string;
@@ -108,6 +111,7 @@ export interface OrganizationBranding {
   signatorySignatureUrl?: string;
   officialStampUrl?: string;
   headerLayout?: "STANDARD" | "CENTERED" | "MODERN_MINIMAL" | "EXECUTIVE";
+  templateTheme?: TemplateTheme;
   customOfferTerms?: string;
   customCertificateDisclaimer?: string;
 }
@@ -423,6 +427,19 @@ export interface IssuedDocument {
     validity?: string;
     custom_terms?: string;
     stipend_or_compensation?: string;
+    template_theme?: TemplateTheme;
+    // Performance Transcript & Skills Dossier Attributes
+    verified_work_hours?: number;
+    attendance_percentage?: number;
+    mentor_scores?: {
+      technical: number;
+      communication: number;
+      initiative: number;
+      overall: number;
+    };
+    completed_tasks_count?: number;
+    assessments_passed_count?: number;
+    verified_skills?: string[];
   };
   created_at: string;
 }

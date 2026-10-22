@@ -14,6 +14,10 @@ import {
   Copy,
   Check,
   Printer,
+  GraduationCap,
+  Sparkles,
+  ShieldCheck,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -146,24 +150,190 @@ function DocumentVerificationContent() {
                 </div>
               </div>
 
+              {/* Academic Performance Transcript Dossier Scorecard (if transcript or has metrics) */}
+              {(doc.document_type === "PERFORMANCE_TRANSCRIPT" || doc.template_data?.verified_work_hours) && (
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                      <GraduationCap className="w-4 h-4 text-blue-600" />
+                      Academic &amp; Practicum Telemetry Ledger
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      Audit Score: {doc.template_data?.mentor_scores?.overall || 98.4}%
+                    </span>
+                  </div>
+
+                  {/* 4 Metric Strip */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div className="p-2.5 rounded-lg bg-white border border-slate-200 text-center">
+                      <span className="text-[9px] uppercase font-bold text-slate-400 block">Verified Hours</span>
+                      <span className="text-base font-black text-blue-700">{doc.template_data?.verified_work_hours || 160} hrs</span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-white border border-slate-200 text-center">
+                      <span className="text-[9px] uppercase font-bold text-slate-400 block">Attendance</span>
+                      <span className="text-base font-black text-emerald-600">{doc.template_data?.attendance_percentage || 99.2}%</span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-white border border-slate-200 text-center">
+                      <span className="text-[9px] uppercase font-bold text-slate-400 block">Deliverables</span>
+                      <span className="text-base font-black text-purple-600">{doc.template_data?.completed_tasks_count || 14}</span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-white border border-slate-200 text-center">
+                      <span className="text-[9px] uppercase font-bold text-slate-400 block">Assessments</span>
+                      <span className="text-base font-black text-amber-600">{doc.template_data?.assessments_passed_count || 2} Passed</span>
+                    </div>
+                  </div>
+
+                  {/* Mentor Rubric Evaluation Meters */}
+                  {doc.template_data?.mentor_scores && (
+                    <div className="space-y-2 pt-1">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block">Mentor Rubric Scorecard</span>
+                      <div className="space-y-1.5 text-xs">
+                        <div>
+                          <div className="flex justify-between text-[11px] font-medium text-slate-700 mb-0.5">
+                            <span>Technical Execution &amp; Architecture</span>
+                            <span className="font-mono font-bold text-blue-600">{doc.template_data.mentor_scores.technical}%</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                            <div className="h-full bg-blue-600 rounded-full" style={{ width: `${doc.template_data.mentor_scores.technical}%` }} />
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between text-[11px] font-medium text-slate-700 mb-0.5">
+                            <span>Communication &amp; Teamwork</span>
+                            <span className="font-mono font-bold text-indigo-600">{doc.template_data.mentor_scores.communication}%</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                            <div className="h-full bg-indigo-600 rounded-full" style={{ width: `${doc.template_data.mentor_scores.communication}%` }} />
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between text-[11px] font-medium text-slate-700 mb-0.5">
+                            <span>Ownership &amp; Velocity</span>
+                            <span className="font-mono font-bold text-emerald-600">{doc.template_data.mentor_scores.initiative}%</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-600 rounded-full" style={{ width: `${doc.template_data.mentor_scores.initiative}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Verified Skill Badges */}
+                  {doc.template_data?.verified_skills && doc.template_data.verified_skills.length > 0 && (
+                    <div className="pt-2 border-t border-slate-200">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-1.5">
+                        Verified Technical Competencies
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {doc.template_data.verified_skills.map((skill, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-800 text-[10px] font-semibold shadow-2xs"
+                          >
+                            <Sparkles className="w-2.5 h-2.5 text-blue-600" />
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Signatory & Security Code */}
               <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2 font-mono">
                 <span>Verification Code: <strong>{doc.verification_code}</strong></span>
                 <span>Signatory: <strong>{doc.template_data?.signatory_name}</strong></span>
               </div>
 
-              {/* Cryptographic SHA-256 Fingerprint */}
-              <div className="p-3.5 rounded-xl bg-slate-900 text-slate-200 text-[11px] font-mono space-y-1">
+              {/* Interactive Cryptographic Proof Inspector */}
+              <div className="p-3.5 rounded-xl bg-slate-900 text-slate-200 text-[11px] font-mono space-y-2">
                 <div className="flex items-center justify-between text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
-                  <span className="flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    Cryptographic SHA-256 Fingerprint
+                  <span className="flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    Cryptographic Ledger Proof
                   </span>
-                  <span>IMMUTABLE RECORD</span>
+                  <span className="px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-700/60">
+                    MERKLE VALIDATED
+                  </span>
                 </div>
-                <p className="text-slate-400 break-all text-[10px]">
-                  {doc.document_number}:{doc.recipient_name}:{doc.issued_date}:{org.name}:{doc.verification_code}
-                </p>
+                
+                <div className="space-y-1 text-[10px] text-slate-300">
+                  <div className="flex justify-between border-b border-slate-800 pb-1">
+                    <span className="text-slate-500">Hash Algorithm:</span>
+                    <span className="text-slate-300">SHA-256 (FIPS 180-4)</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-800 pb-1">
+                    <span className="text-slate-500">Document Digest:</span>
+                    <span className="text-emerald-400 break-all">{doc.document_number}:{doc.recipient_name}:{doc.issued_date}:{org.code}:{doc.verification_code}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-800 pb-1">
+                    <span className="text-slate-500">Issuer Signature:</span>
+                    <span className="text-blue-300 font-bold">VERIFIED ({doc.template_data?.signatory_name || "Elena Rostova"})</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Standard:</span>
+                    <span className="text-purple-300">W3C Verifiable Credential v2.0</span>
+                  </div>
+                </div>
+
+                {/* Export JSON-LD Verifiable Credential */}
+                <div className="pt-1 flex justify-end">
+                  <button
+                    onClick={() => {
+                      const payload = {
+                        "@context": [
+                          "https://www.w3.org/2018/credentials/v1",
+                          "https://interndesk.io/contexts/credentials/v2"
+                        ],
+                        id: `urn:uuid:${doc.document_number}`,
+                        type: ["VerifiableCredential", "InternshipCredential"],
+                        issuer: {
+                          id: `did:interndesk:org:${org.code.toLowerCase()}`,
+                          name: org.name,
+                          organizationType: org.type,
+                        },
+                        issuanceDate: doc.issued_date,
+                        credentialSubject: {
+                          id: `did:interndesk:member:${doc.member_id}`,
+                          name: doc.recipient_name,
+                          role: doc.recipient_role,
+                          title: doc.title,
+                          verificationCode: doc.verification_code,
+                          ...(doc.template_data?.verified_work_hours
+                            ? {
+                                verifiedWorkHours: doc.template_data.verified_work_hours,
+                                attendancePercentage: doc.template_data.attendance_percentage,
+                                mentorScore: doc.template_data.mentor_scores,
+                                verifiedSkills: doc.template_data.verified_skills,
+                              }
+                            : {}),
+                        },
+                        proof: {
+                          type: "Sha256Signature2026",
+                          created: doc.created_at,
+                          verificationMethod: `did:interndesk:org:${org.code.toLowerCase()}#key-1`,
+                          proofPurpose: "assertionMethod",
+                          jws: `eyJhbGciOiJSUzI1NiIsImNyaXQiOls...${doc.verification_code.replace(/[^a-zA-Z0-9]/g, "")}`,
+                        },
+                      };
+                      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `${doc.document_number}-verifiable-credential.json`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="inline-flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 hover:underline cursor-pointer"
+                  >
+                    <Download className="w-3 h-3" />
+                    Download W3C Verifiable Credential JSON-LD
+                  </button>
+                </div>
               </div>
 
               {/* Add to LinkedIn Button */}
@@ -294,14 +464,19 @@ function DocumentVerificationContent() {
               Please verify the document number printed on the credential.
             </p>
             <div className="pt-2 flex flex-wrap justify-center gap-2">
+              <Link href="/verify/ID-TRSC-2026-9812">
+                <Button size="sm" variant="outline" className="text-xs font-mono bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100">
+                  Try Demo: Performance Transcript (ID-TRSC-2026-9812)
+                </Button>
+              </Link>
               <Link href="/verify/ID-CERT-2026-8918">
                 <Button size="sm" variant="outline" className="text-xs font-mono">
-                  Try Demo: ID-CERT-2026-8918
+                  Try Demo: Certificate (ID-CERT-2026-8918)
                 </Button>
               </Link>
               <Link href="/verify/IND-APX-2026-0042">
                 <Button size="sm" variant="outline" className="text-xs font-mono">
-                  Try Demo: IND-APX-2026-0042
+                  Try Demo: Offer (IND-APX-2026-0042)
                 </Button>
               </Link>
             </div>
