@@ -161,16 +161,19 @@ export async function verifyEmailOtp(
     // Set application session cookie for SSR multi-tenant context
     try {
       const cookieStore = await cookies();
+      const rawName = cleanEmail.split("@")[0].replace(/[^a-zA-Z0-9]/g, " ");
+      const formattedName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
       cookieStore.set(
         "interndesk_user",
         JSON.stringify({
           id: user.id,
+          name: formattedName,
           email: cleanEmail,
           role: role,
         }),
         {
           path: "/",
-          httpOnly: true,
+          httpOnly: false,
           maxAge: 60 * 60 * 24 * 7,
           sameSite: "lax",
         }
@@ -184,6 +187,14 @@ export async function verifyEmailOtp(
         success: true,
         message: "Super Admin authenticated via Supabase. Directing to Super Admin Console...",
         redirectTo: "/super-admin",
+      };
+    }
+
+    if (role === "STUDENT") {
+      return {
+        success: true,
+        message: "Student authenticated via Supabase. Directing to Student Portal...",
+        redirectTo: "/student/dashboard",
       };
     }
 
@@ -245,16 +256,19 @@ export async function loginWithPassword(email: string, password: string): Promis
 
     try {
       const cookieStore = await cookies();
+      const rawName = profile?.full_name || cleanEmail.split("@")[0].replace(/[^a-zA-Z0-9]/g, " ");
+      const formattedName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
       cookieStore.set(
         "interndesk_user",
         JSON.stringify({
           id: user.id,
+          name: formattedName,
           email: cleanEmail,
           role: role,
         }),
         {
           path: "/",
-          httpOnly: true,
+          httpOnly: false,
           maxAge: 60 * 60 * 24 * 7,
           sameSite: "lax",
         }
@@ -268,6 +282,14 @@ export async function loginWithPassword(email: string, password: string): Promis
         success: true,
         message: "Super Admin authenticated successfully via Supabase. Directing to Super Admin Console...",
         redirectTo: "/super-admin",
+      };
+    }
+
+    if (role === "STUDENT") {
+      return {
+        success: true,
+        message: "Student authenticated successfully via Supabase. Directing to Student Portal...",
+        redirectTo: "/student/dashboard",
       };
     }
 
@@ -295,8 +317,50 @@ export async function signOutUser() {
   try {
     const cookieStore = await cookies();
     cookieStore.delete("interndesk_user");
+    cookieStore.delete("interndesk_active_org");
   } catch {
     // Ignored
   }
   return { success: true };
+}
+
+/**
+ * Register organization session cookie for newly registered company or institute
+ */
+export async function registerOrganizationSession(data: {
+  userId: string;
+  name: string;
+  email: string;
+  role: string;
+  orgId: string;
+}) {
+  try {
+    const cookieStore = await cookies();
+    cookieStore.set(
+      "interndesk_user",
+      JSON.stringify({
+        id: data.userId,
+        name: data.name,
+        email: data.email,
+        role: data.role,
+        organizationId: data.orgId,
+      }),
+      {
+        path: "/",
+        httpOnly: false,
+        maxAge: 60 * 60 * 24 * 7,
+        sameSite: "lax",
+      }
+    );
+    cookieStore.set("interndesk_active_org", data.orgId, {
+      path: "/",
+      httpOnly: false,
+      maxAge: 60 * 60 * 24 * 7,
+      sameSite: "lax",
+    });
+    return { success: true };
+  } catch (err) {
+    console.error("Failed to register organization session:", err);
+    return { success: false };
+  }
 }

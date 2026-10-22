@@ -118,9 +118,9 @@ function StudentEnrollContent() {
             You are officially enrolled in <span className="font-bold text-slate-800">{program.title}</span>. You can now track your attendance and start daily work sessions.
           </p>
           <div className="pt-2 flex justify-center gap-3">
-            <Link href="/workspace">
+            <Link href="/student/dashboard">
               <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 rounded-xl">
-                Open Workspace
+                Go to Student Dashboard
               </Button>
             </Link>
           </div>

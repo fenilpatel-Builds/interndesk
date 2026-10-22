@@ -52,6 +52,11 @@ export async function proxy(request: NextRequest) {
   const userRole = parsedSession?.role || "STUDENT";
   const path = request.nextUrl.pathname;
 
+  // Prevent students from accessing admin /workspace
+  if (path.startsWith("/workspace") && parsedSession?.role === "STUDENT") {
+    return NextResponse.redirect(new URL("/student/dashboard", request.url));
+  }
+
   // Protect /super-admin
   if (path.startsWith("/super-admin")) {
     if (!isAuthenticated && userRole !== "SUPER_ADMIN") {

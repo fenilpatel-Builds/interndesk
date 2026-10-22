@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Users,
   FolderTree,
@@ -77,17 +78,41 @@ export default function WorkspacePage() {
   const [activeOrg, setActiveOrg] = useState<Organization>(organizations[0]);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const router = useRouter();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
-  // Active User Persona
+  // Active User Persona / Session
   const [currentUser, setCurrentUser] = useState<{
     name: string;
     email: string;
     role: MemberRole;
-  }>({
-    name: "Elena Rostova",
-    email: "admin@apextech.com",
-    role: "ORG_ADMIN",
+  }>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const match = document.cookie.match(/(?:^|;\s*)interndesk_user=([^;]+)/);
+        if (match) {
+          const decoded = decodeURIComponent(match[1]);
+          const parsed = JSON.parse(decoded);
+          if (parsed.email) {
+            const role = (parsed.role as MemberRole) || "ORG_ADMIN";
+            const rawName = parsed.name || parsed.email.split("@")[0].replace(/[^a-zA-Z0-9]/g, " ");
+            const name = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+            return {
+              name,
+              email: parsed.email,
+              role,
+            };
+          }
+        }
+      } catch {
+        // Fallback
+      }
+    }
+    return {
+      name: "Workspace Administrator",
+      email: "admin@apextech.com",
+      role: "ORG_ADMIN",
+    };
   });
 
   // Core Data States
@@ -258,6 +283,22 @@ export default function WorkspacePage() {
     setNewDocRequireApproval(org.settings?.requireDocumentApproval ?? true);
     reloadTenantData(org.id);
   };
+
+  // Student role guard: prevent students from being trapped in admin workspace
+  useEffect(() => {
+    try {
+      const match = document.cookie.match(/(?:^|;\s*)interndesk_user=([^;]+)/);
+      if (match) {
+        const decoded = decodeURIComponent(match[1]);
+        const parsed = JSON.parse(decoded);
+        if (parsed.role === "STUDENT") {
+          router.push("/student/dashboard");
+        }
+      }
+    } catch {
+      // Non-blocking fallback
+    }
+  }, [router]);
 
   // Live Timer tick
   useEffect(() => {

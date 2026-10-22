@@ -63,9 +63,9 @@ function EnrollmentSuccessContent() {
             </div>
 
             <div className="pt-2 flex flex-col sm:flex-row gap-3">
-              <Link href="/workspace" className="flex-1">
+              <Link href="/student/dashboard" className="flex-1">
                 <Button size="lg" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl">
-                  Go to Workspace
+                  Go to Student Dashboard
                   <ArrowRight className="w-4 h-4 ml-1.5" />
                 </Button>
               </Link>
