@@ -25,6 +25,7 @@ import {
   Power,
   Send,
   AlertTriangle,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -53,6 +54,7 @@ import {
   LeaveRequest,
   LeaveType,
   MentorshipReview,
+  DocumentType,
 } from "@/types/multitenant";
 import { hasPermission, getRoleDisplayName } from "@/lib/multitenant/permissions";
 import { getWorkforceAnalytics } from "@/lib/multitenant/analytics";
@@ -146,6 +148,15 @@ export default function WorkspacePage() {
   const [newProgName, setNewProgName] = useState("");
   const [newProgTech, setNewProgTech] = useState("");
   const [newProgDuration] = useState("3 Months");
+
+  // Issue Credential Modal
+  const [isIssueDocOpen, setIsIssueDocOpen] = useState(false);
+  const [newDocType, setNewDocType] = useState<DocumentType>("COMPLETION_CERTIFICATE");
+  const [newDocRecipient, setNewDocRecipient] = useState("");
+  const [newDocRole, setNewDocRole] = useState("Software Engineering Intern");
+  const [newDocTitle, setNewDocTitle] = useState("Certificate of Internship Excellence");
+  const [newDocTrack, setNewDocTrack] = useState("Full Stack Cloud Platform Internship");
+  const [newDocGrade, setNewDocGrade] = useState("Grade: Outstanding (98.4% Efficiency)");
 
   // Live Timer State for Attendance
   const [timerSeconds, setTimerSeconds] = useState(14400); // 4 hours demo
@@ -346,6 +357,40 @@ export default function WorkspacePage() {
     setReviewFeedback("");
     setIsNewMentorReviewOpen(false);
     reloadTenantData();
+  };
+
+  // Document & Credential Issuance Handler
+  const handleIssueDocument = () => {
+    if (!newDocRecipient.trim() || !newDocTitle.trim()) return;
+
+    const docNumber = `IND-${activeOrg.code.replace(/[^A-Z0-9]/g, "").slice(0, 4)}-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const vrfCode = `VRF-${activeOrg.code.replace(/[^A-Z0-9]/g, "").slice(0, 3)}-${Math.floor(10000 + Math.random() * 90000)}-SEC`;
+
+    const created = multiTenantStore.issueDocument({
+      organization_id: activeOrg.id,
+      member_id: `mem-${Date.now()}`,
+      document_number: docNumber,
+      document_type: newDocType,
+      title: newDocTitle,
+      recipient_name: newDocRecipient,
+      recipient_role: newDocRole || (newDocType === "COMPLETION_CERTIFICATE" ? "Software Engineering Intern" : "Intern Candidate"),
+      issued_date: new Date().toISOString().split("T")[0],
+      status: "ISSUED",
+      verification_code: vrfCode,
+      template_data: {
+        organization_name: activeOrg.name,
+        organization_type: activeOrg.type,
+        signatory_name: currentUser.name,
+        signatory_title: currentUser.role === "ORG_ADMIN" ? "Head of Operations & Engineering" : "Lead Technical Mentor",
+        program_or_track: newDocTrack || "Software Engineering Practicum",
+        grade_or_evaluation: newDocType === "COMPLETION_CERTIFICATE" ? newDocGrade : undefined,
+        validity: "Active / Verified",
+      },
+    });
+
+    setDocuments(multiTenantStore.getIssuedDocuments(activeOrg.id));
+    setIsIssueDocOpen(false);
+    setSelectedDocPreview(created);
   };
 
   // Member Management Handlers
@@ -2028,15 +2073,30 @@ export default function WorkspacePage() {
                   </p>
                 </div>
 
-                {documents.length > 0 && (
+                <div className="flex items-center gap-2 self-start sm:self-auto">
                   <Button
-                    onClick={() => setSelectedDocPreview(documents[0])}
-                    className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer self-start sm:self-auto"
+                    id="workspace-issue-credential-btn"
+                    onClick={() => {
+                      setNewDocRecipient(members.find((m) => m.member_type === "INTERN")?.user_full_name || members[0]?.user_full_name || "");
+                      setIsIssueDocOpen(true);
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
                   >
-                    <Award className="w-3.5 h-3.5 mr-1.5" />
-                    Launch Credential Studio
+                    <Plus className="w-3.5 h-3.5 mr-1.5" />
+                    Issue Credential
                   </Button>
-                )}
+
+                  {documents.length > 0 && (
+                    <Button
+                      id="workspace-launch-studio-btn"
+                      onClick={() => setSelectedDocPreview(documents[0])}
+                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
+                    >
+                      <Award className="w-3.5 h-3.5 mr-1.5" />
+                      Launch Credential Studio
+                    </Button>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2079,6 +2139,173 @@ export default function WorkspacePage() {
                   </Card>
                 ))}
               </div>
+
+              {/* Issue New Credential Modal */}
+              {isIssueDocOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in">
+                  <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+                    <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                          <Award className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold">Issue Official Credential</h3>
+                          <p className="text-[11px] text-slate-400">{activeOrg.name} — Tamper-Proof Cryptographic Issuance</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setIsIssueDocOpen(false)}
+                        className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                      {/* Document Type */}
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700">Document Type</label>
+                        <select
+                          value={newDocType}
+                          onChange={(e) => {
+                            const val = e.target.value as DocumentType;
+                            setNewDocType(val);
+                            if (val === "COMPLETION_CERTIFICATE") {
+                              setNewDocTitle("Certificate of Internship Excellence");
+                            } else if (val === "OFFER_LETTER") {
+                              setNewDocTitle("Internship Offer Letter");
+                            } else if (val === "INTERNSHIP_LETTER") {
+                              setNewDocTitle("Internship Experience & Completion Letter");
+                            } else {
+                              setNewDocTitle("Letter of Recommendation");
+                            }
+                          }}
+                          className="w-full h-10 px-3 rounded-xl border border-slate-300 bg-white text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                        >
+                          <option value="COMPLETION_CERTIFICATE">Certificate of Completion / Excellence</option>
+                          <option value="OFFER_LETTER">Official Internship Offer Letter</option>
+                          <option value="INTERNSHIP_LETTER">Internship Experience / Verification Letter</option>
+                          <option value="RECOMMENDATION_LETTER">Letter of Recommendation (LOR)</option>
+                        </select>
+                      </div>
+
+                      {/* Recipient Selection */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-slate-700">Recipient Name</label>
+                          {members.length > 0 && (
+                            <select
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  const m = members.find((x) => x.id === e.target.value);
+                                  if (m) {
+                                    setNewDocRecipient(m.user_full_name || "");
+                                    if (m.job_title) setNewDocRole(m.job_title);
+                                  }
+                                }
+                              }}
+                              className="text-[11px] text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-2 py-0.5"
+                            >
+                              <option value="">Select Member...</option>
+                              {members.map((m) => (
+                                <option key={m.id} value={m.id}>{m.user_full_name || m.user_email || "Member"} ({m.member_type})</option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+                        <input
+                          type="text"
+                          value={newDocRecipient}
+                          onChange={(e) => setNewDocRecipient(e.target.value)}
+                          placeholder="e.g. Fenil Patel"
+                          className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
+
+                      {/* Role */}
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700">Candidate Role / Designation</label>
+                        <input
+                          type="text"
+                          value={newDocRole}
+                          onChange={(e) => setNewDocRole(e.target.value)}
+                          placeholder="e.g. Software Engineering Intern"
+                          className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
+
+                      {/* Document Title */}
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700">Document Title</label>
+                        <input
+                          type="text"
+                          value={newDocTitle}
+                          onChange={(e) => setNewDocTitle(e.target.value)}
+                          placeholder="e.g. Certificate of Internship Excellence"
+                          className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
+
+                      {/* Program Track */}
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700">Program / Track Name</label>
+                        <input
+                          type="text"
+                          value={newDocTrack}
+                          onChange={(e) => setNewDocTrack(e.target.value)}
+                          placeholder="e.g. Full Stack Cloud Platform Internship"
+                          className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
+
+                      {/* Grade (for certificates) */}
+                      {newDocType === "COMPLETION_CERTIFICATE" && (
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-700">Evaluation Honors / Grade</label>
+                          <input
+                            type="text"
+                            value={newDocGrade}
+                            onChange={(e) => setNewDocGrade(e.target.value)}
+                            placeholder="e.g. Grade: Outstanding (98.4% Efficiency)"
+                            className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                          />
+                        </div>
+                      )}
+
+                      {/* Security Notice */}
+                      <div className="p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200/60 text-[11px] text-emerald-900 space-y-1">
+                        <p className="font-bold flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          Cryptographically Signed
+                        </p>
+                        <p className="text-emerald-700">
+                          This credential will be assigned a permanent SHA-256 fingerprint, official organization seal, and registered on the public verification portal.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsIssueDocOpen(false)}
+                        className="rounded-xl text-xs font-bold border-slate-300 hover:bg-slate-100 cursor-pointer"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        id="workspace-submit-credential-btn"
+                        onClick={handleIssueDocument}
+                        disabled={!newDocRecipient.trim() || !newDocTitle.trim()}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer disabled:opacity-50"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                        Generate &amp; Issue Credential
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Rich Document Studio Modal */}
               {selectedDocPreview && (

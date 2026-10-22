@@ -13,6 +13,7 @@ import {
   X,
   FileText,
   Lock,
+  Code,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { IssuedDocument } from "@/types/multitenant";
@@ -123,6 +124,8 @@ export function DocumentStudioModal({
   organizationName = "Apex Technologies",
 }: DocumentStudioModalProps) {
   const [copied, setCopied] = useState(false);
+  const [showEmbedModal, setShowEmbedModal] = useState(false);
+  const [embedCopied, setEmbedCopied] = useState<"MD" | "HTML" | null>(null);
 
   if (!isOpen || !doc) return null;
 
@@ -214,6 +217,7 @@ export function DocumentStudioModal({
           <div className="flex items-center gap-2 flex-wrap">
             {/* Add to LinkedIn Button */}
             <a
+              id="studio-linkedin-btn"
               href={linkedInUrl}
               target="_blank"
               rel="noopener noreferrer"
@@ -228,6 +232,7 @@ export function DocumentStudioModal({
 
             {/* Print / Download PDF */}
             <Button
+              id="studio-print-btn"
               size="sm"
               onClick={handlePrint}
               className="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl h-8 px-3 cursor-pointer"
@@ -238,6 +243,7 @@ export function DocumentStudioModal({
 
             {/* Copy Verification Link */}
             <Button
+              id="studio-copy-url-btn"
               size="sm"
               variant="outline"
               onClick={handleCopyUrl}
@@ -247,9 +253,25 @@ export function DocumentStudioModal({
               {copied ? "Copied Link" : "Copy URL"}
             </Button>
 
+            {/* Embed Badge Button for Developers / Interns */}
+            {isCertificate && (
+              <Button
+                id="studio-embed-badge-btn"
+                size="sm"
+                variant="outline"
+                onClick={() => setShowEmbedModal(true)}
+                className="border-purple-600/50 text-purple-300 hover:text-white hover:bg-purple-950/40 text-xs font-bold rounded-xl h-8 px-3 cursor-pointer"
+                title="Embed verified credential badge in GitHub README or Portfolio"
+              >
+                <Code className="w-3.5 h-3.5 mr-1 text-purple-400" />
+                Embed Badge
+              </Button>
+            )}
+
             {/* Public Verification */}
             <Link href={verifyPath} target="_blank">
               <Button
+                id="studio-public-verify-btn"
                 size="sm"
                 variant="outline"
                 className="border-emerald-600/50 text-emerald-300 hover:bg-emerald-950/40 text-xs font-bold rounded-xl h-8 px-3 cursor-pointer"
@@ -260,6 +282,7 @@ export function DocumentStudioModal({
             </Link>
 
             <button
+              id="studio-close-btn"
               onClick={onClose}
               className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer ml-1"
             >
@@ -542,6 +565,100 @@ export function DocumentStudioModal({
             </Button>
           </div>
         </div>
+
+        {/* Developer / Portfolio Embed Badge Modal */}
+        {showEmbedModal && (
+          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+            <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+              <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center">
+                    <Code className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold">Embed Verified Credential Badge</h3>
+                    <p className="text-[11px] text-slate-400">Showcase on your GitHub README, portfolio, or resume</p>
+                  </div>
+                </div>
+                <button
+                  id="embed-modal-close-btn"
+                  onClick={() => setShowEmbedModal(false)}
+                  className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-5">
+                {/* Visual Badge Preview */}
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-center space-y-2">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Live Badge Preview</span>
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 text-white text-xs font-bold shadow-sm">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>InternDesk Verified</span>
+                    <span className="px-1.5 py-0.5 rounded bg-blue-600 text-[10px] font-mono">{doc.document_number}</span>
+                  </div>
+                </div>
+
+                {/* Markdown Snippet */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700">GitHub Profile README (Markdown)</span>
+                    <button
+                      id="embed-copy-markdown-btn"
+                      onClick={() => {
+                        const md = `[![InternDesk Verified Credential](https://img.shields.io/badge/InternDesk-Verified_Credential-2563eb?style=for-the-badge&logo=shield)](${fullVerifyUrl})`;
+                        if (typeof navigator !== "undefined" && navigator.clipboard) {
+                          navigator.clipboard.writeText(md);
+                          setEmbedCopied("MD");
+                          setTimeout(() => setEmbedCopied(null), 2500);
+                        }
+                      }}
+                      className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
+                    >
+                      {embedCopied === "MD" ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      {embedCopied === "MD" ? "Copied" : "Copy Markdown"}
+                    </button>
+                  </div>
+                  <pre className="p-3 rounded-xl bg-slate-900 text-slate-300 text-[11px] font-mono overflow-x-auto whitespace-pre-wrap">
+                    {`[![InternDesk Verified Credential](https://img.shields.io/badge/InternDesk-Verified_Credential-2563eb?style=for-the-badge&logo=shield)](${fullVerifyUrl})`}
+                  </pre>
+                </div>
+
+                {/* HTML Snippet */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700">Personal Website / Portfolio (HTML)</span>
+                    <button
+                      id="embed-copy-html-btn"
+                      onClick={() => {
+                        const html = `<a href="${fullVerifyUrl}" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/InternDesk-Verified_Credential-2563eb?style=for-the-badge&logo=shield" alt="InternDesk Verified Credential" /></a>`;
+                        if (typeof navigator !== "undefined" && navigator.clipboard) {
+                          navigator.clipboard.writeText(html);
+                          setEmbedCopied("HTML");
+                          setTimeout(() => setEmbedCopied(null), 2500);
+                        }
+                      }}
+                      className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
+                    >
+                      {embedCopied === "HTML" ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      {embedCopied === "HTML" ? "Copied" : "Copy HTML"}
+                    </button>
+                  </div>
+                  <pre className="p-3 rounded-xl bg-slate-900 text-slate-300 text-[11px] font-mono overflow-x-auto whitespace-pre-wrap">
+                    {`<a href="${fullVerifyUrl}" target="_blank"><img src="https://img.shields.io/badge/InternDesk-Verified_Credential-2563eb?style=for-the-badge&logo=shield" alt="Verified Credential" /></a>`}
+                  </pre>
+                </div>
+
+                <div className="pt-2 flex justify-end">
+                  <Button id="embed-done-btn" onClick={() => setShowEmbedModal(false)} className="rounded-xl text-xs font-bold">
+                    Done
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

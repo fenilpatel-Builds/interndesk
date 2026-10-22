@@ -127,6 +127,7 @@ export default function StudentDocumentsPage() {
           </div>
 
           <Button
+            id="launch-certificate-studio-btn"
             size="sm"
             onClick={() => setSelectedStudioDoc(certificateDoc)}
             className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs h-9 px-4 cursor-pointer shadow-xs self-start sm:self-auto"
@@ -297,6 +298,7 @@ export default function StudentDocumentsPage() {
               <div className="pt-4 space-y-2">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Button
+                    id="open-pdf-studio-btn"
                     onClick={() => setSelectedStudioDoc(certificateDoc)}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs py-5 cursor-pointer text-xs"
                   >
@@ -305,6 +307,7 @@ export default function StudentDocumentsPage() {
                   </Button>
                   <Link href="/verify/ID-CERT-2026-8918" target="_blank" className="w-full">
                     <Button
+                      id="verify-publicly-btn"
                       variant="outline"
                       className="w-full border-slate-300 text-slate-700 font-bold rounded-xl py-5 hover:bg-slate-50 cursor-pointer text-xs"
                     >

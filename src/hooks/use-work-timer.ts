@@ -377,7 +377,8 @@ export function useWorkTimer() {
   }, []);
 
   return {
-    status: state.status,
+    status: mounted ? state.status : "IDLE",
+    isMounted: mounted,
     elapsedSeconds: currentElapsedSeconds,
     breakSeconds: currentBreakSeconds,
     hoursStr,
@@ -387,7 +388,7 @@ export function useWorkTimer() {
     minutes,
     seconds,
     breakFormatted,
-    clockInTime: state.clockInIso || "09:02 AM",
+    clockInTime: (mounted && state.clockInIso) || "09:02 AM",
     progressPercent,
     remainingFormatted,
     breakType: state.breakType,
