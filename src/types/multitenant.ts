@@ -95,6 +95,23 @@ export type DocumentStatus =
   | "ISSUED"
   | "REVOKED";
 
+export interface OrganizationBranding {
+  logoUrl?: string;
+  brandColor?: string;
+  secondaryColor?: string;
+  address?: string;
+  website?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  signatoryName?: string;
+  signatoryTitle?: string;
+  signatorySignatureUrl?: string;
+  officialStampUrl?: string;
+  headerLayout?: "STANDARD" | "CENTERED" | "MODERN_MINIMAL" | "EXECUTIVE";
+  customOfferTerms?: string;
+  customCertificateDisclaimer?: string;
+}
+
 export interface OrganizationSettings {
   workingDays: string[];
   expectedDailyHours: number;
@@ -105,6 +122,7 @@ export interface OrganizationSettings {
   primaryColor?: string;
   requireReportReview: boolean;
   autoApproveAttendance: boolean;
+  requireDocumentApproval?: boolean;
 }
 
 export interface Organization {
@@ -125,6 +143,7 @@ export interface Organization {
   joining_policy: JoiningPolicy;
   allowed_email_domains: string[];
   settings: OrganizationSettings;
+  branding?: OrganizationBranding;
   created_at: string;
   updated_at: string;
 }
@@ -384,14 +403,26 @@ export interface IssuedDocument {
   issued_date: string;
   status: DocumentStatus;
   verification_code: string;
+  approval_status?: "PENDING" | "APPROVED" | "REJECTED";
+  approved_by?: string;
+  approved_at?: string;
+  rejection_reason?: string;
   template_data: {
     organization_name: string;
     organization_type: OrganizationType;
+    organization_logo?: string;
+    organization_address?: string;
+    organization_website?: string;
     signatory_name: string;
     signatory_title: string;
+    signatory_signature?: string;
+    official_stamp?: string;
+    brand_color?: string;
     program_or_track: string;
     grade_or_evaluation?: string;
     validity?: string;
+    custom_terms?: string;
+    stipend_or_compensation?: string;
   };
   created_at: string;
 }

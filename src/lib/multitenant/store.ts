@@ -51,6 +51,22 @@ const INITIAL_ORGANIZATIONS: Organization[] = [
       primaryColor: "#2563EB",
       requireReportReview: true,
       autoApproveAttendance: false,
+      requireDocumentApproval: true,
+    },
+    branding: {
+      logoUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&auto=format&fit=crop&q=80",
+      brandColor: "#2563EB",
+      secondaryColor: "#1E40AF",
+      address: "100 Innovation Way, Suite 400, Tech District, NY 10001",
+      website: "https://apextech.com",
+      contactEmail: "talent@apextech.com",
+      contactPhone: "+1 (555) 234-5678",
+      signatoryName: "Elena Rostova",
+      signatoryTitle: "Head of Operations & Engineering",
+      signatorySignatureUrl: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='40' viewBox='0 0 140 40'><path d='M10 25 C 25 10, 35 30, 45 15 C 55 5, 65 28, 80 18 C 95 10, 110 30, 130 15' stroke='%231e3a8a' stroke-width='2.5' fill='none' stroke-linecap='round'/></svg>",
+      headerLayout: "MODERN_MINIMAL",
+      customOfferTerms: "This offer is contingent upon adherence to organizational NDA policies, weekly sprint participation, and verified completion of all assigned engineering practicum deliverables.",
+      customCertificateDisclaimer: "InternDesk Cryptographically Verified Credential. Authenticity verifiable by scanning QR or visiting public ledger.",
     },
     created_at: "2026-01-10T09:00:00Z",
     updated_at: "2026-01-10T09:00:00Z",
@@ -760,6 +776,32 @@ const INITIAL_DOCUMENTS: IssuedDocument[] = [
     },
     created_at: "2026-10-01T09:00:00Z",
   },
+  {
+    id: "doc-05-pending",
+    organization_id: "org-apex-01",
+    member_id: "usr-student-fenil",
+    document_number: "ID-REC-2026-9041",
+    document_type: "COMPLETION_CERTIFICATE",
+    title: "Letter of Recommendation & Graduate Endorsement",
+    recipient_name: "Fenil Patel",
+    recipient_role: "Full Stack Software Engineering Intern",
+    issued_date: "2026-10-21",
+    status: "PENDING_APPROVAL",
+    approval_status: "PENDING",
+    verification_code: "VRF-APX-9041-REV",
+    template_data: {
+      organization_name: "Apex Technologies",
+      organization_type: "CORPORATE",
+      organization_logo: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&auto=format&fit=crop&q=80",
+      signatory_name: "Elena Rostova",
+      signatory_title: "Head of Operations & Engineering",
+      program_or_track: "Full Stack Cloud Platform Internship",
+      grade_or_evaluation: "Grade: Outstanding (98.4% Score)",
+      validity: "Awaiting Release Authorization",
+      brand_color: "#2563EB",
+    },
+    created_at: "2026-10-21T18:00:00Z",
+  },
 ];
 
 // Seed Announcements
@@ -1340,6 +1382,100 @@ class MultiTenantStore {
   public verifyDocumentByNumber(documentNumber: string): IssuedDocument | undefined {
     const cleaned = documentNumber.trim().toUpperCase();
     return this.documents.find((d) => d.document_number.toUpperCase() === cleaned && d.status === "ISSUED");
+  }
+
+  public findDocumentByNumber(documentNumber: string): IssuedDocument | undefined {
+    const cleaned = documentNumber.trim().toUpperCase();
+    return this.documents.find((d) => d.document_number.toUpperCase() === cleaned);
+  }
+
+  public approveDocument(
+    organizationId: string,
+    documentId: string,
+    approvedBy: string = "Elena Rostova"
+  ): IssuedDocument | undefined {
+    const doc = this.documents.find((d) => d.id === documentId && d.organization_id === organizationId);
+    if (!doc) return undefined;
+
+    doc.status = "ISSUED";
+    doc.approval_status = "APPROVED";
+    doc.approved_by = approvedBy;
+    doc.approved_at = new Date().toISOString();
+    if (doc.template_data) {
+      doc.template_data.validity = "Active / Verified";
+    }
+
+    this.auditLogs.unshift({
+      id: `log-${Date.now()}`,
+      organization_id: organizationId,
+      actor_email: approvedBy,
+      actor_role: "ORG_ADMIN",
+      action: "DOCUMENT_APPROVED_AND_RELEASED",
+      resource: `${doc.title} (${doc.document_number})`,
+      ip_address: "127.0.0.1",
+      details: { recipient: doc.recipient_name, type: doc.document_type },
+      created_at: new Date().toISOString(),
+    });
+
+    return doc;
+  }
+
+  public rejectDocument(
+    organizationId: string,
+    documentId: string,
+    reason: string = "Requires revision",
+    rejectedBy: string = "Elena Rostova"
+  ): IssuedDocument | undefined {
+    const doc = this.documents.find((d) => d.id === documentId && d.organization_id === organizationId);
+    if (!doc) return undefined;
+
+    doc.status = "REVOKED";
+    doc.approval_status = "REJECTED";
+    doc.rejection_reason = reason;
+    doc.approved_by = rejectedBy;
+    doc.approved_at = new Date().toISOString();
+
+    this.auditLogs.unshift({
+      id: `log-${Date.now()}`,
+      organization_id: organizationId,
+      actor_email: rejectedBy,
+      actor_role: "ORG_ADMIN",
+      action: "DOCUMENT_REJECTED",
+      resource: `${doc.title} (${doc.document_number})`,
+      ip_address: "127.0.0.1",
+      details: { recipient: doc.recipient_name, reason },
+      created_at: new Date().toISOString(),
+    });
+
+    return doc;
+  }
+
+  public updateOrganizationBranding(
+    organizationId: string,
+    branding: Partial<import("../../types/multitenant").OrganizationBranding>
+  ): Organization | undefined {
+    const org = this.organizations.find((o) => o.id === organizationId);
+    if (!org) return undefined;
+
+    org.branding = {
+      ...(org.branding || {}),
+      ...branding,
+    };
+    org.updated_at = new Date().toISOString();
+
+    this.auditLogs.unshift({
+      id: `log-${Date.now()}`,
+      organization_id: organizationId,
+      actor_email: "admin@apextech.com",
+      actor_role: "ORG_ADMIN",
+      action: "ORGANIZATION_BRANDING_UPDATED",
+      resource: org.name,
+      ip_address: "127.0.0.1",
+      details: { brandColor: org.branding.brandColor, hasLogo: !!org.branding.logoUrl },
+      created_at: new Date().toISOString(),
+    });
+
+    return org;
   }
 
   // ================= ANNOUNCEMENTS =================

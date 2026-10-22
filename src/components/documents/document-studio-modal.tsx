@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import React, { useState } from "react";
@@ -14,6 +15,7 @@ import {
   FileText,
   Lock,
   Code,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { IssuedDocument } from "@/types/multitenant";
@@ -130,6 +132,13 @@ export function DocumentStudioModal({
   if (!isOpen || !doc) return null;
 
   const orgName = doc.template_data?.organization_name || organizationName;
+  const isPendingApproval = doc.status === "PENDING_APPROVAL" || doc.approval_status === "PENDING";
+  const brandColor = doc.template_data?.brand_color || "#2563EB";
+  const orgLogo = doc.template_data?.organization_logo;
+  const orgAddress = doc.template_data?.organization_address || "100 Innovation Way, Suite 400, Tech District, NY 10001";
+  const orgWebsite = doc.template_data?.organization_website || "https://apextech.com";
+  const signatorySig = doc.template_data?.signatory_signature;
+  const customTerms = doc.template_data?.custom_terms;
   const verifyPath = `/verify/${encodeURIComponent(doc.document_number)}`;
   const fullVerifyUrl = `https://interndesk.io${verifyPath}`;
 
@@ -201,14 +210,20 @@ export function DocumentStudioModal({
               {isCertificate ? <Award className="w-5 h-5 text-amber-400" /> : <FileText className="w-5 h-5 text-blue-400" />}
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-sm font-bold tracking-tight">{doc.title}</h3>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-900/60 text-blue-300 border border-blue-700/50">
                   {doc.document_number}
                 </span>
+                {isPendingApproval && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3 text-amber-400" />
+                    UNRELEASED DRAFT
+                  </span>
+                )}
               </div>
               <p className="text-[11px] text-slate-400">
-                Tamper-Proof Credential Studio • Cryptographically Sealed
+                {isPendingApproval ? "Awaiting HR / Admin Authorization • Release Pending" : "Tamper-Proof Credential Studio • Cryptographically Sealed"}
               </p>
             </div>
           </div>
@@ -216,19 +231,31 @@ export function DocumentStudioModal({
           {/* Quick Toolbar */}
           <div className="flex items-center gap-2 flex-wrap">
             {/* Add to LinkedIn Button */}
-            <a
-              id="studio-linkedin-btn"
-              href={linkedInUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0a66c2] hover:bg-[#004182] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
-              title="Add credential directly to your LinkedIn Profile"
-            >
-              <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
-                <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76a1.53 1.53 0 0 0 1.53-1.53 1.53 1.53 0 0 0-1.53-1.53 1.53 1.53 0 0 0-1.53 1.53 1.53 1.53 0 0 0 1.53 1.53m1.4 9.74v-8.37H5.06v8.37h2.8z" />
-              </svg>
-              <span>Add to LinkedIn</span>
-            </a>
+            {isPendingApproval ? (
+              <Button
+                size="sm"
+                disabled
+                className="opacity-50 cursor-not-allowed bg-slate-800 text-slate-400 text-xs font-bold rounded-xl h-8 px-3"
+                title="Document must receive administrative release approval before publishing to LinkedIn"
+              >
+                <Lock className="w-3.5 h-3.5 mr-1" />
+                LinkedIn (Locked)
+              </Button>
+            ) : (
+              <a
+                id="studio-linkedin-btn"
+                href={linkedInUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0a66c2] hover:bg-[#004182] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                title="Add credential directly to your LinkedIn Profile"
+              >
+                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                  <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76a1.53 1.53 0 0 0 1.53-1.53 1.53 1.53 0 0 0-1.53-1.53 1.53 1.53 0 0 0-1.53 1.53 1.53 1.53 0 0 0 1.53 1.53m1.4 9.74v-8.37H5.06v8.37h2.8z" />
+                </svg>
+                <span>Add to LinkedIn</span>
+              </a>
+            )}
 
             {/* Print / Download PDF */}
             <Button
@@ -298,6 +325,15 @@ export function DocumentStudioModal({
             id="document-studio-canvas"
             className="w-full max-w-3xl bg-white shadow-xl rounded-2xl border-4 border-slate-200 overflow-hidden text-slate-900 transition-all relative"
           >
+            {/* Diagonal Watermark for Unreleased Drafts */}
+            {isPendingApproval && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20 overflow-hidden">
+                <div className="transform -rotate-25 text-red-500/20 border-8 border-dashed border-red-500/30 font-black text-2xl sm:text-4xl tracking-widest px-6 py-4 rounded-3xl uppercase select-none text-center">
+                  UNRELEASED DRAFT • AWAITING HR APPROVAL
+                </div>
+              </div>
+            )}
+
             {isCertificate ? (
               // ================= CERTIFICATE TEMPLATE =================
               <div className="p-8 sm:p-12 relative overflow-hidden bg-gradient-to-b from-amber-50/20 via-white to-blue-50/20">
@@ -310,9 +346,21 @@ export function DocumentStudioModal({
 
                   {/* Header: Organization Crest & Title */}
                   <div className="text-center space-y-2 relative">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-bold uppercase tracking-widest">
-                      <Lock className="w-3 h-3 text-blue-600" />
-                      <span>{orgName}</span>
+                    <div className="flex items-center justify-center gap-2 mb-1">
+                      {orgLogo && (
+                        <img
+                          src={orgLogo}
+                          alt={orgName}
+                          className="w-10 h-10 rounded-lg object-contain border border-slate-200 bg-white p-0.5 shadow-2xs inline-block"
+                        />
+                      )}
+                      <div
+                        className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest text-white shadow-2xs"
+                        style={{ backgroundColor: brandColor }}
+                      >
+                        <Lock className="w-3 h-3 text-white" />
+                        <span>{orgName}</span>
+                      </div>
                     </div>
 
                     <h1 className="text-2xl sm:text-4xl font-serif font-black text-slate-900 tracking-tight pt-1">
@@ -356,6 +404,18 @@ export function DocumentStudioModal({
                   <div className="pt-8 mt-6 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-6 items-center">
                     {/* Authorized Signatory */}
                     <div className="text-center sm:text-left space-y-1">
+                      {signatorySig ? (
+                        <div className="h-9 flex items-center">
+                          <img src={signatorySig} alt="Signatory" className="h-8 max-w-[130px] object-contain" />
+                        </div>
+                      ) : (
+                        <div className="h-7 flex items-center">
+                          <svg className="w-28 h-6 text-blue-900" viewBox="0 0 140 40">
+                            <path d="M10 25 C 25 10, 35 30, 45 15 C 55 5, 65 28, 80 18 C 95 10, 110 30, 130 15" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+                          </svg>
+                        </div>
+                      )}
+                      <div className="w-32 h-0.5 bg-slate-300 my-0.5" />
                       <div className="font-serif font-bold text-slate-900 text-sm">
                         {doc.template_data?.signatory_name || "Elena Rostova"}
                       </div>
@@ -417,15 +477,34 @@ export function DocumentStudioModal({
               // ================= OFFICIAL OFFER / INTERNSHIP LETTER TEMPLATE =================
               <div className="p-8 sm:p-12 space-y-6 relative bg-white">
                 {/* Company Letterhead Top */}
-                <div className="flex items-start justify-between pb-6 border-b-2 border-slate-900">
-                  <div>
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">{orgName}</h2>
-                    <p className="text-xs text-slate-500 font-medium">
-                      Enterprise Technology Placements &amp; Verified Workforce Operations
-                    </p>
-                    <p className="text-[11px] text-slate-400 font-mono mt-1">
-                      REF CODE: {doc.document_number}
-                    </p>
+                <div className="flex items-start justify-between pb-6 border-b-2" style={{ borderColor: brandColor }}>
+                  <div className="flex items-start gap-4">
+                    {orgLogo ? (
+                      <img
+                        src={orgLogo}
+                        alt={orgName}
+                        className="w-14 h-14 rounded-xl object-contain border border-slate-200 bg-white p-1 shadow-xs"
+                      />
+                    ) : (
+                      <div
+                        className="w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-xs"
+                        style={{ backgroundColor: brandColor }}
+                      >
+                        {orgName.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <div>
+                      <h2 className="text-2xl font-black text-slate-900 tracking-tight">{orgName}</h2>
+                      <p className="text-xs text-slate-500 font-medium">
+                        {orgAddress}
+                      </p>
+                      <p className="text-[11px] font-medium" style={{ color: brandColor }}>
+                        {orgWebsite}
+                      </p>
+                      <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                        REF CODE: {doc.document_number}
+                      </p>
+                    </div>
                   </div>
                   <OfficialGoldSeal />
                 </div>
@@ -441,7 +520,11 @@ export function DocumentStudioModal({
                   <div className="text-right">
                     <span className="text-slate-400 font-semibold block text-[10px] uppercase">Date of Issuance:</span>
                     <p className="font-bold text-slate-900">{doc.issued_date}</p>
-                    <span className="inline-block mt-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold text-[10px] border border-emerald-200">
+                    <span className={`inline-block mt-1 px-2 py-0.5 rounded font-bold text-[10px] border ${
+                      isPendingApproval
+                        ? "bg-amber-50 text-amber-800 border-amber-200"
+                        : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    }`}>
                       STATUS: {doc.status}
                     </span>
                   </div>
@@ -485,6 +568,12 @@ export function DocumentStudioModal({
                     </div>
                   </div>
 
+                  {customTerms && (
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 italic">
+                      <strong>Terms &amp; Stipulations:</strong> {customTerms}
+                    </div>
+                  )}
+
                   <p>
                     This credential is cryptographically anchored. Any alteration or tampering renders this offer null and void.
                   </p>
@@ -493,9 +582,15 @@ export function DocumentStudioModal({
                 {/* Signatory & Security Footer */}
                 <div className="pt-6 border-t border-slate-200 flex items-end justify-between">
                   <div className="space-y-1 text-xs">
-                    <p className="font-serif text-slate-800 italic text-sm font-bold">
-                      {doc.template_data?.signatory_name || "Marcus Sterling"}
-                    </p>
+                    {signatorySig ? (
+                      <div className="h-9 flex items-center">
+                        <img src={signatorySig} alt="Signatory Signature" className="h-8 max-w-[130px] object-contain" />
+                      </div>
+                    ) : (
+                      <p className="font-serif text-slate-800 italic text-sm font-bold">
+                        {doc.template_data?.signatory_name || "Marcus Sterling"}
+                      </p>
+                    )}
                     <div className="w-36 h-0.5 bg-slate-400 my-1" />
                     <p className="font-bold text-slate-900">{doc.template_data?.signatory_name || "Marcus Sterling"}</p>
                     <p className="text-slate-500 text-[11px]">{doc.template_data?.signatory_title || "Director of Talent Operations"}</p>

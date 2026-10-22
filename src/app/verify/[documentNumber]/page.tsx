@@ -22,8 +22,10 @@ function DocumentVerificationContent() {
   const rawDocNumber = (params?.documentNumber as string) || "";
   const documentNumber = decodeURIComponent(rawDocNumber);
 
-  const doc = multiTenantStore.verifyDocumentByNumber(documentNumber);
+  const doc = multiTenantStore.findDocumentByNumber(documentNumber);
   const org = doc ? multiTenantStore.getOrganizationById(doc.organization_id) : null;
+  const isPending = doc?.status === "PENDING_APPROVAL" || doc?.approval_status === "PENDING";
+  const isIssued = doc?.status === "ISSUED";
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-between">
@@ -53,7 +55,7 @@ function DocumentVerificationContent() {
           </p>
         </div>
 
-        {doc && org ? (
+        {doc && org && isIssued ? (
           <Card className="border-emerald-200 bg-white rounded-2xl shadow-xl overflow-hidden animate-fadeIn">
             {/* Top Verification Status Banner */}
             <div className="bg-emerald-600 text-white px-6 py-4 flex items-center justify-between">
@@ -163,6 +165,79 @@ function DocumentVerificationContent() {
                   </svg>
                   <span>Add Credential to LinkedIn Profile</span>
                 </a>
+              </div>
+            </div>
+          </Card>
+        ) : doc && org && isPending ? (
+          <Card className="border-amber-300 bg-white rounded-2xl shadow-xl overflow-hidden animate-fadeIn">
+            {/* Top Amber Status Banner */}
+            <div className="bg-amber-500 text-white px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <AlertTriangle className="w-6 h-6 text-white" />
+                <div>
+                  <h3 className="text-sm font-bold tracking-wide">UNRELEASED CREDENTIAL — AWAITING AUTHORIZATION</h3>
+                  <p className="text-[11px] text-amber-100">Draft prepared by {org.name} • Release approval required</p>
+                </div>
+              </div>
+              <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-amber-600/70 border border-amber-400">
+                PENDING APPROVAL
+              </span>
+            </div>
+
+            <div className="p-6 sm:p-8 space-y-6">
+              <div className="flex items-start justify-between pb-5 border-b border-slate-100">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Draft Document
+                  </span>
+                  <h2 className="text-xl font-black text-slate-900 mt-0.5">
+                    {doc.title}
+                  </h2>
+                  <p className="text-xs font-mono font-bold text-amber-600 mt-1">
+                    Document No: {doc.document_number}
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+                  <Lock className="w-6 h-6" />
+                </div>
+              </div>
+
+              {/* Notice */}
+              <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200 text-xs text-amber-900 space-y-2">
+                <p className="font-bold flex items-center gap-1.5">
+                  <Lock className="w-4 h-4 text-amber-700" />
+                  Administrative Release Gate Active
+                </p>
+                <p className="text-amber-800 leading-relaxed">
+                  This document record has been drafted by <strong>{org.name}</strong>, but has not yet received official administrative release approval from HR or Organization Leadership.
+                </p>
+                <p className="text-amber-700 text-[11px]">
+                  Under organization security controls, unapproved credentials cannot be publicly verified, exported, or added to professional profiles until authorized.
+                </p>
+              </div>
+
+              {/* Metadata */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Candidate Recipient:</span>
+                  <strong className="text-slate-900">{doc.recipient_name}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Assigned Role:</span>
+                  <strong className="text-slate-900">{doc.recipient_role}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Issuing Organization:</span>
+                  <strong className="text-slate-900">{org.name}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Draft Preparation Date:</span>
+                  <strong className="text-slate-900">{doc.issued_date}</strong>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-100 text-center text-xs text-slate-500 font-medium">
+                Public validation ledger &amp; LinkedIn export will activate upon administrator release.
               </div>
             </div>
           </Card>

@@ -590,4 +590,113 @@ describe("Phase 21: End-to-End Multi-Tenant Workflows & Security Validation", ()
       expect(Array.isArray(analytics.certificateEligibleInterns)).toBe(true);
     });
   });
+
+  // ================= JOURNEY 21 =================
+  describe("Journey 21: Organization Branding Studio & Letterhead Styling", () => {
+    it("persists custom logo, address, contact, signatory credentials, and brand color", () => {
+      const updatedOrg = multiTenantStore.updateOrganizationBranding(APEX_ORG, {
+        logoUrl: "https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?w=128",
+        brandColor: "#7c3aed",
+        address: "700 Innovation Way, Silicon Valley, CA 94025",
+        website: "https://apex.test.internal",
+        contactEmail: "hr@apex.test.internal",
+        contactPhone: "+1 (555) 789-0123",
+        signatoryName: "Elena Rostova",
+        signatoryTitle: "Chief Operations Officer",
+        signatorySignatureUrl: "data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=",
+        customOfferTerms: "Standard strict proprietary and IP assignment terms apply.",
+      });
+
+      expect(updatedOrg).toBeDefined();
+      expect(updatedOrg?.branding?.brandColor).toBe("#7c3aed");
+      expect(updatedOrg?.branding?.address).toContain("Innovation Way");
+      expect(updatedOrg?.branding?.signatoryName).toBe("Elena Rostova");
+      expect(updatedOrg?.branding?.signatoryTitle).toBe("Chief Operations Officer");
+      expect(updatedOrg?.branding?.customOfferTerms).toContain("IP assignment");
+    });
+  });
+
+  // ================= JOURNEY 22 =================
+  describe("Journey 22: Document Approval Pipeline & Security Gate", () => {
+    it("handles pending document approval lifecycle, security gates, and approval release", () => {
+      // 1. Issue a document in PENDING_APPROVAL status
+      const testDocNumber = `IND-TEST-${Date.now()}`;
+      const pendingDoc = multiTenantStore.issueDocument({
+        organization_id: APEX_ORG,
+        member_id: "mem-test-candidate",
+        document_number: testDocNumber,
+        document_type: "OFFER_LETTER",
+        title: "Software Engineering Intern Offer Letter",
+        recipient_name: "Test Candidate",
+        recipient_role: "Software Engineering Intern",
+        issued_date: new Date().toISOString().split("T")[0],
+        status: "PENDING_APPROVAL",
+        approval_status: "PENDING",
+        verification_code: "VRF-SEC-TEST-9999",
+        template_data: {
+          organization_name: "Apex Technologies",
+          organization_type: "CORPORATE",
+          signatory_name: "Dr. Rajesh Sharma",
+          signatory_title: "Head of Operations",
+          program_or_track: "Software Engineering Practicum",
+          validity: "Pending Administrative Approval",
+        },
+      });
+
+      expect(pendingDoc).toBeDefined();
+      expect(pendingDoc.status).toBe("PENDING_APPROVAL");
+      expect(pendingDoc.approval_status).toBe("PENDING");
+      expect(pendingDoc.approved_by).toBeUndefined();
+
+      // 2. Query document via findDocumentByNumber
+      const queried = multiTenantStore.findDocumentByNumber(testDocNumber);
+      expect(queried).toBeDefined();
+      expect(queried?.status).toBe("PENDING_APPROVAL");
+
+      // 3. Approve and release the document
+      const approved = multiTenantStore.approveDocument(APEX_ORG, pendingDoc.id, "Dr. Rajesh Sharma");
+      expect(approved).toBeDefined();
+      expect(approved?.status).toBe("ISSUED");
+      expect(approved?.approval_status).toBe("APPROVED");
+      expect(approved?.approved_by).toBe("Dr. Rajesh Sharma");
+      expect(approved?.approved_at).toBeDefined();
+
+      // 4. Verify findDocumentByNumber reflects approved status
+      const reQueried = multiTenantStore.findDocumentByNumber(testDocNumber);
+      expect(reQueried?.status).toBe("ISSUED");
+      expect(reQueried?.approval_status).toBe("APPROVED");
+    });
+
+    it("handles document rejection with audit logging", () => {
+      const rejectDocNumber = `IND-REJ-${Date.now()}`;
+      const toReject = multiTenantStore.issueDocument({
+        organization_id: APEX_ORG,
+        member_id: "mem-test-rejected",
+        document_number: rejectDocNumber,
+        document_type: "COMPLETION_CERTIFICATE",
+        title: "Certificate Draft",
+        recipient_name: "Candidate Rejection Test",
+        recipient_role: "Intern",
+        issued_date: "2026-10-22",
+        status: "PENDING_APPROVAL",
+        approval_status: "PENDING",
+        verification_code: "VRF-SEC-REJ-1111",
+        template_data: {
+          organization_name: "Apex Technologies",
+          organization_type: "CORPORATE",
+          signatory_name: "Dr. Rajesh Sharma",
+          signatory_title: "Head of Operations",
+          program_or_track: "Software Engineering Practicum",
+          validity: "Pending Administrative Approval",
+        },
+      });
+
+      const rejected = multiTenantStore.rejectDocument(APEX_ORG, toReject.id, "Missing mentor evaluation metrics", "Lead Admin");
+      expect(rejected).toBeDefined();
+      expect(rejected?.status).toBe("REVOKED");
+      expect(rejected?.approval_status).toBe("REJECTED");
+      expect(rejected?.rejection_reason).toBe("Missing mentor evaluation metrics");
+    });
+  });
 });
+

@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -26,6 +27,13 @@ import {
   Send,
   AlertTriangle,
   X,
+  Palette,
+  Upload,
+  ShieldCheck,
+  FileText,
+  Check,
+  Lock,
+  Building,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -149,7 +157,7 @@ export default function WorkspacePage() {
   const [newProgTech, setNewProgTech] = useState("");
   const [newProgDuration] = useState("3 Months");
 
-  // Issue Credential Modal
+  // Issue Credential Modal & Approval
   const [isIssueDocOpen, setIsIssueDocOpen] = useState(false);
   const [newDocType, setNewDocType] = useState<DocumentType>("COMPLETION_CERTIFICATE");
   const [newDocRecipient, setNewDocRecipient] = useState("");
@@ -157,7 +165,23 @@ export default function WorkspacePage() {
   const [newDocTitle, setNewDocTitle] = useState("Certificate of Internship Excellence");
   const [newDocTrack, setNewDocTrack] = useState("Full Stack Cloud Platform Internship");
   const [newDocGrade, setNewDocGrade] = useState("Grade: Outstanding (98.4% Efficiency)");
+  const [newDocRequireApproval, setNewDocRequireApproval] = useState<boolean>(true);
+  const [docFilterTab, setDocFilterTab] = useState<"ALL" | "PENDING" | "ISSUED">("ALL");
 
+  // Organization Profile & Branding Studio Form State
+  const [brandOrgName, setBrandOrgName] = useState(organizations[0]?.name || "Apex Technologies");
+  const [brandLogoUrl, setBrandLogoUrl] = useState(organizations[0]?.branding?.logoUrl || "");
+  const [brandColor, setBrandColor] = useState(organizations[0]?.branding?.brandColor || "#2563eb");
+  const [brandAddress, setBrandAddress] = useState(organizations[0]?.branding?.address || "");
+  const [brandWebsite, setBrandWebsite] = useState(organizations[0]?.branding?.website || "");
+  const [brandEmail, setBrandEmail] = useState(organizations[0]?.branding?.contactEmail || "");
+  const [brandPhone, setBrandPhone] = useState(organizations[0]?.branding?.contactPhone || "");
+  const [brandSignatoryName, setBrandSignatoryName] = useState(organizations[0]?.branding?.signatoryName || "Dr. Rajesh Sharma");
+  const [brandSignatoryTitle, setBrandSignatoryTitle] = useState(organizations[0]?.branding?.signatoryTitle || "Senior Director of People & Culture");
+  const [brandSignatureUrl, setBrandSignatureUrl] = useState(organizations[0]?.branding?.signatorySignatureUrl || "");
+  const [brandRequireApproval, setBrandRequireApproval] = useState<boolean>(organizations[0]?.settings?.requireDocumentApproval ?? true);
+  const [brandOfferTerms, setBrandOfferTerms] = useState(organizations[0]?.branding?.customOfferTerms || "");
+  const [brandSavedToast, setBrandSavedToast] = useState(false);
   // Live Timer State for Attendance
   const [timerSeconds, setTimerSeconds] = useState(14400); // 4 hours demo
   const [activeSession, setActiveSession] = useState<WorkSession | null>(() => {
@@ -198,6 +222,19 @@ export default function WorkspacePage() {
 
   const handleSelectOrg = (org: Organization) => {
     setActiveOrg(org);
+    setBrandOrgName(org.name);
+    setBrandLogoUrl(org.branding?.logoUrl || "");
+    setBrandColor(org.branding?.brandColor || "#2563eb");
+    setBrandAddress(org.branding?.address || "");
+    setBrandWebsite(org.branding?.website || "");
+    setBrandEmail(org.branding?.contactEmail || "");
+    setBrandPhone(org.branding?.contactPhone || "");
+    setBrandSignatoryName(org.branding?.signatoryName || "Dr. Rajesh Sharma");
+    setBrandSignatoryTitle(org.branding?.signatoryTitle || "Senior Director of People & Culture");
+    setBrandSignatureUrl(org.branding?.signatorySignatureUrl || "");
+    setBrandRequireApproval(org.settings?.requireDocumentApproval ?? true);
+    setBrandOfferTerms(org.branding?.customOfferTerms || "");
+    setNewDocRequireApproval(org.settings?.requireDocumentApproval ?? true);
     reloadTenantData(org.id);
   };
 
@@ -359,12 +396,15 @@ export default function WorkspacePage() {
     reloadTenantData();
   };
 
-  // Document & Credential Issuance Handler
+  // Document & Credential Issuance Handlers & Approval Workflow
   const handleIssueDocument = () => {
     if (!newDocRecipient.trim() || !newDocTitle.trim()) return;
 
     const docNumber = `IND-${activeOrg.code.replace(/[^A-Z0-9]/g, "").slice(0, 4)}-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
     const vrfCode = `VRF-${activeOrg.code.replace(/[^A-Z0-9]/g, "").slice(0, 3)}-${Math.floor(10000 + Math.random() * 90000)}-SEC`;
+
+    const docStatus = newDocRequireApproval ? "PENDING_APPROVAL" : "ISSUED";
+    const approvalStatus = newDocRequireApproval ? "PENDING" : "APPROVED";
 
     const created = multiTenantStore.issueDocument({
       organization_id: activeOrg.id,
@@ -375,22 +415,72 @@ export default function WorkspacePage() {
       recipient_name: newDocRecipient,
       recipient_role: newDocRole || (newDocType === "COMPLETION_CERTIFICATE" ? "Software Engineering Intern" : "Intern Candidate"),
       issued_date: new Date().toISOString().split("T")[0],
-      status: "ISSUED",
+      status: docStatus,
+      approval_status: approvalStatus,
+      approved_by: newDocRequireApproval ? undefined : currentUser.name,
+      approved_at: newDocRequireApproval ? undefined : new Date().toISOString(),
       verification_code: vrfCode,
       template_data: {
-        organization_name: activeOrg.name,
+        organization_name: brandOrgName || activeOrg.name,
         organization_type: activeOrg.type,
-        signatory_name: currentUser.name,
-        signatory_title: currentUser.role === "ORG_ADMIN" ? "Head of Operations & Engineering" : "Lead Technical Mentor",
+        signatory_name: brandSignatoryName || currentUser.name,
+        signatory_title: brandSignatoryTitle || (currentUser.role === "ORG_ADMIN" ? "Head of Operations & Engineering" : "Lead Technical Mentor"),
         program_or_track: newDocTrack || "Software Engineering Practicum",
         grade_or_evaluation: newDocType === "COMPLETION_CERTIFICATE" ? newDocGrade : undefined,
-        validity: "Active / Verified",
+        validity: newDocRequireApproval ? "Pending Administrative Approval" : "Active / Verified",
+        organization_logo: brandLogoUrl || activeOrg.branding?.logoUrl,
+        organization_address: brandAddress || activeOrg.branding?.address,
+        organization_website: brandWebsite || activeOrg.branding?.website,
+        signatory_signature: brandSignatureUrl || activeOrg.branding?.signatorySignatureUrl,
+        brand_color: brandColor || activeOrg.branding?.brandColor,
+        custom_terms: brandOfferTerms || activeOrg.branding?.customOfferTerms,
       },
     });
 
     setDocuments(multiTenantStore.getIssuedDocuments(activeOrg.id));
     setIsIssueDocOpen(false);
     setSelectedDocPreview(created);
+  };
+
+  const handleApproveDocument = (docId: string) => {
+    multiTenantStore.approveDocument(activeOrg.id, docId, currentUser.name);
+    setDocuments(multiTenantStore.getIssuedDocuments(activeOrg.id));
+  };
+
+  const handleRejectDocument = (docId: string, reason?: string) => {
+    multiTenantStore.rejectDocument(activeOrg.id, docId, reason || "Administrative revision required", currentUser.name);
+    setDocuments(multiTenantStore.getIssuedDocuments(activeOrg.id));
+  };
+
+  const handleSaveBranding = () => {
+    multiTenantStore.updateOrganizationBranding(activeOrg.id, {
+      logoUrl: brandLogoUrl,
+      brandColor,
+      address: brandAddress,
+      website: brandWebsite,
+      contactEmail: brandEmail,
+      contactPhone: brandPhone,
+      signatoryName: brandSignatoryName,
+      signatoryTitle: brandSignatoryTitle,
+      signatorySignatureUrl: brandSignatureUrl,
+      customOfferTerms: brandOfferTerms,
+    });
+
+    // Also update org name and approval settings on in-memory object
+    const orgs = multiTenantStore.getOrganizations();
+    const current = orgs.find((o) => o.id === activeOrg.id);
+    if (current) {
+      current.name = brandOrgName || current.name;
+      current.settings = {
+        ...current.settings,
+        requireDocumentApproval: brandRequireApproval,
+      };
+      setActiveOrg({ ...current });
+    }
+
+    setBrandSavedToast(true);
+    setTimeout(() => setBrandSavedToast(false), 3000);
+    reloadTenantData(activeOrg.id);
   };
 
   // Member Management Handlers
@@ -2099,45 +2189,155 @@ export default function WorkspacePage() {
                 </div>
               </div>
 
+              {/* Document Filter & Approval Tabs */}
+              <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
+                <button
+                  type="button"
+                  id="filter-all-docs"
+                  onClick={() => setDocFilterTab("ALL")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    docFilterTab === "ALL"
+                      ? "bg-slate-900 text-white shadow-xs"
+                      : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                  }`}
+                >
+                  All Documents ({documents.length})
+                </button>
+                <button
+                  type="button"
+                  id="filter-pending-docs"
+                  onClick={() => setDocFilterTab("PENDING")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    docFilterTab === "PENDING"
+                      ? "bg-amber-600 text-white shadow-xs"
+                      : "bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200"
+                  }`}
+                >
+                  <Lock className="w-3 h-3" />
+                  Pending Approval ({documents.filter((d) => d.status === "PENDING_APPROVAL" || d.approval_status === "PENDING").length})
+                </button>
+                <button
+                  type="button"
+                  id="filter-issued-docs"
+                  onClick={() => setDocFilterTab("ISSUED")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    docFilterTab === "ISSUED"
+                      ? "bg-emerald-600 text-white shadow-xs"
+                      : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200"
+                  }`}
+                >
+                  <Check className="w-3 h-3" />
+                  Issued &amp; Released ({documents.filter((d) => d.status === "ISSUED").length})
+                </button>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {documents.map((doc) => (
-                  <Card key={doc.id} className="p-6 border-slate-200 bg-white rounded-2xl shadow-sm space-y-4 hover:border-blue-200 transition-all">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-100 text-blue-800">
-                          {doc.document_type}
-                        </span>
-                        <h3 className="text-base font-bold text-slate-900 mt-2">{doc.title}</h3>
-                        <p className="text-xs font-mono font-bold text-blue-600 mt-0.5">{doc.document_number}</p>
-                      </div>
-                      <Award className="w-6 h-6 text-amber-500" />
-                    </div>
+                {documents
+                  .filter((d) => {
+                    if (docFilterTab === "PENDING") return d.status === "PENDING_APPROVAL" || d.approval_status === "PENDING";
+                    if (docFilterTab === "ISSUED") return d.status === "ISSUED";
+                    return true;
+                  })
+                  .map((doc) => {
+                    const isPending = doc.status === "PENDING_APPROVAL" || doc.approval_status === "PENDING";
+                    return (
+                      <Card
+                        key={doc.id}
+                        className={`p-6 bg-white rounded-2xl shadow-sm space-y-4 transition-all ${
+                          isPending
+                            ? "border-amber-300 bg-amber-50/20 hover:border-amber-400"
+                            : "border-slate-200 hover:border-blue-200"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-100 text-blue-800">
+                                {doc.document_type}
+                              </span>
+                              {isPending ? (
+                                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
+                                  <Lock className="w-2.5 h-2.5" />
+                                  Awaiting Approval
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                                  <Check className="w-2.5 h-2.5" />
+                                  Issued &amp; Verified
+                                </span>
+                              )}
+                            </div>
+                            <h3 className="text-base font-bold text-slate-900 mt-2">{doc.title}</h3>
+                            <p className="text-xs font-mono font-bold text-blue-600 mt-0.5">{doc.document_number}</p>
+                          </div>
+                          <Award className={`w-6 h-6 ${isPending ? "text-amber-500" : "text-emerald-500"}`} />
+                        </div>
 
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
-                      <p>Recipient: <strong>{doc.recipient_name}</strong> ({doc.recipient_role})</p>
-                      <p>Issued Date: <strong>{doc.issued_date}</strong></p>
-                      <p className="text-[10px] text-slate-400 font-mono">Verification Code: {doc.verification_code}</p>
-                    </div>
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
+                          <p>Recipient: <strong>{doc.recipient_name}</strong> ({doc.recipient_role})</p>
+                          <p>Issued Date: <strong>{doc.issued_date}</strong></p>
+                          <p className="text-[10px] text-slate-400 font-mono">Verification Code: {doc.verification_code}</p>
+                          {isPending && (
+                            <div className="mt-2 pt-2 border-t border-amber-200/60 text-amber-800 flex items-center gap-1.5 font-medium">
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                              <span>Locked: Hidden from candidate until approved &amp; released.</span>
+                            </div>
+                          )}
+                          {!isPending && doc.approved_by && (
+                            <p className="text-[11px] text-emerald-700 font-medium pt-1">
+                              Approved by: {doc.approved_by}
+                            </p>
+                          )}
+                        </div>
 
-                    <div className="flex items-center justify-between pt-2">
-                      <Link href={`/verify/${encodeURIComponent(doc.document_number)}`} target="_blank">
-                        <span className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1">
-                          Public Verification <ExternalLink className="w-3.5 h-3.5" />
-                        </span>
-                      </Link>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setSelectedDocPreview(doc)}
-                          className="rounded-xl text-xs font-bold border-slate-300 hover:bg-slate-50 cursor-pointer"
-                        >
-                          Studio Preview
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2">
+                          {isPending ? (
+                            <span className="text-xs font-bold text-amber-700 flex items-center gap-1">
+                              <Lock className="w-3.5 h-3.5" />
+                              Verification Blocked
+                            </span>
+                          ) : (
+                            <Link href={`/verify/${encodeURIComponent(doc.document_number)}`} target="_blank">
+                              <span className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1">
+                                Public Verification <ExternalLink className="w-3.5 h-3.5" />
+                              </span>
+                            </Link>
+                          )}
+
+                          <div className="flex items-center gap-2 self-end sm:self-auto">
+                            {isPending && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleApproveDocument(doc.id)}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold px-3 py-1.5 cursor-pointer shadow-xs flex items-center gap-1"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                  Approve &amp; Release
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleRejectDocument(doc.id)}
+                                  className="rounded-xl text-xs font-bold border-rose-300 text-rose-700 hover:bg-rose-50 px-2.5 py-1.5 cursor-pointer"
+                                >
+                                  Reject
+                                </Button>
+                              </>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setSelectedDocPreview(doc)}
+                              className="rounded-xl text-xs font-bold border-slate-300 hover:bg-slate-50 cursor-pointer"
+                            >
+                              Studio Preview
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  })}
               </div>
 
               {/* Issue New Credential Modal */}
@@ -2273,6 +2473,21 @@ export default function WorkspacePage() {
                         </div>
                       )}
 
+                      {/* Approval Policy Control */}
+                      <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/80 flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          id="require-approval-check"
+                          checked={newDocRequireApproval}
+                          onChange={(e) => setNewDocRequireApproval(e.target.checked)}
+                          className="mt-1 w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                        />
+                        <label htmlFor="require-approval-check" className="text-xs text-amber-900 cursor-pointer select-none">
+                          <span className="font-bold block text-slate-900">Require HR / Admin Approval Before Release</span>
+                          When enabled, this credential is set to <code className="bg-amber-100 px-1 py-0.5 rounded text-[10px] font-bold">PENDING_APPROVAL</code>. The candidate cannot view, download, or verify it until an Admin or HR manager explicitly approves it.
+                        </label>
+                      </div>
+
                       {/* Security Notice */}
                       <div className="p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200/60 text-[11px] text-emerald-900 space-y-1">
                         <p className="font-bold flex items-center gap-1.5">
@@ -2388,9 +2603,336 @@ export default function WorkspacePage() {
               <div>
                 <h2 className="text-2xl font-black text-slate-900 tracking-tight">Organization Settings & Security</h2>
                 <p className="text-xs text-slate-500 font-normal">
-                  Manage organization code, joining policies, and inspect immutable audit events.
+                  Manage organization branding, letterhead styling, document approval gates, and inspect immutable audit events.
                 </p>
               </div>
+
+              {/* Organization Profile, Branding & Letterhead Studio */}
+              <Card className="p-6 sm:p-8 border-slate-200 bg-white rounded-3xl shadow-sm space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shrink-0">
+                      <Palette className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+                        Organization Profile, Branding &amp; Letterhead Studio
+                      </h3>
+                      <p className="text-xs text-slate-500 font-normal">
+                        Upload official company/institution logo, address, signature stamp, brand colors, and control approval gates.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    {brandSavedToast && (
+                      <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-xl border border-emerald-200 flex items-center gap-1.5 animate-in fade-in">
+                        <Check className="w-4 h-4 text-emerald-600" />
+                        Settings Saved
+                      </span>
+                    )}
+                    <Button
+                      id="save-branding-btn"
+                      onClick={handleSaveBranding}
+                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold px-4 py-2 cursor-pointer shadow-xs flex items-center gap-1.5"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Save Branding &amp; Policy
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Left Column: Identity & Logo */}
+                  <div className="space-y-4">
+                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                      <Building className="w-3.5 h-3.5 text-blue-600" />
+                      Identity &amp; Visual Brand
+                    </h4>
+
+                    {/* Org Name */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700">Official Organization / Institute Name</label>
+                      <input
+                        type="text"
+                        value={brandOrgName}
+                        onChange={(e) => setBrandOrgName(e.target.value)}
+                        placeholder="e.g. Apex Technologies Inc."
+                        className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    {/* Logo Upload & Preview */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-700">Official Logo (Letterhead &amp; Certificate Seal)</label>
+                      <div className="flex items-center gap-4 p-3 rounded-2xl border border-slate-200 bg-slate-50/50">
+                        <div className="w-16 h-16 rounded-xl border border-slate-200 bg-white flex items-center justify-center p-2 overflow-hidden shadow-xs shrink-0">
+                          {brandLogoUrl ? (
+                            <img src={brandLogoUrl} alt="Org Logo" className="max-h-full max-w-full object-contain" />
+                          ) : (
+                            <Building className="w-7 h-7 text-slate-300" />
+                          )}
+                        </div>
+                        <div className="space-y-2 flex-1">
+                          <div className="flex items-center gap-2">
+                            <label className="cursor-pointer px-3 py-1.5 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-xs font-bold text-slate-700 flex items-center gap-1.5 shadow-xs transition-colors">
+                              <Upload className="w-3.5 h-3.5 text-blue-600" />
+                              Upload Logo File
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = () => {
+                                      if (typeof reader.result === "string") setBrandLogoUrl(reader.result);
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                }}
+                              />
+                            </label>
+                            {brandLogoUrl && (
+                              <button
+                                type="button"
+                                onClick={() => setBrandLogoUrl("")}
+                                className="text-xs text-rose-600 hover:underline font-bold"
+                              >
+                                Remove
+                              </button>
+                            )}
+                          </div>
+                          <input
+                            type="text"
+                            value={brandLogoUrl}
+                            onChange={(e) => setBrandLogoUrl(e.target.value)}
+                            placeholder="Or paste image URL (https://...)"
+                            className="w-full h-8 px-2.5 rounded-lg border border-slate-300 text-[11px] font-mono focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Brand Primary Color */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-700">Primary Brand Accent Color</label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="color"
+                          value={brandColor}
+                          onChange={(e) => setBrandColor(e.target.value)}
+                          className="w-10 h-10 rounded-xl border border-slate-300 cursor-pointer p-0.5"
+                        />
+                        <input
+                          type="text"
+                          value={brandColor}
+                          onChange={(e) => setBrandColor(e.target.value)}
+                          placeholder="#2563eb"
+                          className="w-28 h-10 px-3 rounded-xl border border-slate-300 text-xs font-mono font-bold uppercase focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                        />
+                        {/* Swatches */}
+                        <div className="flex items-center gap-1.5">
+                          {["#2563eb", "#059669", "#7c3aed", "#d97706", "#dc2626", "#0f172a"].map((hex) => (
+                            <button
+                              key={hex}
+                              type="button"
+                              onClick={() => setBrandColor(hex)}
+                              style={{ backgroundColor: hex }}
+                              className={`w-6 h-6 rounded-lg transition-transform hover:scale-110 cursor-pointer ${
+                                brandColor.toLowerCase() === hex.toLowerCase() ? "ring-2 ring-offset-2 ring-slate-900" : ""
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Contact & Official Address */}
+                  <div className="space-y-4">
+                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-blue-600" />
+                      Contact &amp; Letterhead Details
+                    </h4>
+
+                    {/* Address */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700">Official Registered Address</label>
+                      <input
+                        type="text"
+                        value={brandAddress}
+                        onChange={(e) => setBrandAddress(e.target.value)}
+                        placeholder="e.g. 104 Tech Boulevard, Suite 500, San Francisco, CA 94107"
+                        className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    {/* Website */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700">Official Website URL</label>
+                      <input
+                        type="text"
+                        value={brandWebsite}
+                        onChange={(e) => setBrandWebsite(e.target.value)}
+                        placeholder="e.g. https://apextechnologies.io"
+                        className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Email */}
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700">HR / Contact Email</label>
+                        <input
+                          type="email"
+                          value={brandEmail}
+                          onChange={(e) => setBrandEmail(e.target.value)}
+                          placeholder="credentials@apextech.io"
+                          className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      {/* Phone */}
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700">Contact Phone</label>
+                        <input
+                          type="text"
+                          value={brandPhone}
+                          onChange={(e) => setBrandPhone(e.target.value)}
+                          placeholder="+1 (555) 019-2834"
+                          className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Signatory & Signature Stamp */}
+                <div className="border-t border-slate-100 pt-5 space-y-4">
+                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                    Authorized Signatory &amp; Digital Signature
+                  </h4>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700">Signatory Full Name</label>
+                        <input
+                          type="text"
+                          value={brandSignatoryName}
+                          onChange={(e) => setBrandSignatoryName(e.target.value)}
+                          placeholder="e.g. Dr. Rajesh Sharma"
+                          className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700">Signatory Official Title / Position</label>
+                        <input
+                          type="text"
+                          value={brandSignatoryTitle}
+                          onChange={(e) => setBrandSignatoryTitle(e.target.value)}
+                          placeholder="e.g. Senior Director of People & Culture"
+                          className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-700">Digital Signature Image / Stamp</label>
+                      <div className="flex items-center gap-4 p-3 rounded-2xl border border-slate-200 bg-slate-50/50">
+                        <div className="w-36 h-16 rounded-xl border border-slate-200 bg-white flex items-center justify-center p-2 shadow-xs shrink-0 overflow-hidden">
+                          {brandSignatureUrl ? (
+                            <img src={brandSignatureUrl} alt="Signature" className="max-h-full max-w-full object-contain" />
+                          ) : (
+                            <svg className="w-24 h-10 text-slate-700 stroke-current fill-none stroke-[2]" viewBox="0 0 120 40">
+                              <path d="M 10 25 Q 30 5 50 25 T 90 20 Q 110 35 115 15" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          )}
+                        </div>
+                        <div className="space-y-2 flex-1">
+                          <label className="cursor-pointer px-3 py-1.5 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-xs font-bold text-slate-700 inline-flex items-center gap-1.5 shadow-xs transition-colors">
+                            <Upload className="w-3.5 h-3.5 text-blue-600" />
+                            Upload Signature File
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onload = () => {
+                                    if (typeof reader.result === "string") setBrandSignatureUrl(reader.result);
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                            />
+                          </label>
+                          <input
+                            type="text"
+                            value={brandSignatureUrl}
+                            onChange={(e) => setBrandSignatureUrl(e.target.value)}
+                            placeholder="Or signature image URL..."
+                            className="w-full h-8 px-2.5 rounded-lg border border-slate-300 text-[11px] font-mono focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Approval Workflow Policy & Security Gate */}
+                <div className="border-t border-slate-100 pt-5 space-y-4">
+                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-amber-600" />
+                    Document Approval &amp; Release Security Gate
+                  </h4>
+
+                  <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/80 flex items-start justify-between gap-4">
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5 text-amber-600" />
+                        Require HR / Admin Approval Before Releasing Offer Letters &amp; Certificates
+                      </p>
+                      <p className="text-xs text-slate-600 leading-relaxed max-w-2xl">
+                        When active, any document created stays in <strong className="text-amber-800">PENDING_APPROVAL</strong>.
+                        Students and candidates cannot view or download their credentials, and public verification links will display an unreleased lock until an Admin or HR manager explicitly approves them.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      id="toggle-approval-requirement"
+                      onClick={() => setBrandRequireApproval(!brandRequireApproval)}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                        brandRequireApproval ? "bg-amber-600" : "bg-slate-300"
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                          brandRequireApproval ? "translate-x-5" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Custom Offer Letter Terms */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700">Custom Default Offer Letter Clauses &amp; Terms</label>
+                    <textarea
+                      rows={3}
+                      value={brandOfferTerms}
+                      onChange={(e) => setBrandOfferTerms(e.target.value)}
+                      placeholder="e.g. This offer is contingent upon satisfactory completion of background verification. The intern agrees to strictly abide by confidentiality and proprietary assignment covenants..."
+                      className="w-full p-3 rounded-xl border border-slate-300 text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500 leading-relaxed"
+                    />
+                  </div>
+                </div>
+              </Card>
 
               <Card className="p-6 border-slate-200 bg-white rounded-2xl shadow-sm space-y-4">
                 <div className="flex items-center justify-between">

@@ -13,9 +13,13 @@ import {
   ShieldCheck,
   GraduationCap,
   Eye,
+  Lock,
+  Clock,
+  AlertTriangle,
 } from "lucide-react";
 import { DocumentStudioModal } from "@/components/documents/document-studio-modal";
 import { IssuedDocument } from "@/types/multitenant";
+import { multiTenantStore } from "@/lib/multitenant/store";
 
 const STUDENT_DOCUMENTS: IssuedDocument[] = [
   {
@@ -91,21 +95,26 @@ export default function StudentDocumentsPage() {
   const [activeTab, setActiveTab] = useState<"ALL" | "OFFER" | "INTERN" | "CERT">("ALL");
   const [selectedStudioDoc, setSelectedStudioDoc] = useState<IssuedDocument | null>(null);
 
-  const filteredDocs = STUDENT_DOCUMENTS.filter((doc) => {
+  const [docsList] = useState<IssuedDocument[]>(() => {
+    const storeDocs = multiTenantStore.getIssuedDocuments("org-apex-01", "usr-student-fenil");
+    return storeDocs.length > 0 ? storeDocs : STUDENT_DOCUMENTS;
+  });
+
+  const filteredDocs = docsList.filter((doc) => {
     if (activeTab === "OFFER") return doc.document_type === "OFFER_LETTER";
     if (activeTab === "INTERN") return doc.document_type === "INTERNSHIP_LETTER";
     if (activeTab === "CERT") return doc.document_type === "COMPLETION_CERTIFICATE";
     return true;
   });
 
-  const certificateDoc = STUDENT_DOCUMENTS.find((d) => d.document_type === "COMPLETION_CERTIFICATE")!;
+  const certificateDoc = docsList.find((d) => d.document_type === "COMPLETION_CERTIFICATE" && d.status === "ISSUED") || docsList[0];
 
   // LinkedIn Add-to-Profile URL for the certificate
   const certLinkedInUrl = `https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=${encodeURIComponent(
-    certificateDoc.title
+    certificateDoc?.title || "Certificate of Internship Excellence"
   )}&organizationName=${encodeURIComponent("Apex Technologies")}&issueYear=2026&issueMonth=10&certUrl=${encodeURIComponent(
-    `https://interndesk.io/verify/${certificateDoc.document_number}`
-  )}&certId=${encodeURIComponent(certificateDoc.document_number)}`;
+    `https://interndesk.io/verify/${certificateDoc?.document_number || "ID-CERT-2026-8918"}`
+  )}&certId=${encodeURIComponent(certificateDoc?.document_number || "ID-CERT-2026-8918")}`;
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
@@ -163,6 +172,18 @@ export default function StudentDocumentsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left Column: Documents List */}
           <div className="lg:col-span-6 space-y-3">
+            {docsList.some((d) => d.status === "PENDING_APPROVAL") && (
+              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-3">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div className="text-xs text-amber-900">
+                  <p className="font-bold">Administrative Release Gate Active</p>
+                  <p className="text-amber-700 text-[11px] mt-0.5">
+                    Credentials marked as &ldquo;Awaiting HR Release Approval&rdquo; have been drafted by your organization and will unlock automatically once approved by your coordinator.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {filteredDocs.map((doc) => (
               <Card
                 key={doc.id}
@@ -186,30 +207,45 @@ export default function StudentDocumentsPage() {
                     <h4 className="text-xs font-bold text-slate-900">{doc.title}</h4>
                     <p className="text-[11px] text-slate-500 font-mono mt-0.5">{doc.document_number}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/80">
-                        <CheckCircle2 className="w-3 h-3" /> Approved &amp; Issued
-                      </span>
+                      {doc.status === "PENDING_APPROVAL" ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                          <Clock className="w-3 h-3 text-amber-600" /> Awaiting HR Release Approval
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/80">
+                          <CheckCircle2 className="w-3 h-3" /> Approved &amp; Issued
+                        </span>
+                      )}
                       <span className="text-[10px] text-slate-400">Issued {doc.issued_date}</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setSelectedStudioDoc(doc)}
-                    className="text-xs h-8 px-3 rounded-xl border-slate-300 hover:bg-slate-50 font-bold cursor-pointer"
-                  >
-                    Preview
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => setSelectedStudioDoc(doc)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8 px-3 rounded-xl font-bold cursor-pointer shadow-2xs"
-                  >
-                    <Download className="w-3 h-3 mr-1" /> PDF
-                  </Button>
+                  {doc.status === "PENDING_APPROVAL" ? (
+                    <span className="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-2xs">
+                      <Lock className="w-3.5 h-3.5 text-amber-600" />
+                      Locked
+                    </span>
+                  ) : (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setSelectedStudioDoc(doc)}
+                        className="text-xs h-8 px-3 rounded-xl border-slate-300 hover:bg-slate-50 font-bold cursor-pointer"
+                      >
+                        Preview
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => setSelectedStudioDoc(doc)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8 px-3 rounded-xl font-bold cursor-pointer shadow-2xs"
+                      >
+                        <Download className="w-3 h-3 mr-1" /> PDF
+                      </Button>
+                    </>
+                  )}
                 </div>
               </Card>
             ))}
