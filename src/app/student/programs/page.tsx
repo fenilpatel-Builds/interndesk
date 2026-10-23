@@ -29,7 +29,7 @@ export default function StudentProgramsPage() {
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
-      <StudentTopbar title="Browse Programs" studentName="Fenil Patel" />
+      <StudentTopbar title="Browse Programs" />
 
       <main className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Banner */}

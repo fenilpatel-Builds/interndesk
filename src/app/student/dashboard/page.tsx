@@ -23,7 +23,18 @@ import { Button } from "@/components/ui/button";
 import { WorkSessionWidget } from "@/components/student/work-session-widget";
 import { useWorkTimer } from "@/hooks/use-work-timer";
 
+import { parseClientSessionCookie } from "@/lib/auth/client-session";
+
 export default function StudentDashboardPage() {
+  const [userName, setUserName] = useState("Student Intern");
+
+  React.useEffect(() => {
+    const session = parseClientSessionCookie();
+    if (session?.name) {
+      setUserName(session.name);
+    }
+  }, []);
+
   const [message] = useState<string | null>(null);
   const { status, hoursStr, minutesStr, secondsStr, todayDateFormatted, live24hClock } = useWorkTimer();
 
@@ -37,9 +48,11 @@ export default function StudentDashboardPage() {
       ? "Good Evening"
       : "Working Late";
 
+  const firstName = userName.split(" ")[0] || "Intern";
+
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
-      <StudentTopbar title="Dashboard" studentName="Fenil Patel" />
+      <StudentTopbar title="Dashboard" studentName={userName} />
 
       <main className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Header Greeting with Dynamic 24H Clock & Calendar Date */}
@@ -47,7 +60,7 @@ export default function StudentDashboardPage() {
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
               <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                {timeGreeting}, Fenil <span>👋</span>
+                {timeGreeting}, {firstName} <span>👋</span>
               </h2>
               <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1.5 shadow-2xs">
                 <Calendar className="w-3.5 h-3.5 text-blue-600" />

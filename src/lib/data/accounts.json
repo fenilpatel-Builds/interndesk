@@ -1,0 +1,14 @@
+[
+  {
+    "id": "usr-1792739702138-650",
+    "email": "dean@stanfordtech.edu",
+    "passwordHash": "e0ea3e17dae7e94ae619af462de5b017b81dd29bf0af742ac47ce4368489a2f5",
+    "salt": "77a1c47c9d5beff17fab6797adbb2823",
+    "name": "Dr. Arthur Vance",
+    "role": "ORG_ADMIN",
+    "organizationId": "org-1792739702135",
+    "organizationName": "Stanford Institute of Technology",
+    "organizationType": "EDUCATIONAL",
+    "createdAt": "2026-10-23T07:15:02.139Z"
+  }
+]

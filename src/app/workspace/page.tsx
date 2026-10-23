@@ -75,8 +75,23 @@ import { getWorkforceAnalytics } from "@/lib/multitenant/analytics";
 import { parseClientSessionCookie } from "@/lib/auth/client-session";
 
 export default function WorkspacePage() {
-  const [organizations, setOrganizations] = useState<Organization[]>(multiTenantStore.getOrganizations());
-  const [activeOrg, setActiveOrg] = useState<Organization>(organizations[0]);
+  const [organizations, setOrganizations] = useState<Organization[]>(() => multiTenantStore.getOrganizations());
+  const [activeOrg, setActiveOrg] = useState<Organization>(() => {
+    const orgs = multiTenantStore.getOrganizations();
+    const session = parseClientSessionCookie();
+    if (session?.organizationId) {
+      const match = orgs.find((o) => o.id === session.organizationId);
+      if (match) return match;
+    }
+    if (typeof document !== "undefined") {
+      const matchCookie = document.cookie.match(/(?:^|;\s*)interndesk_active_org=([^;]+)/);
+      if (matchCookie) {
+        const match = orgs.find((o) => o.id === decodeURIComponent(matchCookie[1]));
+        if (match) return match;
+      }
+    }
+    return orgs[0];
+  });
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const router = useRouter();
@@ -98,7 +113,7 @@ export default function WorkspacePage() {
     }
     return {
       name: "Workspace Administrator",
-      email: "admin@apextech.com",
+      email: "admin@interndesk.io",
       role: "ORG_ADMIN",
     };
   });
@@ -110,20 +125,89 @@ export default function WorkspacePage() {
     }
   }, [currentUser.role, router]);
 
+  // Synchronize dynamic session on mount
+  useEffect(() => {
+    const session = parseClientSessionCookie();
+    const allOrgs = multiTenantStore.getOrganizations();
+    setOrganizations(allOrgs);
+
+    if (session) {
+      setCurrentUser({
+        name: session.name,
+        email: session.email,
+        role: session.role,
+      });
+
+      const targetOrgId =
+        session.organizationId ||
+        (typeof document !== "undefined"
+          ? document.cookie.match(/(?:^|;\s*)interndesk_active_org=([^;]+)/)?.[1]
+          : undefined);
+
+      if (targetOrgId) {
+        let found = allOrgs.find((o) => o.id === targetOrgId);
+        if (!found && session.organizationId) {
+          const newCustomOrg: Organization = {
+            id: session.organizationId,
+            name: `${session.name}'s Organization`,
+            slug: session.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+            code: "ORG-ACTIVE",
+            type: "EDUCATIONAL",
+            status: "APPROVED",
+            official_email: session.email,
+            contact_number: "+91 98765 43210",
+            website: "https://interndesk.io",
+            country: "India",
+            size: "100-500",
+            industry_or_category: "Higher Education & Research",
+            description: "Institutional Academic Workspace",
+            joining_policy: "REQUEST_APPROVAL",
+            allowed_email_domains: [`@${session.email.split("@")[1]}`],
+            settings: {
+              workingDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+              expectedDailyHours: 8,
+              gracePeriodMinutes: 15,
+              allowedBreakMinutes: 60,
+              timeZone: "Asia/Kolkata",
+              dateFormat: "DD/MM/YYYY",
+              primaryColor: "#4F46E5",
+              requireReportReview: true,
+              autoApproveAttendance: false,
+              requireDocumentApproval: true,
+            },
+            branding: {
+              brandColor: "#4F46E5",
+              signatoryName: session.name,
+              signatoryTitle: "Dean / Coordinator",
+            },
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          multiTenantStore.saveCustomOrg(newCustomOrg);
+          found = newCustomOrg;
+        }
+
+        if (found) {
+          handleSelectOrg(found);
+        }
+      }
+    }
+  }, []);
+
   // Core Data States
-  const [members, setMembers] = useState<OrganizationMembership[]>(() => multiTenantStore.getMemberships(organizations[0]?.id || ""));
-  const [tasks, setTasks] = useState<Task[]>(() => multiTenantStore.getTasks(organizations[0]?.id || ""));
-  const [workSessions, setWorkSessions] = useState<WorkSession[]>(() => multiTenantStore.getWorkSessions(organizations[0]?.id || ""));
-  const [dailyReports, setDailyReports] = useState<DailyReport[]>(() => multiTenantStore.getDailyReports(organizations[0]?.id || ""));
-  const [learningMaterials, setLearningMaterials] = useState<LearningMaterial[]>(() => multiTenantStore.getLearningMaterials(organizations[0]?.id || ""));
-  const [assessments, setAssessments] = useState<Assessment[]>(() => multiTenantStore.getAssessments(organizations[0]?.id || ""));
-  const [documents, setDocuments] = useState<IssuedDocument[]>(() => multiTenantStore.getIssuedDocuments(organizations[0]?.id || ""));
-  const [announcements, setAnnouncements] = useState<Announcement[]>(() => multiTenantStore.getAnnouncements(organizations[0]?.id || ""));
-  const [departments, setDepartments] = useState<Department[]>(() => multiTenantStore.getDepartments(organizations[0]?.id || ""));
-  const [teams, setTeams] = useState<Team[]>(() => multiTenantStore.getTeams(organizations[0]?.id || ""));
-  const [programs, setPrograms] = useState<Program[]>(() => multiTenantStore.getPrograms(organizations[0]?.id || ""));
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(() => multiTenantStore.getLeaveRequests(organizations[0]?.id || ""));
-  const [mentorshipReviews, setMentorshipReviews] = useState<MentorshipReview[]>(() => multiTenantStore.getMentorshipReviews(organizations[0]?.id || ""));
+  const [members, setMembers] = useState<OrganizationMembership[]>(() => multiTenantStore.getMemberships(activeOrg?.id || ""));
+  const [tasks, setTasks] = useState<Task[]>(() => multiTenantStore.getTasks(activeOrg?.id || ""));
+  const [workSessions, setWorkSessions] = useState<WorkSession[]>(() => multiTenantStore.getWorkSessions(activeOrg?.id || ""));
+  const [dailyReports, setDailyReports] = useState<DailyReport[]>(() => multiTenantStore.getDailyReports(activeOrg?.id || ""));
+  const [learningMaterials, setLearningMaterials] = useState<LearningMaterial[]>(() => multiTenantStore.getLearningMaterials(activeOrg?.id || ""));
+  const [assessments, setAssessments] = useState<Assessment[]>(() => multiTenantStore.getAssessments(activeOrg?.id || ""));
+  const [documents, setDocuments] = useState<IssuedDocument[]>(() => multiTenantStore.getIssuedDocuments(activeOrg?.id || ""));
+  const [announcements, setAnnouncements] = useState<Announcement[]>(() => multiTenantStore.getAnnouncements(activeOrg?.id || ""));
+  const [departments, setDepartments] = useState<Department[]>(() => multiTenantStore.getDepartments(activeOrg?.id || ""));
+  const [teams, setTeams] = useState<Team[]>(() => multiTenantStore.getTeams(activeOrg?.id || ""));
+  const [programs, setPrograms] = useState<Program[]>(() => multiTenantStore.getPrograms(activeOrg?.id || ""));
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(() => multiTenantStore.getLeaveRequests(activeOrg?.id || ""));
+  const [mentorshipReviews, setMentorshipReviews] = useState<MentorshipReview[]>(() => multiTenantStore.getMentorshipReviews(activeOrg?.id || ""));
 
   // Modals & Runners
   const [selectedMember, setSelectedMember] = useState<OrganizationMembership | null>(null);
@@ -195,21 +279,21 @@ export default function WorkspacePage() {
   const [docSearchQuery, setDocSearchQuery] = useState("");
 
   // Organization Profile & Branding Studio Form State
-  const [brandOrgName, setBrandOrgName] = useState(organizations[0]?.name || "Apex Technologies");
-  const [brandLogoUrl, setBrandLogoUrl] = useState(organizations[0]?.branding?.logoUrl || "");
-  const [brandColor, setBrandColor] = useState(organizations[0]?.branding?.brandColor || "#2563eb");
-  const [brandAddress, setBrandAddress] = useState(organizations[0]?.branding?.address || "");
-  const [brandWebsite, setBrandWebsite] = useState(organizations[0]?.branding?.website || "");
-  const [brandEmail, setBrandEmail] = useState(organizations[0]?.branding?.contactEmail || "");
-  const [brandPhone, setBrandPhone] = useState(organizations[0]?.branding?.contactPhone || "");
-  const [brandSignatoryName, setBrandSignatoryName] = useState(organizations[0]?.branding?.signatoryName || "Dr. Rajesh Sharma");
-  const [brandSignatoryTitle, setBrandSignatoryTitle] = useState(organizations[0]?.branding?.signatoryTitle || "Senior Director of People & Culture");
-  const [brandSignatureUrl, setBrandSignatureUrl] = useState(organizations[0]?.branding?.signatorySignatureUrl || "");
-  const [brandRequireApproval, setBrandRequireApproval] = useState<boolean>(organizations[0]?.settings?.requireDocumentApproval ?? true);
-  const [brandOfferTerms, setBrandOfferTerms] = useState(organizations[0]?.branding?.customOfferTerms || "");
+  const [brandOrgName, setBrandOrgName] = useState(activeOrg?.name || "Workspace");
+  const [brandLogoUrl, setBrandLogoUrl] = useState(activeOrg?.branding?.logoUrl || "");
+  const [brandColor, setBrandColor] = useState(activeOrg?.branding?.brandColor || "#2563eb");
+  const [brandAddress, setBrandAddress] = useState(activeOrg?.branding?.address || "");
+  const [brandWebsite, setBrandWebsite] = useState(activeOrg?.branding?.website || "");
+  const [brandEmail, setBrandEmail] = useState(activeOrg?.branding?.contactEmail || "");
+  const [brandPhone, setBrandPhone] = useState(activeOrg?.branding?.contactPhone || "");
+  const [brandSignatoryName, setBrandSignatoryName] = useState(activeOrg?.branding?.signatoryName || "Authorized Signatory");
+  const [brandSignatoryTitle, setBrandSignatoryTitle] = useState(activeOrg?.branding?.signatoryTitle || "Senior Director");
+  const [brandSignatureUrl, setBrandSignatureUrl] = useState(activeOrg?.branding?.signatorySignatureUrl || "");
+  const [brandRequireApproval, setBrandRequireApproval] = useState<boolean>(activeOrg?.settings?.requireDocumentApproval ?? true);
+  const [brandOfferTerms, setBrandOfferTerms] = useState(activeOrg?.branding?.customOfferTerms || "");
   const [brandSavedToast, setBrandSavedToast] = useState(false);
   const [brandTemplateTheme, setBrandTemplateTheme] = useState<TemplateTheme>(
-    () => organizations[0]?.branding?.templateTheme || "CLASSIC_IVY"
+    activeOrg?.branding?.templateTheme || "CLASSIC_IVY"
   );
 
   // Batch Credential Generator State

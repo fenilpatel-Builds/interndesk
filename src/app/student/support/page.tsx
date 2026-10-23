@@ -90,7 +90,7 @@ export default function StudentSupportPage() {
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
-      <StudentTopbar title="Help & Support Desk" studentName="Fenil Patel" />
+      <StudentTopbar title="Help & Support Desk" />
 
       <main className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Header */}

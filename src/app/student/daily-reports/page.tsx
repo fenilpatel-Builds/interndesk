@@ -71,7 +71,7 @@ export default function StudentDailyReportsPage() {
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
-      <StudentTopbar title="Daily Work Report" studentName="Fenil Patel" />
+      <StudentTopbar title="Daily Work Report" />
 
       <main className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Header (Section 21) */}

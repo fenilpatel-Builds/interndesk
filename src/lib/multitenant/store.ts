@@ -1029,34 +1029,93 @@ class MultiTenantStore {
   private leaveRequests: LeaveRequest[] = [...INITIAL_LEAVE_REQUESTS];
   private mentorshipReviews: MentorshipReview[] = [...INITIAL_MENTORSHIP_REVIEWS];
 
+  constructor() {
+    this.loadCustomData();
+  }
+
+  public loadCustomData(): void {
+    if (typeof window !== "undefined") {
+      try {
+        const storedOrgs = localStorage.getItem("interndesk_custom_orgs");
+        if (storedOrgs) {
+          const parsed = JSON.parse(storedOrgs);
+          if (Array.isArray(parsed)) {
+            for (const org of parsed) {
+              if (!this.organizations.some((o) => o.id === org.id)) {
+                this.organizations.push(org);
+              }
+            }
+          }
+        }
+        const storedMems = localStorage.getItem("interndesk_custom_mems");
+        if (storedMems) {
+          const parsedMems = JSON.parse(storedMems);
+          if (Array.isArray(parsedMems)) {
+            for (const mem of parsedMems) {
+              if (!this.memberships.some((m) => m.id === mem.id)) {
+                this.memberships.push(mem);
+              }
+            }
+          }
+        }
+      } catch {
+        // Non-blocking fallback
+      }
+    }
+  }
+
+  public saveCustomOrg(org: Organization): void {
+    if (typeof window !== "undefined") {
+      try {
+        const storedOrgs = localStorage.getItem("interndesk_custom_orgs");
+        const list: Organization[] = storedOrgs ? JSON.parse(storedOrgs) : [];
+        const idx = list.findIndex((o) => o.id === org.id);
+        if (idx >= 0) list[idx] = org;
+        else list.push(org);
+        localStorage.setItem("interndesk_custom_orgs", JSON.stringify(list));
+      } catch {
+        // Non-blocking fallback
+      }
+    }
+  }
+
   // ================= ORGANIZATIONS =================
   public getOrganizations(): Organization[] {
+    this.loadCustomData();
     return [...this.organizations];
   }
 
   public getOrganizationById(id: string): Organization | undefined {
+    this.loadCustomData();
     return this.organizations.find((o) => o.id === id);
   }
 
   public getOrganizationBySlug(slug: string): Organization | undefined {
+    this.loadCustomData();
     return this.organizations.find((o) => o.slug === slug);
   }
 
   public getOrganizationByCode(code: string): Organization | undefined {
+    this.loadCustomData();
     const cleaned = code.trim().toUpperCase();
     return this.organizations.find((o) => o.code.toUpperCase() === cleaned);
   }
 
-  public createOrganization(data: Omit<Organization, "id" | "code" | "status" | "created_at" | "updated_at">): Organization {
+  public createOrganization(
+    data: Omit<Organization, "id" | "code" | "status" | "created_at" | "updated_at"> & {
+      status?: Organization["status"];
+    }
+  ): Organization {
     const newOrg: Organization = {
       ...data,
       id: `org-${Date.now()}`,
       code: generateOrganizationCode(),
-      status: "VERIFICATION_PENDING",
+      status: data.status || "VERIFICATION_PENDING",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
     this.organizations.push(newOrg);
+    this.saveCustomOrg(newOrg);
 
     // Audit log
     this.auditLogs.unshift({
@@ -1157,6 +1216,18 @@ class MultiTenantStore {
       updated_at: new Date().toISOString(),
     };
     this.memberships.push(newMem);
+    if (typeof window !== "undefined") {
+      try {
+        const storedMems = localStorage.getItem("interndesk_custom_mems");
+        const list: OrganizationMembership[] = storedMems ? JSON.parse(storedMems) : [];
+        const idx = list.findIndex((m) => m.id === newMem.id);
+        if (idx >= 0) list[idx] = newMem;
+        else list.push(newMem);
+        localStorage.setItem("interndesk_custom_mems", JSON.stringify(list));
+      } catch {
+        // Non-blocking fallback
+      }
+    }
     return newMem;
   }
 

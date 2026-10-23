@@ -7,12 +7,27 @@ import { useWorkTimer } from "@/hooks/use-work-timer";
 import { GlobalSearch } from "@/components/ui/global-search";
 import { NotificationCenter } from "@/components/ui/notification-center";
 
+import { parseClientSessionCookie } from "@/lib/auth/client-session";
+
 interface StudentTopbarProps {
   title: string;
   studentName?: string;
 }
 
-export function StudentTopbar({ title, studentName = "Student Intern" }: StudentTopbarProps) {
+export function StudentTopbar({ title, studentName }: StudentTopbarProps) {
+  const [resolvedName, setResolvedName] = React.useState(
+    studentName && studentName !== "Fenil Patel" ? studentName : "Student Intern"
+  );
+
+  React.useEffect(() => {
+    const session = parseClientSessionCookie();
+    if (session?.name) {
+      setResolvedName(session.name);
+    } else if (studentName && studentName !== "Fenil Patel") {
+      setResolvedName(studentName);
+    }
+  }, [studentName]);
+
   const {
     status,
     hoursStr,
@@ -97,10 +112,10 @@ export function StudentTopbar({ title, studentName = "Student Intern" }: Student
         {/* Student Avatar */}
         <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center font-bold text-xs shadow-2xs">
-            {studentName.charAt(0)}
+            {resolvedName.charAt(0).toUpperCase()}
           </div>
           <div className="hidden sm:block text-left leading-tight">
-            <span className="block text-xs font-bold text-slate-900">{studentName}</span>
+            <span className="block text-xs font-bold text-slate-900">{resolvedName}</span>
             <span className="block text-[10px] text-emerald-600 font-semibold">Active Intern</span>
           </div>
         </div>

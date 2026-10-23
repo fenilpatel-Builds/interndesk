@@ -52,6 +52,23 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [enableSelfieVerification, setEnableSelfieVerification] = useState(true);
   const [selfieModalMode, setSelfieModalMode] = useState<"CLOCK_IN" | "CLOCK_OUT" | null>(null);
+  const [studentName, setStudentName] = useState("Student Intern");
+
+  React.useEffect(() => {
+    try {
+      const match = document.cookie.match(/(?:^|;\s*)interndesk_user=([^;]+)/);
+      if (match) {
+        const parts = decodeURIComponent(match[1]).split(".");
+        if (parts.length >= 2) {
+          const payload = JSON.parse(atob(parts[0]));
+          if (payload?.name) setStudentName(payload.name);
+        }
+      }
+    } catch {
+      // Ignored
+    }
+  }, []);
+
   const [viewingVerification, setViewingVerification] = useState<{
     data: PunchVerificationData;
     label: string;
@@ -572,7 +589,7 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
         <SelfiePunchModal
           isOpen={!!selfieModalMode}
           mode={selfieModalMode}
-          internName="Fenil Patel"
+          internName={studentName}
           onClose={() => setSelfieModalMode(null)}
           onConfirm={(verificationData) => {
             if (selfieModalMode === "CLOCK_IN") {
@@ -604,7 +621,7 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
           onClose={() => setViewingVerification(null)}
           verification={viewingVerification.data}
           modeLabel={viewingVerification.label}
-          internName="Fenil Patel"
+          internName={studentName}
         />
       )}
     </Card>

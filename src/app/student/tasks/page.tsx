@@ -121,7 +121,22 @@ export default function StudentTasksPage() {
   const [newPriority, setNewPriority] = useState<TaskItem["priority"]>("MEDIUM");
   const [newDue, setNewDue] = useState("2026-10-28");
   const [newTech, setNewTech] = useState("Full Stack Web");
-  const [newAssignee, setNewAssignee] = useState("Fenil Patel");
+  const [newAssignee, setNewAssignee] = useState("Me (Intern)");
+
+  React.useEffect(() => {
+    try {
+      const match = document.cookie.match(/(?:^|;\s*)interndesk_user=([^;]+)/);
+      if (match) {
+        const parts = decodeURIComponent(match[1]).split(".");
+        if (parts.length >= 2) {
+          const payload = JSON.parse(atob(parts[0]));
+          if (payload?.name) setNewAssignee(payload.name);
+        }
+      }
+    } catch {
+      // Ignored
+    }
+  }, []);
 
   const saveTasks = (updated: TaskItem[]) => {
     setTasks(updated);
@@ -195,7 +210,7 @@ export default function StudentTasksPage() {
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
-      <StudentTopbar title="Task Management" studentName="Fenil Patel" />
+      <StudentTopbar title="Task Management" />
 
       <main className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Header with Switcher and New Task Button */}
@@ -569,10 +584,10 @@ export default function StudentTasksPage() {
                 onChange={(e) => setNewAssignee(e.target.value)}
                 className="w-full rounded-xl border border-slate-300 p-2 text-xs focus:outline-none focus:border-blue-600 bg-white"
               >
-                <option value="Fenil Patel">Fenil Patel (Student Intern)</option>
-                <option value="Marcus Vance">Marcus Vance (Lead Mentor)</option>
-                <option value="Elena Rostova">Elena Rostova (CTO / Founder)</option>
-                <option value="David Kumar">David Kumar (Dean / Admin)</option>
+                <option value={newAssignee}>{newAssignee} (Assigned to Me)</option>
+                <option value="Mentor Reviewer">Engineering Lead (Sprint Mentor)</option>
+                <option value="Company Admin">Corporate Administrator</option>
+                <option value="Dean / Supervisor">Academic Supervisor</option>
               </select>
             </div>
           </div>

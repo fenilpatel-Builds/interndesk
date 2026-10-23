@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { AnimatedLogo } from "@/components/ui/animated-logo";
-import { sendEmailOtp, verifyEmailOtp, registerOrganizationSession } from "@/lib/auth/actions";
+import { sendEmailOtp, verifyEmailOtp, registerOrganizationSession, registerAccountAction } from "@/lib/auth/actions";
 import { multiTenantStore } from "@/lib/multitenant/store";
 import type { JoiningPolicy } from "@/types/multitenant";
 import type { RegistrationFormData } from "@/validations/registration";
@@ -41,6 +41,7 @@ export default function RegisterPage() {
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [otpVerified, setOtpVerified] = useState(false);
+  const [studentPassword, setStudentPassword] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
   const [otpMessage, setOtpMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
@@ -130,6 +131,9 @@ export default function RegisterPage() {
     if (!formData.mobile.trim() || !/^\d{10}$/.test(formData.mobile.trim())) {
       errs.mobile = "Please enter a valid 10-digit mobile number.";
     }
+    if (!studentPassword || studentPassword.length < 6) {
+      errs.password = "Please create an account password of at least 6 characters.";
+    }
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -214,6 +218,19 @@ export default function RegisterPage() {
     setIsSubmitting(true);
     setErrors({});
     try {
+      // 1. Register credentials on server
+      await registerAccountAction({
+        name: formData.fullName.trim(),
+        email: formData.email.trim(),
+        password: studentPassword || "student123",
+        accountType: "STUDENT",
+        role: "STUDENT",
+        college: formData.college,
+        university: formData.university,
+        technology: formData.technology,
+      });
+
+      // 2. Submit application record
       const res = await fetch("/api/registrations/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -268,59 +285,66 @@ export default function RegisterPage() {
     setIsCompanySubmitting(true);
 
     try {
-      const slug = companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || `corp-${Date.now()}`;
-      const newOrg = multiTenantStore.createOrganization({
-        name: companyName.trim(),
-        slug,
-        type: "CORPORATE",
-        official_email: companyEmail.trim(),
-        contact_number: companyPhone.trim(),
-        website: companyWebsite.trim(),
-        country: "India",
-        size: companySize,
-        industry_or_category: companyIndustry,
-        description: `${companyName} Corporate Internship and Workforce Management Workspace.`,
-        joining_policy: companyPolicy,
-        allowed_email_domains: companyEmail.includes("@") ? [`@${companyEmail.split("@")[1]}`] : [],
-        settings: {
-          workingDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-          expectedDailyHours: 8,
-          gracePeriodMinutes: 15,
-          allowedBreakMinutes: 60,
-          timeZone: "Asia/Kolkata",
-          dateFormat: "DD/MM/YYYY",
-          primaryColor: "#2563EB",
-          requireReportReview: true,
-          autoApproveAttendance: false,
-          requireDocumentApproval: true,
-        },
-      });
-
-      const userId = `usr-${Date.now()}`;
-      multiTenantStore.addMembership({
-        organization_id: newOrg.id,
-        user_id: userId,
-        role: "ORG_ADMIN",
-        member_type: "ADMIN",
-        status: "ACTIVE",
-        job_title: "Corporate Workspace Administrator",
-        user_full_name: companyAdminName.trim(),
-        user_email: companyEmail.trim(),
-        joined_at: new Date().toISOString(),
-      });
-
-      await registerOrganizationSession({
-        userId,
+      const res = await registerAccountAction({
         name: companyAdminName.trim(),
         email: companyEmail.trim(),
+        password: companyAdminPassword,
+        accountType: "COMPANY",
+        organizationName: companyName.trim(),
+        phone: companyPhone.trim(),
+        website: companyWebsite.trim(),
+        categoryOrIndustry: companyIndustry,
+        size: companySize,
         role: "ORG_ADMIN",
-        orgId: newOrg.id,
       });
 
+      if (!res.success) {
+        throw new Error(res.message);
+      }
+
+      if (res.organizationId) {
+        multiTenantStore.saveCustomOrg({
+          id: res.organizationId,
+          name: companyName.trim(),
+          slug: companyName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+          code: res.organizationCode || "ORG-VERIFIED",
+          type: "CORPORATE",
+          status: "APPROVED",
+          official_email: companyEmail.trim(),
+          contact_number: companyPhone.trim(),
+          website: companyWebsite.trim(),
+          country: "India",
+          size: companySize,
+          industry_or_category: companyIndustry,
+          description: `${companyName.trim()} Corporate Workspace.`,
+          joining_policy: companyPolicy,
+          allowed_email_domains: companyEmail.includes("@") ? [`@${companyEmail.split("@")[1]}`] : [],
+          settings: {
+            workingDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+            expectedDailyHours: 8,
+            gracePeriodMinutes: 15,
+            allowedBreakMinutes: 60,
+            timeZone: "Asia/Kolkata",
+            dateFormat: "DD/MM/YYYY",
+            primaryColor: "#2563EB",
+            requireReportReview: true,
+            autoApproveAttendance: false,
+            requireDocumentApproval: true,
+          },
+          branding: {
+            brandColor: "#2563EB",
+            signatoryName: companyAdminName.trim(),
+            signatoryTitle: "Corporate Administrator",
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+      }
+
       setCompanySuccess({
-        id: newOrg.id,
-        name: newOrg.name,
-        code: newOrg.code,
+        id: res.organizationId || `org-${Date.now()}`,
+        name: companyName.trim(),
+        code: res.organizationCode || "ORG-VERIFIED",
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to register company workspace.";
@@ -358,59 +382,66 @@ export default function RegisterPage() {
     setIsInstituteSubmitting(true);
 
     try {
-      const slug = instituteName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || `inst-${Date.now()}`;
-      const newOrg = multiTenantStore.createOrganization({
-        name: instituteName.trim(),
-        slug,
-        type: "EDUCATIONAL",
-        official_email: instituteEmail.trim(),
-        contact_number: institutePhone.trim(),
-        website: instituteWebsite.trim(),
-        country: "India",
-        size: instituteCapacity,
-        industry_or_category: instituteCategory,
-        description: `${instituteName} Academic Internship Portal & Accreditation Ledger.`,
-        joining_policy: "REQUEST_APPROVAL",
-        allowed_email_domains: instituteEmail.includes("@") ? [`@${instituteEmail.split("@")[1]}`] : [],
-        settings: {
-          workingDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-          expectedDailyHours: 8,
-          gracePeriodMinutes: 15,
-          allowedBreakMinutes: 60,
-          timeZone: "Asia/Kolkata",
-          dateFormat: "DD/MM/YYYY",
-          primaryColor: "#4F46E5",
-          requireReportReview: true,
-          autoApproveAttendance: false,
-          requireDocumentApproval: true,
-        },
-      });
-
-      const userId = `usr-${Date.now()}`;
-      multiTenantStore.addMembership({
-        organization_id: newOrg.id,
-        user_id: userId,
-        role: "ORG_ADMIN",
-        member_type: "ADMIN",
-        status: "ACTIVE",
-        job_title: "Academic Internship Coordinator / Dean",
-        user_full_name: instituteAdminName.trim(),
-        user_email: instituteEmail.trim(),
-        joined_at: new Date().toISOString(),
-      });
-
-      await registerOrganizationSession({
-        userId,
+      const res = await registerAccountAction({
         name: instituteAdminName.trim(),
         email: instituteEmail.trim(),
+        password: instituteAdminPassword,
+        accountType: "INSTITUTE",
+        organizationName: instituteName.trim(),
+        phone: institutePhone.trim(),
+        website: instituteWebsite.trim(),
+        categoryOrIndustry: instituteCategory,
+        size: instituteCapacity,
         role: "ORG_ADMIN",
-        orgId: newOrg.id,
       });
 
+      if (!res.success) {
+        throw new Error(res.message);
+      }
+
+      if (res.organizationId) {
+        multiTenantStore.saveCustomOrg({
+          id: res.organizationId,
+          name: instituteName.trim(),
+          slug: instituteName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+          code: res.organizationCode || "ORG-VERIFIED",
+          type: "EDUCATIONAL",
+          status: "APPROVED",
+          official_email: instituteEmail.trim(),
+          contact_number: institutePhone.trim(),
+          website: instituteWebsite.trim(),
+          country: "India",
+          size: instituteCapacity,
+          industry_or_category: instituteCategory,
+          description: `${instituteName.trim()} Academic Internship Portal.`,
+          joining_policy: "REQUEST_APPROVAL",
+          allowed_email_domains: instituteEmail.includes("@") ? [`@${instituteEmail.split("@")[1]}`] : [],
+          settings: {
+            workingDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+            expectedDailyHours: 8,
+            gracePeriodMinutes: 15,
+            allowedBreakMinutes: 60,
+            timeZone: "Asia/Kolkata",
+            dateFormat: "DD/MM/YYYY",
+            primaryColor: "#4F46E5",
+            requireReportReview: true,
+            autoApproveAttendance: false,
+            requireDocumentApproval: true,
+          },
+          branding: {
+            brandColor: "#4F46E5",
+            signatoryName: instituteAdminName.trim(),
+            signatoryTitle: "Academic Coordinator / Dean",
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+      }
+
       setInstituteSuccess({
-        id: newOrg.id,
-        name: newOrg.name,
-        code: newOrg.code,
+        id: res.organizationId || `org-${Date.now()}`,
+        name: instituteName.trim(),
+        code: res.organizationCode || "ORG-VERIFIED",
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to register educational institute.";
@@ -658,6 +689,17 @@ export default function RegisterPage() {
                       required
                     />
                   </div>
+
+                  <Input
+                    label="Account Password"
+                    type="password"
+                    placeholder="Create a secure password (min. 6 characters)"
+                    value={studentPassword}
+                    onChange={(e) => setStudentPassword(e.target.value)}
+                    error={errors.password}
+                    helperText="You will use this password alongside your email to sign in to your student dashboard."
+                    required
+                  />
 
                   <div className="pt-4 flex items-center justify-between">
                     <Link href="/login" className="text-xs font-semibold text-slate-500 hover:text-blue-600">

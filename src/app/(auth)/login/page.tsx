@@ -12,136 +12,42 @@ import {
   Eye,
   EyeOff,
   Building2,
-  Shield,
-  Briefcase,
   UserCheck,
   Sparkles,
   ArrowLeft,
   ChevronRight,
   Layers,
+  Trash2,
+  RefreshCw,
+  AlertCircle,
+  Building,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatedLogo } from "@/components/ui/animated-logo";
-import { sendEmailOtp, verifyEmailOtp, loginWithPassword } from "@/lib/auth/actions";
+import {
+  sendEmailOtp,
+  verifyEmailOtp,
+  loginWithPassword,
+  getRegisteredAccountsAction,
+  clearAllTestingAccountsAction,
+} from "@/lib/auth/actions";
 
-interface PersonaConfig {
+interface RegisteredAccountSummary {
   id: string;
-  roleName: string;
-  personName: string;
-  organization: string;
   email: string;
-  password: string;
-  icon: React.ReactNode;
-  badge: string;
-  tagline: string;
-  quote: string;
-  duties: string[];
+  name: string;
+  role: string;
+  organizationId?: string;
+  organizationName?: string;
+  organizationType?: "CORPORATE" | "EDUCATIONAL" | "COMMUNITY";
+  createdAt: string;
 }
-
-const PERSONAS: PersonaConfig[] = [
-  {
-    id: "ceo",
-    roleName: "Company Owner / CEO",
-    personName: "Elena Rostova",
-    organization: "Apex Technologies",
-    email: "admin@apextech.com",
-    password: "apex123",
-    icon: <Building2 className="w-4 h-4 text-blue-400" />,
-    badge: "Enterprise Workspace",
-    tagline: "Total Organizational Purview & Governance",
-    quote:
-      "InternDesk allows us to manage 500+ engineering interns with automated biometric timesheets, cryptographic document issuance, and zero fee overhead.",
-    duties: [
-      "Department & Team Structure Management",
-      "Executive Analytics & Performance KPIs",
-      "Batch Document & Offer Letter Issuance",
-      "Organization Branding & Security Settings",
-    ],
-  },
-  {
-    id: "dean",
-    roleName: "University Dean & Director",
-    personName: "Prof. David Kumar",
-    organization: "Westbridge University",
-    email: "admin@westbridge.edu",
-    password: "wbu123",
-    icon: <GraduationCap className="w-4 h-4 text-indigo-400" />,
-    badge: "Higher Education",
-    tagline: "Academic Practicum & Placement Supervision",
-    quote:
-      "Our students complete accredited software internships with verified attendance ledgers that seamlessly bridge academia and industry.",
-    duties: [
-      "Capstone Cohort & Curriculum Tracking",
-      "Student Placement Verification",
-      "Academic Grade & Report Endorsements",
-      "Institutional Policy Compliance",
-    ],
-  },
-  {
-    id: "superadmin",
-    roleName: "Platform Super Admin",
-    personName: "Security Administrator",
-    organization: "InternDesk Global HQ",
-    email: "superadmin@interndesk.com",
-    password: "superadmin123",
-    icon: <Shield className="w-4 h-4 text-red-400" />,
-    badge: "Platform Control",
-    tagline: "Zero-Trust Security & Multi-Tenant Oversight",
-    quote:
-      "Cryptographically tamper-proof sessions and strict tenant query isolation protect sensitive workforce data across all client organizations.",
-    duties: [
-      "Cross-Tenant Health & Safety Auditing",
-      "Organization Code Rotation & Approvals",
-      "Zero-Trust Access Control (RBAC)",
-      "System Uptime & Incident Response",
-    ],
-  },
-  {
-    id: "mentor",
-    roleName: "Engineering Lead & Mentor",
-    personName: "Marcus Sterling",
-    organization: "Apex Technologies",
-    email: "marcus@apextech.com",
-    password: "apex123",
-    icon: <Briefcase className="w-4 h-4 text-emerald-400" />,
-    badge: "Mentorship & Sprint",
-    tagline: "Daily Sprint & Task Collaboration",
-    quote:
-      "Reviewing daily reports and unblocking interns takes minutes, with real-time GitHub branch links and milestone scoring.",
-    duties: [
-      "Sprint Task Creation & Assignee Tracking",
-      "Daily Work Report Code Reviews",
-      "Weekly Technical Mentorship Evaluations",
-      "Attendance & Leave Request Approvals",
-    ],
-  },
-  {
-    id: "student",
-    roleName: "Software Engineering Intern",
-    personName: "Fenil Patel",
-    organization: "Apex Technologies",
-    email: "fenil8918@gmail.com",
-    password: "password123",
-    icon: <UserCheck className="w-4 h-4 text-cyan-400" />,
-    badge: "Student Portal",
-    tagline: "Live 24h Work Sessions & Skill Credentials",
-    quote:
-      "I clock in for my shifts, tackle sprint tasks, pass technical assessments, and download verified offer letters and certificates.",
-    duties: [
-      "24-Hour Daily Shift Tracking & Breaks",
-      "Task Kanban Board & Deliverable Submissions",
-      "Online LMS Modules & Timed MCQ Exams",
-      "Official Offer Letter & Certificate Vault",
-    ],
-  },
-];
 
 export default function LoginPage() {
   const [authMode, setAuthMode] = useState<"PASSWORD" | "OTP">("PASSWORD");
-  const [activePersona, setActivePersona] = useState<PersonaConfig>(PERSONAS[0]);
   const [step, setStep] = useState<"EMAIL" | "OTP">("EMAIL");
-  const [email, setEmail] = useState("admin@apextech.com");
-  const [password, setPassword] = useState("apex123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [otp, setOtp] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
@@ -150,6 +56,27 @@ export default function LoginPage() {
   const [successMessage, setSuccessMessage] = useState("");
   const [resendCooldown, setResendCooldown] = useState(30);
   const [isResending, setIsResending] = useState(false);
+
+  // Dynamic Registered Accounts from Server Store
+  const [registeredAccounts, setRegisteredAccounts] = useState<RegisteredAccountSummary[]>([]);
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
+  const [isClearingAccounts, setIsClearingAccounts] = useState(false);
+
+  const fetchAccounts = async () => {
+    setIsLoadingAccounts(true);
+    try {
+      const accounts = await getRegisteredAccountsAction();
+      setRegisteredAccounts(accounts || []);
+    } catch {
+      setRegisteredAccounts([]);
+    } finally {
+      setIsLoadingAccounts(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAccounts();
+  }, []);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -162,14 +89,6 @@ export default function LoginPage() {
       if (interval) clearInterval(interval);
     };
   }, [step, resendCooldown]);
-
-  const selectPersona = (p: PersonaConfig) => {
-    setActivePersona(p);
-    setEmail(p.email);
-    setPassword(p.password);
-    setErrorMessage("");
-    setSuccessMessage("");
-  };
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -192,7 +111,7 @@ export default function LoginPage() {
         setSuccessMessage(res.message);
         window.location.href = res.redirectTo;
       } else {
-        setErrorMessage(res.message);
+        setErrorMessage(res.message || "Invalid login credentials. Please check your email and password.");
       }
     } catch {
       setErrorMessage("Authentication failed. Please verify your credentials and try again.");
@@ -284,11 +203,30 @@ export default function LoginPage() {
     }
   };
 
+  const handleClearAllTestingAccounts = async () => {
+    setIsClearingAccounts(true);
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("interndesk_custom_orgs");
+        localStorage.removeItem("interndesk_custom_mems");
+      }
+      await clearAllTestingAccountsAction();
+      setSuccessMessage("All testing accounts deleted. You can now register fresh accounts.");
+      setEmail("");
+      setPassword("");
+      await fetchAccounts();
+    } catch {
+      setErrorMessage("Failed to clear testing accounts.");
+    } finally {
+      setIsClearingAccounts(false);
+    }
+  };
+
   return (
     <div className="min-h-screen w-full flex flex-col lg:flex-row bg-slate-950 text-slate-100 overflow-x-hidden">
-      {/* ================= LEFT COLUMN: DYNAMIC ENTERPRISE SHOWCASE (58% desktop) ================= */}
-      <div className="lg:w-[58%] xl:w-[60%] relative flex flex-col justify-between p-6 sm:p-10 lg:p-12 overflow-hidden border-b lg:border-b-0 lg:border-r border-slate-800 bg-gradient-to-br from-slate-950 via-[#0a1128] to-slate-900">
-        {/* Futuristic Ambient Glow Orbs */}
+      {/* ================= LEFT COLUMN: ENTERPRISE SHOWCASE ================= */}
+      <div className="lg:w-[55%] xl:w-[58%] relative flex flex-col justify-between p-6 sm:p-10 lg:p-12 overflow-hidden border-b lg:border-b-0 lg:border-r border-slate-800 bg-gradient-to-br from-slate-950 via-[#0a1128] to-slate-900">
+        {/* Glow Effects */}
         <div className="absolute top-0 left-0 w-96 h-96 bg-blue-600/15 rounded-full blur-[120px] pointer-events-none -z-0" />
         <div className="absolute bottom-10 right-10 w-96 h-96 bg-indigo-600/15 rounded-full blur-[140px] pointer-events-none -z-0" />
         <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-cyan-500/10 rounded-full blur-[100px] pointer-events-none -z-0" />
@@ -308,137 +246,109 @@ export default function LoginPage() {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-700 hover:border-slate-500 bg-slate-900/80 hover:bg-slate-800 text-xs font-semibold text-slate-300 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Return to Landing</span>
+            <span>Return Home</span>
           </Link>
         </div>
 
-        {/* Center: Dynamic Multi-Persona Interactive Showcase */}
-        <div className="relative z-10 my-8 space-y-8 max-w-2xl">
+        {/* Center: Enterprise Pillars Overview */}
+        <div className="relative z-10 my-8 space-y-6 max-w-2xl">
           <div className="space-y-3">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-cyan-950/80 text-cyan-300 border border-cyan-800">
               <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-              Enterprise Role-Based Access
+              Enterprise Workforce &amp; Academic OS
             </div>
             <h1 className="text-3xl sm:text-4xl xl:text-5xl font-black text-white tracking-tight leading-tight">
               One Unified Platform. <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-300 to-indigo-400">
-                Tailored for Every Stakeholder.
+                Built for Verification, Trust &amp; Scale.
               </span>
             </h1>
             <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-xl">
-              Select an account persona below to preview how InternDesk adapts dynamically to your organizational workflow.
+              Sign in to manage academic cohorts, company internship programs, or track your verified technical work sessions.
             </p>
           </div>
 
-          {/* Interactive Persona Tabs */}
-          <div className="space-y-3">
-            <p className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-bold">
-              Select Role Persona (Auto-Fills Login):
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {PERSONAS.map((p) => {
-                const isActive = activePersona.id === p.id;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => selectPersona(p)}
-                    className={`p-3 rounded-2xl border text-left transition-all duration-200 cursor-pointer flex flex-col justify-between ${
-                      isActive
-                        ? "bg-blue-950/70 border-blue-500 shadow-lg shadow-blue-500/20 ring-1 ring-blue-500"
-                        : "bg-slate-900/70 border-slate-800 hover:border-slate-700 hover:bg-slate-800/60"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="p-1.5 rounded-lg bg-slate-800/80 border border-slate-700">
-                        {p.icon}
-                      </div>
-                      {isActive && (
-                        <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-white truncate">{p.roleName}</p>
-                      <p className="text-[10px] text-slate-400 font-mono truncate">{p.personName}</p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Active Persona Spotlight Card */}
-          <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-700/80 backdrop-blur-md shadow-2xl space-y-4">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-blue-600/30 border border-blue-400/40 text-blue-300">
-                  {activePersona.icon}
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white">{activePersona.roleName}</h3>
-                  <p className="text-xs text-cyan-300 font-mono">
-                    {activePersona.personName} • {activePersona.organization}
-                  </p>
-                </div>
+          {/* 3 Unified Pillars Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Pillar 1: Universities */}
+            <div className="p-4 rounded-2xl bg-slate-900/80 border border-indigo-900/50 hover:border-indigo-500/50 transition-all space-y-2">
+              <div className="w-8 h-8 rounded-xl bg-indigo-950 text-indigo-400 border border-indigo-800 flex items-center justify-center">
+                <GraduationCap className="w-4 h-4" />
               </div>
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700">
-                {activePersona.badge}
-              </span>
-            </div>
-
-            <p className="text-xs sm:text-sm text-slate-200 italic leading-relaxed border-l-2 border-blue-500 pl-3">
-              &ldquo;{activePersona.quote}&rdquo;
-            </p>
-
-            <div className="pt-2 border-t border-slate-800">
-              <p className="text-[10px] uppercase font-mono font-bold text-slate-400 mb-2">
-                Core Responsibilities &amp; Capabilities:
+              <h3 className="text-xs font-bold text-white">Institutes &amp; Colleges</h3>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Supervise student placement cohorts, verify attendance ledgers, and issue accredited endorsements.
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {activePersona.duties.map((duty, idx) => (
-                  <div key={idx} className="flex items-center gap-1.5 text-xs text-slate-300">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span>{duty}</span>
-                  </div>
-                ))}
-              </div>
             </div>
+
+            {/* Pillar 2: Companies */}
+            <div className="p-4 rounded-2xl bg-slate-900/80 border border-blue-900/50 hover:border-blue-500/50 transition-all space-y-2">
+              <div className="w-8 h-8 rounded-xl bg-blue-950 text-blue-400 border border-blue-800 flex items-center justify-center">
+                <Building2 className="w-4 h-4" />
+              </div>
+              <h3 className="text-xs font-bold text-white">Companies &amp; Startups</h3>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Automated shift timesheets, task Kanban workflows, mentorship reviews, and tamper-proof offer letters.
+              </p>
+            </div>
+
+            {/* Pillar 3: Students */}
+            <div className="p-4 rounded-2xl bg-slate-900/80 border border-cyan-900/50 hover:border-cyan-500/50 transition-all space-y-2">
+              <div className="w-8 h-8 rounded-xl bg-cyan-950 text-cyan-400 border border-cyan-800 flex items-center justify-center">
+                <UserCheck className="w-4 h-4" />
+              </div>
+              <h3 className="text-xs font-bold text-white">Students &amp; Interns</h3>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                24H live shift tracking, daily work reports, skills assessments, and verifiable credentials vault.
+              </p>
+            </div>
+          </div>
+
+          {/* Platform Guarantees Banner */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-950/60 to-indigo-950/60 border border-blue-800/40 text-xs text-slate-300 space-y-2">
+            <div className="flex items-center gap-2 text-cyan-300 font-bold">
+              <ShieldCheck className="w-4 h-4" />
+              <span>100% Free Public Good Platform</span>
+            </div>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              InternDesk has zero registration fees, zero document download costs, and zero payment gateways. Complete access for every student, institute, and enterprise.
+            </p>
           </div>
         </div>
 
-        {/* Bottom Trust Indicators */}
+        {/* Bottom Security Credentials */}
         <div className="relative z-10 pt-6 border-t border-slate-800/80 flex flex-wrap items-center justify-between text-xs text-slate-400 gap-4">
           <div className="flex items-center gap-4 flex-wrap">
             <span className="flex items-center gap-1.5 font-medium">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              HMAC-SHA256 Signed Tokens
+              HMAC-SHA256 Signed Sessions
             </span>
             <span className="flex items-center gap-1.5 font-medium">
               <Layers className="w-4 h-4 text-cyan-400" />
-              100% Free • No Payment Gateways
+              Multi-Tenant Data Isolation
             </span>
           </div>
-          <span className="font-mono text-[11px] text-slate-500">v3.4 Enterprise Ready</span>
+          <span className="font-mono text-[11px] text-slate-500">v3.5 Verified Release</span>
         </div>
       </div>
 
-      {/* ================= RIGHT COLUMN: AUTHENTICATION TERMINAL (42% desktop) ================= */}
-      <div className="lg:w-[42%] xl:w-[40%] flex flex-col justify-between p-6 sm:p-10 lg:p-12 bg-white text-slate-900">
+      {/* ================= RIGHT COLUMN: AUTHENTICATION TERMINAL ================= */}
+      <div className="lg:w-[45%] xl:w-[42%] flex flex-col justify-between p-6 sm:p-10 lg:p-12 bg-white text-slate-900">
         <div className="space-y-6 max-w-md w-full mx-auto my-auto">
           {/* Header */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Supabase Auth Protected
+                Zero-Trust Security
               </span>
               <span className="text-[11px] text-slate-400 font-mono">Secured Session</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-              Sign In to Your Workspace
+              Sign In to InternDesk
             </h2>
             <p className="text-xs text-slate-500">
-              Authenticate into your corporate, academic, or student portal.
+              Enter your registered credentials to launch your workspace or student dashboard.
             </p>
           </div>
 
@@ -453,7 +363,7 @@ export default function LoginPage() {
               }}
               className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 authMode === "PASSWORD"
-                  ? "bg-white text-blue-600 shadow-sm font-black"
+                  ? "bg-white text-blue-600 shadow-xs font-black"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
@@ -469,7 +379,7 @@ export default function LoginPage() {
               }}
               className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 authMode === "OTP"
-                  ? "bg-white text-blue-600 shadow-sm font-black"
+                  ? "bg-white text-blue-600 shadow-xs font-black"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
@@ -481,7 +391,7 @@ export default function LoginPage() {
           {/* Error Message */}
           {errorMessage && (
             <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-xs text-red-700 font-medium leading-relaxed flex items-start gap-2 animate-in fade-in">
-              <span className="text-red-500 text-base leading-none">⚠️</span>
+              <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
               <span>{errorMessage}</span>
             </div>
           )}
@@ -504,7 +414,7 @@ export default function LoginPage() {
                 <div className="relative">
                   <input
                     type="email"
-                    placeholder="user@domain.com"
+                    placeholder="Enter your registered email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -516,12 +426,12 @@ export default function LoginPage() {
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Password
+                  Account Password
                 </label>
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
-                    placeholder="••••••••••••"
+                    placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -555,7 +465,7 @@ export default function LoginPage() {
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl py-3 shadow-md hover:shadow-lg transition-all"
                 isLoading={isLoading}
               >
-                Sign In with Supabase
+                Sign In to Portal
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </form>
@@ -570,7 +480,7 @@ export default function LoginPage() {
                   <div className="relative">
                     <input
                       type="email"
-                      placeholder="user@domain.com"
+                      placeholder="Enter your registered email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
@@ -580,7 +490,7 @@ export default function LoginPage() {
                     <Mail className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5 pointer-events-none" />
                   </div>
                   <p className="text-[11px] text-slate-500 mt-1">
-                    Supabase Auth will dispatch a genuine 6-digit one-time passcode to your inbox.
+                    A genuine 6-digit numeric verification code will be sent to your email.
                   </p>
                 </div>
 
@@ -590,7 +500,7 @@ export default function LoginPage() {
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl py-3 shadow-md"
                   isLoading={isLoading}
                 >
-                  Send 6-Digit Code via Supabase
+                  Send 6-Digit Code
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </form>
@@ -598,7 +508,7 @@ export default function LoginPage() {
               <form onSubmit={handleVerifyOtp} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    6-Digit Supabase Verification Code
+                    6-Digit Verification Code
                   </label>
                   <input
                     type="text"
@@ -655,52 +565,81 @@ export default function LoginPage() {
             )
           )}
 
-          {/* Quick Persona Fill Pills (Section 28) */}
-          <div className="pt-4 border-t border-slate-100">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2.5 text-center">
-              Quick One-Click Demo Personas
-            </p>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => selectPersona(PERSONAS[0])}
-                className="p-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 font-semibold text-[11px] text-left transition-colors cursor-pointer"
-              >
-                🏢 Apex Org Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => selectPersona(PERSONAS[4])}
-                className="p-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 font-semibold text-[11px] text-left transition-colors cursor-pointer"
-              >
-                🎓 Student Intern (Fenil)
-              </button>
-              <button
-                type="button"
-                onClick={() => selectPersona(PERSONAS[1])}
-                className="p-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 font-semibold text-[11px] text-left transition-colors cursor-pointer"
-              >
-                🏛️ Westbridge University
-              </button>
-              <button
-                type="button"
-                onClick={() => selectPersona(PERSONAS[2])}
-                className="p-2 rounded-xl border border-red-200 bg-red-50/70 hover:bg-red-100 text-red-700 font-semibold text-[11px] text-left transition-colors cursor-pointer"
-              >
-                🛡️ Platform Super Admin
-              </button>
+          {/* DYNAMIC REGISTERED ACCOUNTS LIST */}
+          <div className="pt-4 border-t border-slate-100 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                <Building className="w-3.5 h-3.5 text-blue-600" />
+                Your Registered Accounts ({registeredAccounts.length})
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={fetchAccounts}
+                  title="Refresh list"
+                  className="text-slate-400 hover:text-slate-600 text-xs p-1"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isLoadingAccounts ? "animate-spin" : ""}`} />
+                </button>
+                {registeredAccounts.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearAllTestingAccounts}
+                    disabled={isClearingAccounts}
+                    className="text-[10px] font-bold text-red-500 hover:text-red-700 flex items-center gap-1 hover:underline cursor-pointer"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>Clear Accounts</span>
+                  </button>
+                )}
+              </div>
             </div>
+
+            {registeredAccounts.length > 0 ? (
+              <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                {registeredAccounts.map((acc) => (
+                  <button
+                    key={acc.id}
+                    type="button"
+                    onClick={() => {
+                      setEmail(acc.email);
+                      setErrorMessage("");
+                    }}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-blue-50/80 hover:border-blue-300 text-left transition-all flex items-center justify-between group cursor-pointer"
+                  >
+                    <div className="truncate pr-2">
+                      <p className="text-xs font-bold text-slate-900 group-hover:text-blue-700 truncate">
+                        {acc.name}
+                      </p>
+                      <p className="text-[10px] text-slate-500 font-mono truncate">
+                        {acc.email} {acc.organizationName ? `• ${acc.organizationName}` : ""}
+                      </p>
+                    </div>
+                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-700 shrink-0">
+                      {acc.role === "STUDENT" ? "Student" : (acc.organizationType === "EDUCATIONAL" ? "Institute" : "Company")}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-center space-y-1">
+                <p className="text-xs text-slate-600 font-medium">No registered accounts found.</p>
+                <p className="text-[10px] text-slate-400">
+                  Register your Institute, Company, or Student profile below to begin.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Footer */}
         <div className="pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
-          <span>New organization or student?</span>
+          <span>Need a new portal or student account?</span>
           <Link
             href="/register"
             className="font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 group"
           >
-            <span>Register Now (100% Free)</span>
+            <span>Register New Account (Free)</span>
             <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
           </Link>
         </div>

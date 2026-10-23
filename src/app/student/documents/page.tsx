@@ -138,11 +138,21 @@ const STUDENT_DOCUMENTS: IssuedDocument[] = [
   },
 ];
 
+import { parseClientSessionCookie } from "@/lib/auth/client-session";
+
 export default function StudentDocumentsPage() {
   const [activeTab, setActiveTab] = useState<"ALL" | "OFFER" | "INTERN" | "CERT" | "TRANSCRIPT">("ALL");
   const [selectedStudioDoc, setSelectedStudioDoc] = useState<IssuedDocument | null>(null);
   const [sharingDoc, setSharingDoc] = useState<IssuedDocument | null>(null);
   const [copiedType, setCopiedType] = useState<string | null>(null);
+  const [studentName, setStudentName] = useState("Student Intern");
+
+  React.useEffect(() => {
+    const session = parseClientSessionCookie();
+    if (session?.name) {
+      setStudentName(session.name);
+    }
+  }, []);
 
   const storeDocs = multiTenantStore.getIssuedDocuments("org-apex-01", "usr-student-fenil");
   const docsList = storeDocs.length > 0 ? storeDocs : STUDENT_DOCUMENTS;
@@ -169,7 +179,7 @@ export default function StudentDocumentsPage() {
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
-      <StudentTopbar title="Documents & Credentials" studentName="Fenil Patel" />
+      <StudentTopbar title="Documents & Credentials" studentName={studentName} />
 
       <main className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Header & Portfolio Stats */}
@@ -390,7 +400,7 @@ export default function StudentDocumentsPage() {
 
                 <div className="py-1">
                   <h3 className="text-2xl font-serif font-black text-blue-700 tracking-tight">
-                    Fenil Patel
+                    {studentName && studentName !== "Student Intern" ? studentName : (certificateDoc?.recipient_name || "Certified Intern")}
                   </h3>
                   <div className="w-28 h-0.5 bg-blue-600 mx-auto mt-1" />
                 </div>

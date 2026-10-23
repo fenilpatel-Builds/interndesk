@@ -30,6 +30,23 @@ export default function StudentAttendancePage() {
     clockInVerification,
   } = useWorkTimer();
 
+  const [studentName, setStudentName] = React.useState("Student Intern");
+
+  React.useEffect(() => {
+    try {
+      const match = document.cookie.match(/(?:^|;\s*)interndesk_user=([^;]+)/);
+      if (match) {
+        const parts = decodeURIComponent(match[1]).split(".");
+        if (parts.length >= 2) {
+          const payload = JSON.parse(atob(parts[0]));
+          if (payload?.name) setStudentName(payload.name);
+        }
+      }
+    } catch {
+      // Ignored
+    }
+  }, []);
+
   // Full dynamic attendance history records with today's live session
   const attendanceHistory = React.useMemo(() => {
     const records = [];
@@ -93,7 +110,7 @@ export default function StudentAttendancePage() {
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
-      <StudentTopbar title="Attendance & Work Sessions" studentName="Fenil Patel" />
+      <StudentTopbar title="Attendance & Work Sessions" studentName={studentName} />
 
       <main className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Header & Date Switcher */}
@@ -269,7 +286,7 @@ export default function StudentAttendancePage() {
           onClose={() => setIsSelfieViewerOpen(false)}
           verification={clockInVerification}
           modeLabel="Clock In Punch"
-          internName="Fenil Patel"
+          internName={studentName}
         />
       )}
     </div>
