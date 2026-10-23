@@ -1041,7 +1041,10 @@ class MultiTenantStore {
           const parsed = JSON.parse(storedOrgs);
           if (Array.isArray(parsed)) {
             for (const org of parsed) {
-              if (!this.organizations.some((o) => o.id === org.id)) {
+              const idx = this.organizations.findIndex((o) => o.id === org.id);
+              if (idx >= 0) {
+                this.organizations[idx] = { ...this.organizations[idx], ...org };
+              } else {
                 this.organizations.push(org);
               }
             }
@@ -1052,8 +1055,25 @@ class MultiTenantStore {
           const parsedMems = JSON.parse(storedMems);
           if (Array.isArray(parsedMems)) {
             for (const mem of parsedMems) {
-              if (!this.memberships.some((m) => m.id === mem.id)) {
+              const idx = this.memberships.findIndex((m) => m.id === mem.id);
+              if (idx >= 0) {
+                this.memberships[idx] = { ...this.memberships[idx], ...mem };
+              } else {
                 this.memberships.push(mem);
+              }
+            }
+          }
+        }
+        const storedDocs = localStorage.getItem("interndesk_custom_docs");
+        if (storedDocs) {
+          const parsedDocs = JSON.parse(storedDocs);
+          if (Array.isArray(parsedDocs)) {
+            for (const doc of parsedDocs) {
+              const idx = this.documents.findIndex((d) => d.id === doc.id || d.document_number === doc.document_number);
+              if (idx >= 0) {
+                this.documents[idx] = { ...this.documents[idx], ...doc };
+              } else {
+                this.documents.push(doc);
               }
             }
           }
@@ -1192,10 +1212,12 @@ class MultiTenantStore {
 
   // ================= MEMBERSHIPS =================
   public getMemberships(organizationId: string): OrganizationMembership[] {
+    this.loadCustomData();
     return this.memberships.filter((m) => m.organization_id === organizationId);
   }
 
   public getUserMemberships(userEmail: string): OrganizationMembership[] {
+    this.loadCustomData();
     const userMems = this.memberships.filter((m) => m.user_email?.toLowerCase() === userEmail.toLowerCase());
     return userMems.map((m) => {
       const org = this.getOrganizationById(m.organization_id);
@@ -1211,7 +1233,7 @@ class MultiTenantStore {
   public addMembership(data: Omit<OrganizationMembership, "id" | "created_at" | "updated_at">): OrganizationMembership {
     const newMem: OrganizationMembership = {
       ...data,
-      id: `mem-${Date.now()}`,
+      id: `mem-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -1228,14 +1250,63 @@ class MultiTenantStore {
         // Non-blocking fallback
       }
     }
+
+    this.auditLogs.unshift({
+      id: `log-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      organization_id: newMem.organization_id,
+      actor_email: newMem.user_email || "system@interndesk.io",
+      actor_role: newMem.role,
+      action: newMem.status === "PENDING_APPROVAL" ? "JOIN_REQUEST_SUBMITTED" : "MEMBER_JOINED",
+      resource: newMem.user_full_name || newMem.id,
+      ip_address: "127.0.0.1",
+      details: { memberId: newMem.id, role: newMem.role, status: newMem.status },
+      created_at: new Date().toISOString(),
+    });
+
     return newMem;
   }
 
-  public updateMembershipStatus(id: string, status: OrganizationMembership["status"]): OrganizationMembership | undefined {
+  public updateMembershipStatus(
+    id: string,
+    status: OrganizationMembership["status"],
+    actorEmail: string = "admin@apextech.com",
+    assignedEmployeeId?: string
+  ): OrganizationMembership | undefined {
+    this.loadCustomData();
     const mem = this.memberships.find((m) => m.id === id);
     if (!mem) return undefined;
+
     mem.status = status;
+    if (assignedEmployeeId) {
+      mem.employee_id = assignedEmployeeId;
+    }
     mem.updated_at = new Date().toISOString();
+
+    if (typeof window !== "undefined") {
+      try {
+        const storedMems = localStorage.getItem("interndesk_custom_mems");
+        const list: OrganizationMembership[] = storedMems ? JSON.parse(storedMems) : [];
+        const idx = list.findIndex((m) => m.id === mem.id);
+        if (idx >= 0) list[idx] = mem;
+        else list.push(mem);
+        localStorage.setItem("interndesk_custom_mems", JSON.stringify(list));
+      } catch {
+        // Non-blocking fallback
+      }
+    }
+
+    this.auditLogs.unshift({
+      id: `log-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      organization_id: mem.organization_id,
+      actor_email: actorEmail,
+      actor_role: "ORG_ADMIN",
+      action: status === "ACTIVE" ? "JOIN_REQUEST_APPROVED" : `MEMBER_STATUS_${status}`,
+      resource: mem.user_full_name || mem.id,
+      ip_address: "127.0.0.1",
+      details: { memberId: mem.id, newStatus: status, employeeId: mem.employee_id },
+      created_at: new Date().toISOString(),
+    });
+
     return mem;
   }
 
@@ -1483,6 +1554,7 @@ class MultiTenantStore {
 
   // ================= DOCUMENTS & CERTIFICATES =================
   public getIssuedDocuments(organizationId: string, memberId?: string): IssuedDocument[] {
+    this.loadCustomData();
     let list = this.documents.filter((d) => d.organization_id === organizationId);
     if (memberId) {
       list = list.filter((d) => d.member_id === memberId);
@@ -1497,7 +1569,61 @@ class MultiTenantStore {
       created_at: new Date().toISOString(),
     };
     this.documents.unshift(newDoc);
+    if (typeof window !== "undefined") {
+      try {
+        const storedDocs = localStorage.getItem("interndesk_custom_docs");
+        const list: IssuedDocument[] = storedDocs ? JSON.parse(storedDocs) : [];
+        const idx = list.findIndex((d) => d.id === newDoc.id);
+        if (idx >= 0) list[idx] = newDoc;
+        else list.unshift(newDoc);
+        localStorage.setItem("interndesk_custom_docs", JSON.stringify(list));
+      } catch {
+        // Non-blocking fallback
+      }
+    }
     return newDoc;
+  }
+
+  public acceptDocument(
+    documentId: string,
+    candidateName?: string
+  ): IssuedDocument | undefined {
+    this.loadCustomData();
+    const doc = this.documents.find((d) => d.id === documentId || d.document_number === documentId);
+    if (!doc) return undefined;
+
+    doc.status = "ACCEPTED" as any;
+    if (doc.template_data) {
+      doc.template_data.validity = "Digitally Accepted & Executed";
+    }
+    doc.updated_at = new Date().toISOString();
+
+    if (typeof window !== "undefined") {
+      try {
+        const storedDocs = localStorage.getItem("interndesk_custom_docs");
+        const list: IssuedDocument[] = storedDocs ? JSON.parse(storedDocs) : [];
+        const idx = list.findIndex((d) => d.id === doc.id || d.document_number === doc.document_number);
+        if (idx >= 0) list[idx] = doc;
+        else list.push(doc);
+        localStorage.setItem("interndesk_custom_docs", JSON.stringify(list));
+      } catch {
+        // Non-blocking fallback
+      }
+    }
+
+    this.auditLogs.unshift({
+      id: `log-${Date.now()}`,
+      organization_id: doc.organization_id,
+      actor_email: candidateName || doc.recipient_name,
+      actor_role: "INTERN",
+      action: "OFFER_LETTER_ACCEPTED",
+      resource: `${doc.title} (${doc.document_number})`,
+      ip_address: "127.0.0.1",
+      details: { recipient: doc.recipient_name, date: new Date().toISOString() },
+      created_at: new Date().toISOString(),
+    });
+
+    return doc;
   }
 
   public verifyDocumentByNumber(documentNumber: string): IssuedDocument | undefined {

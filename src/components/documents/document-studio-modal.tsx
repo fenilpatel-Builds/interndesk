@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { IssuedDocument, TemplateTheme } from "@/types/multitenant";
+import { multiTenantStore } from "@/lib/multitenant/store";
 
 interface DocumentStudioModalProps {
   isOpen: boolean;
@@ -243,6 +244,7 @@ export function DocumentStudioModal({
         // Ignored
       }
     }
+    multiTenantStore.acceptDocument(doc.id, candidateNameInput || doc.recipient_name);
     setIsAccepted(true);
     setAcceptedDate(today);
     setIsSignModalOpen(false);

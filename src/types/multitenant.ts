@@ -46,6 +46,7 @@ export type MembershipStatus =
   | "ACTIVE"
   | "INVITATION_PENDING"
   | "JOIN_REQUEST_PENDING"
+  | "PENDING_APPROVAL"
   | "SUSPENDED"
   | "REJECTED"
   | "REMOVED"
@@ -94,6 +95,7 @@ export type DocumentStatus =
   | "PENDING_APPROVAL"
   | "APPROVED"
   | "ISSUED"
+  | "ACCEPTED"
   | "REVOKED";
 
 export type TemplateTheme = "CLASSIC_IVY" | "MODERN_TECH" | "EXECUTIVE_SOVEREIGN";
@@ -442,6 +444,7 @@ export interface IssuedDocument {
     verified_skills?: string[];
   };
   created_at: string;
+  updated_at?: string;
 }
 
 export interface Announcement {

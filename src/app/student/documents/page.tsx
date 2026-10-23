@@ -34,7 +34,7 @@ const STUDENT_DOCUMENTS: IssuedDocument[] = [
     document_number: "ID-OFFER-2026-4412",
     document_type: "OFFER_LETTER",
     title: "Official Internship Offer Letter",
-    recipient_name: "Fenil Patel",
+    recipient_name: "Student Intern",
     recipient_role: "Software Engineering Intern",
     issued_date: "2026-10-01",
     status: "ISSUED",
@@ -56,7 +56,7 @@ const STUDENT_DOCUMENTS: IssuedDocument[] = [
     document_number: "ID-INTR-2026-5591",
     document_type: "INTERNSHIP_LETTER",
     title: "Internship Appointment & Enrollment Letter",
-    recipient_name: "Fenil Patel",
+    recipient_name: "Student Intern",
     recipient_role: "Full Stack Software Engineering Intern",
     issued_date: "2026-10-03",
     status: "ISSUED",
@@ -78,7 +78,7 @@ const STUDENT_DOCUMENTS: IssuedDocument[] = [
     document_number: "ID-CERT-2026-8918",
     document_type: "COMPLETION_CERTIFICATE",
     title: "Certificate of Internship Excellence",
-    recipient_name: "Fenil Patel",
+    recipient_name: "Student Intern",
     recipient_role: "Full Stack Software Engineering Intern",
     issued_date: "2026-10-15",
     status: "ISSUED",
@@ -101,7 +101,7 @@ const STUDENT_DOCUMENTS: IssuedDocument[] = [
     document_number: "ID-TRSC-2026-9812",
     document_type: "PERFORMANCE_TRANSCRIPT",
     title: "Official Internship Performance Transcript & Skill Dossier",
-    recipient_name: "Fenil Patel",
+    recipient_name: "Student Intern",
     recipient_role: "Full Stack Software Engineering Intern",
     issued_date: "2026-10-22",
     status: "ISSUED",
@@ -145,17 +145,32 @@ export default function StudentDocumentsPage() {
   const [selectedStudioDoc, setSelectedStudioDoc] = useState<IssuedDocument | null>(null);
   const [sharingDoc, setSharingDoc] = useState<IssuedDocument | null>(null);
   const [copiedType, setCopiedType] = useState<string | null>(null);
-  const [studentName, setStudentName] = useState("Student Intern");
+  const [currentUser, setCurrentUser] = useState(() => parseClientSessionCookie());
+  const [studentName, setStudentName] = useState(() => parseClientSessionCookie()?.name || "Student Intern");
 
   React.useEffect(() => {
     const session = parseClientSessionCookie();
-    if (session?.name) {
+    if (session) {
+      setCurrentUser(session);
       setStudentName(session.name);
     }
   }, []);
 
-  const storeDocs = multiTenantStore.getIssuedDocuments("org-apex-01", "usr-student-fenil");
-  const docsList = storeDocs.length > 0 ? storeDocs : STUDENT_DOCUMENTS;
+  const activeOrgId = currentUser?.organizationId || "org-apex-01";
+  const storeDocs = multiTenantStore.getIssuedDocuments(activeOrgId);
+  const userDocs = storeDocs.filter((d) => {
+    if (!currentUser) return true;
+    return (
+      d.member_id === currentUser.id ||
+      d.member_id === currentUser.email ||
+      d.recipient_name?.toLowerCase() === currentUser.name?.toLowerCase()
+    );
+  });
+
+  const docsList = (userDocs.length > 0 ? userDocs : storeDocs.length > 0 ? storeDocs : STUDENT_DOCUMENTS).map((doc) => ({
+    ...doc,
+    recipient_name: currentUser?.name || doc.recipient_name,
+  }));
 
   const filteredDocs = docsList.filter((doc) => {
     if (activeTab === "OFFER") return doc.document_type === "OFFER_LETTER";

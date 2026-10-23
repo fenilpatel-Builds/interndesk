@@ -217,6 +217,7 @@ export default function WorkspacePage() {
   const [examResult, setExamResult] = useState<{ score: number; percentage: number; passed: boolean } | null>(null);
 
   // Member Management Filters & Modal
+  const [joinActionToast, setJoinActionToast] = useState<string | null>(null);
   const [memberSearch, setMemberSearch] = useState("");
   const [memberTypeFilter, setMemberTypeFilter] = useState("ALL");
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
@@ -742,6 +743,31 @@ export default function WorkspacePage() {
     reloadTenantData();
   };
 
+  const handleAcceptJoinRequest = (memberId: string) => {
+    const mem = members.find((m) => m.id === memberId);
+    if (!mem) return;
+    const prefix = mem.member_type === "EMPLOYEE" ? "EMP" : mem.member_type === "INTERN" ? "INT" : "STU";
+    const empId =
+      mem.employee_id && !mem.employee_id.includes("PENDING")
+        ? mem.employee_id
+        : `${prefix}-${activeOrg.name.slice(0, 3).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`;
+
+    multiTenantStore.updateMembershipStatus(memberId, "ACTIVE", currentUser.email, empId);
+    reloadTenantData(activeOrg.id);
+    setJoinActionToast(`Approved & admitted ${mem.user_full_name}! Member status is now ACTIVE (ID: ${empId}).`);
+    setTimeout(() => setJoinActionToast(null), 4000);
+  };
+
+  const handleRejectJoinRequest = (memberId: string) => {
+    const mem = members.find((m) => m.id === memberId);
+    if (!mem) return;
+
+    multiTenantStore.updateMembershipStatus(memberId, "REJECTED", currentUser.email);
+    reloadTenantData(activeOrg.id);
+    setJoinActionToast(`Declined join request from ${mem.user_full_name}.`);
+    setTimeout(() => setJoinActionToast(null), 3500);
+  };
+
   // Assessment Runner Handlers
   const handleStartExam = (asm: Assessment) => {
     setExamRunnerAssessment(asm);
@@ -806,11 +832,17 @@ export default function WorkspacePage() {
   };
 
   // Filtered lists
+  const pendingJoinRequests = members.filter((m) => m.status === "PENDING_APPROVAL");
+
   const filteredMembers = members.filter((m) => {
     const matchesSearch =
       (m.user_full_name || "").toLowerCase().includes(memberSearch.toLowerCase()) ||
       (m.user_email || "").toLowerCase().includes(memberSearch.toLowerCase()) ||
       (m.employee_id || "").toLowerCase().includes(memberSearch.toLowerCase());
+
+    if (memberTypeFilter === "REQUESTS") {
+      return matchesSearch && m.status === "PENDING_APPROVAL";
+    }
     const matchesType = memberTypeFilter === "ALL" || m.member_type === memberTypeFilter;
     return matchesSearch && matchesType;
   });
@@ -1089,6 +1121,84 @@ export default function WorkspacePage() {
                 </div>
               </div>
 
+              {/* Join Action Toast Notification */}
+              {joinActionToast && (
+                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-between shadow-xs animate-fadeIn">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{joinActionToast}</span>
+                  </div>
+                  <button onClick={() => setJoinActionToast(null)} className="text-emerald-500 hover:text-emerald-700 font-bold ml-2">✕</button>
+                </div>
+              )}
+
+              {/* Pending Join Requests Review Section */}
+              {pendingJoinRequests.length > 0 && (
+                <Card className="p-5 border-amber-300 bg-gradient-to-r from-amber-50/90 via-white to-orange-50/50 rounded-2xl shadow-sm space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-amber-200/80">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold">
+                        <Users className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                          Pending Join Requests & Access Queue
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200 text-amber-900">
+                            {pendingJoinRequests.length} Awaiting Authorization
+                          </span>
+                        </h3>
+                        <p className="text-[11px] text-slate-600">
+                          Candidates who submitted enrollment requests to {activeOrg.name} via code {activeOrg.code}.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {pendingJoinRequests.map((req) => (
+                      <div key={req.id} className="p-4 rounded-xl bg-white border border-amber-200 shadow-2xs flex flex-col justify-between gap-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-bold text-slate-900">{req.user_full_name}</p>
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700">
+                                {req.role}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-500 font-mono mt-0.5">{req.user_email}</p>
+                            <p className="text-[11px] text-slate-400 mt-1">
+                              Applied: {new Date(req.joined_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 shrink-0">
+                            Pending Review
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRejectJoinRequest(req.id)}
+                            className="rounded-xl text-xs text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                          >
+                            Decline
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleAcceptJoinRequest(req.id)}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs px-4"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                            Accept & Admit
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
               {/* Search & Filter Bar */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <div className="relative flex-1">
@@ -1102,17 +1212,20 @@ export default function WorkspacePage() {
                   />
                 </div>
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-                  {["ALL", "EMPLOYEE", "INTERN", "STUDENT", "ADMIN"].map((type) => (
+                  {["ALL", "REQUESTS", "EMPLOYEE", "INTERN", "STUDENT", "ADMIN"].map((type) => (
                     <button
                       key={type}
                       onClick={() => setMemberTypeFilter(type)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all relative ${
                         memberTypeFilter === type
                           ? "bg-blue-600 text-white shadow-xs"
                           : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
                       }`}
                     >
-                      {type}
+                      {type === "REQUESTS" ? `Requests (${pendingJoinRequests.length})` : type}
+                      {type === "REQUESTS" && pendingJoinRequests.length > 0 && (
+                        <span className="ml-1 inline-block w-2 h-2 rounded-full bg-amber-400" />
+                      )}
                     </button>
                   ))}
                 </div>
@@ -1157,32 +1270,59 @@ export default function WorkspacePage() {
                           <td className="p-4 text-slate-700">{m.mentor_name || m.manager_name || "Self-Managed"}</td>
                           <td className="p-4">
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              m.status === "ACTIVE" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"
+                              m.status === "ACTIVE"
+                                ? "bg-emerald-100 text-emerald-800"
+                                : m.status === "PENDING_APPROVAL"
+                                ? "bg-amber-100 text-amber-800 border border-amber-200"
+                                : "bg-red-100 text-red-800"
                             }`}>
                               {m.status}
                             </span>
                           </td>
                           <td className="p-4 text-right space-x-1.5">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setSelectedMember(m)}
-                              className="text-xs font-semibold rounded-lg"
-                            >
-                              Profile
-                            </Button>
-                            {hasPermission(currentUser.role, "members.manage") && (
-                              <Button
-                                size="sm"
-                                variant={m.status === "ACTIVE" ? "outline" : "primary"}
-                                onClick={() => handleToggleMemberStatus(m.id)}
-                                className={`text-[11px] rounded-lg ${
-                                  m.status === "ACTIVE" ? "text-amber-700 border-amber-300 hover:bg-amber-50" : "bg-emerald-600 text-white"
-                                }`}
-                              >
-                                <Power className="w-3 h-3 mr-1" />
-                                {m.status === "ACTIVE" ? "Suspend" : "Activate"}
-                              </Button>
+                            {m.status === "PENDING_APPROVAL" ? (
+                              <>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleAcceptJoinRequest(m.id)}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg px-2.5 py-1 shadow-xs"
+                                >
+                                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                                  Accept
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleRejectJoinRequest(m.id)}
+                                  className="text-xs rounded-lg text-red-600 border-red-200 hover:bg-red-50 px-2 py-1"
+                                >
+                                  Decline
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setSelectedMember(m)}
+                                  className="text-xs font-semibold rounded-lg"
+                                >
+                                  Profile
+                                </Button>
+                                {hasPermission(currentUser.role, "members.manage") && (
+                                  <Button
+                                    size="sm"
+                                    variant={m.status === "ACTIVE" ? "outline" : "primary"}
+                                    onClick={() => handleToggleMemberStatus(m.id)}
+                                    className={`text-[11px] rounded-lg ${
+                                      m.status === "ACTIVE" ? "text-amber-700 border-amber-300 hover:bg-amber-50" : "bg-emerald-600 text-white"
+                                    }`}
+                                  >
+                                    <Power className="w-3 h-3 mr-1" />
+                                    {m.status === "ACTIVE" ? "Suspend" : "Activate"}
+                                  </Button>
+                                )}
+                              </>
                             )}
                           </td>
                         </tr>

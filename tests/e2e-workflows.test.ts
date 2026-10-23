@@ -822,6 +822,107 @@ describe("Phase 21: End-to-End Multi-Tenant Workflows & Security Validation", ()
       expect(transcriptDoc?.template_data.verified_skills).toContain("Next.js 15 & React 19");
     });
   });
+
+  // ================= JOURNEY 11 =================
+  describe("Journey 11: Join Request Submission, Approval Lifecycle & Offer Letter Acceptance", () => {
+    it("logs a join request with PENDING_APPROVAL and records JOIN_REQUEST_SUBMITTED audit log", () => {
+      const applicant = multiTenantStore.addMembership({
+        organization_id: APEX_ORG,
+        user_id: "usr-candidate-alex",
+        user_full_name: "Alex Vance",
+        user_email: "alex.vance@mit.edu",
+        role: "INTERN",
+        member_type: "INTERN",
+        status: "PENDING_APPROVAL",
+        job_title: "Full Stack Engineering Intern Applicant",
+        joined_at: new Date().toISOString(),
+      });
+
+      expect(applicant.id).toBeDefined();
+      expect(applicant.status).toBe("PENDING_APPROVAL");
+      expect(applicant.user_full_name).toBe("Alex Vance");
+
+      const orgMembers = multiTenantStore.getMemberships(APEX_ORG);
+      const found = orgMembers.find((m) => m.id === applicant.id);
+      expect(found).toBeDefined();
+      expect(found?.status).toBe("PENDING_APPROVAL");
+
+      const auditLogs = multiTenantStore.getAuditLogs(APEX_ORG);
+      const joinLog = auditLogs.find((l) => l.action === "JOIN_REQUEST_SUBMITTED");
+      expect(joinLog).toBeDefined();
+      expect(joinLog?.resource).toBe("Alex Vance");
+    });
+
+    it("workspace administrator approves pending join request, transitioning to ACTIVE with employee ID", () => {
+      const applicant = multiTenantStore.addMembership({
+        organization_id: APEX_ORG,
+        user_id: "usr-candidate-priya",
+        user_full_name: "Priya Sharma",
+        user_email: "priya@techuni.edu",
+        role: "STUDENT",
+        member_type: "STUDENT",
+        status: "PENDING_APPROVAL",
+        job_title: "Student Intern Applicant",
+        joined_at: new Date().toISOString(),
+      });
+
+      expect(applicant.status).toBe("PENDING_APPROVAL");
+
+      // Admin approves
+      const approved = multiTenantStore.updateMembershipStatus(
+        applicant.id,
+        "ACTIVE",
+        "admin@apextech.com",
+        "STU-APX-888"
+      );
+
+      expect(approved).toBeDefined();
+      expect(approved?.status).toBe("ACTIVE");
+      expect(approved?.employee_id).toBe("STU-APX-888");
+
+      const auditLogs = multiTenantStore.getAuditLogs(APEX_ORG);
+      const approveLog = auditLogs.find(
+        (l) => l.action === "JOIN_REQUEST_APPROVED" && l.resource === "Priya Sharma"
+      );
+      expect(approveLog).toBeDefined();
+      expect(approveLog?.actor_email).toBe("admin@apextech.com");
+    });
+
+    it("records offer letter digital acceptance and creates OFFER_LETTER_ACCEPTED audit entry", () => {
+      const offerDoc = multiTenantStore.issueDocument({
+        organization_id: APEX_ORG,
+        member_id: "usr-candidate-priya",
+        document_number: "IND-APX-2026-TESTOFR",
+        document_type: "OFFER_LETTER",
+        title: "Official Internship Offer Letter",
+        recipient_name: "Priya Sharma",
+        recipient_role: "Software Engineering Intern",
+        issued_date: "2026-10-23",
+        status: "ISSUED",
+        verification_code: "VRF-APX-TESTOFR-SEC",
+        template_data: {
+          organization_name: "Apex Technologies",
+          organization_type: "CORPORATE",
+          signatory_name: "Elena Rostova",
+          signatory_title: "Head of Operations",
+          program_or_track: "Cloud Systems Track",
+          validity: "Active / Verified",
+        },
+      });
+
+      expect(offerDoc.status).toBe("ISSUED");
+
+      const acceptedDoc = multiTenantStore.acceptDocument(offerDoc.id, "Priya Sharma");
+      expect(acceptedDoc).toBeDefined();
+      expect(acceptedDoc?.status).toBe("ACCEPTED");
+      expect(acceptedDoc?.template_data.validity).toBe("Digitally Accepted & Executed");
+
+      const auditLogs = multiTenantStore.getAuditLogs(APEX_ORG);
+      const acceptLog = auditLogs.find((l) => l.action === "OFFER_LETTER_ACCEPTED");
+      expect(acceptLog).toBeDefined();
+      expect(acceptLog?.actor_email).toBe("Priya Sharma");
+    });
+  });
 });
 
 

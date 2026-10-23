@@ -19,7 +19,8 @@ import { Card } from "@/components/ui/card";
 import { AnimatedLogo } from "@/components/ui/animated-logo";
 import { validateOrganizationCode } from "@/lib/multitenant/code-generator";
 import { multiTenantStore } from "@/lib/multitenant/store";
-import { Organization } from "@/types/multitenant";
+import { Organization, MemberRole, MemberType } from "@/types/multitenant";
+import { parseClientSessionCookie } from "@/lib/auth/client-session";
 
 function JoinPageContent() {
   const searchParams = useSearchParams();
@@ -29,6 +30,21 @@ function JoinPageContent() {
   const [inputCode, setInputCode] = useState(initialCode);
   const [inviteToken, setInviteToken] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const [sessionUser, setSessionUser] = useState(() => parseClientSessionCookie());
+  const [applicantName, setApplicantName] = useState(() => sessionUser?.name || "");
+  const [applicantEmail, setApplicantEmail] = useState(() => sessionUser?.email || "");
+  const [applicantNote, setApplicantNote] = useState("");
+  const [submissionStatus, setSubmissionStatus] = useState<"PENDING_APPROVAL" | "ACTIVE">("PENDING_APPROVAL");
+
+  React.useEffect(() => {
+    const s = parseClientSessionCookie();
+    if (s) {
+      setSessionUser(s);
+      setApplicantName((prev) => prev || s.name);
+      setApplicantEmail((prev) => prev || s.email);
+    }
+  }, []);
 
   const [matchedOrg, setMatchedOrg] = useState<Organization | null>(() => {
     if (!initialCode) return null;
@@ -69,6 +85,63 @@ function JoinPageContent() {
     } else {
       setValidationError(`No active organization found matching code "${normalized}". Please check with your administrator.`);
     }
+  };
+
+  const handleConfirmJoin = () => {
+    if (!matchedOrg) return;
+    if (!applicantName.trim()) {
+      setValidationError("Please enter your Full Name.");
+      return;
+    }
+    if (!applicantEmail.trim() || !applicantEmail.includes("@")) {
+      setValidationError("Please enter a valid Email Address.");
+      return;
+    }
+
+    const isDirect = matchedOrg.joining_policy === "CODE_ONLY";
+    const status = isDirect ? "ACTIVE" : "PENDING_APPROVAL";
+    setSubmissionStatus(status);
+
+    const prefix = selectedRole === "STUDENT" ? "STU" : selectedRole === "INTERN" ? "INT" : "EMP";
+    const employeeId = isDirect
+      ? `${prefix}-${matchedOrg.name.slice(0, 3).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`
+      : undefined;
+
+    multiTenantStore.addMembership({
+      organization_id: matchedOrg.id,
+      user_id: sessionUser?.id || `usr-${Date.now()}`,
+      employee_id: employeeId,
+      user_full_name: applicantName.trim(),
+      user_email: applicantEmail.trim(),
+      role: selectedRole as MemberRole,
+      member_type: selectedRole as MemberType,
+      status: status,
+      job_title: `${selectedRole} Candidate`,
+      designation: `${selectedRole} Candidate`,
+      manager_name: "Workspace Administrator",
+      skills: ["Software Engineering", "Full Stack"],
+      employment_status: selectedRole === "EMPLOYEE" ? "FULL_TIME" : "INTERN",
+      joined_at: new Date().toISOString(),
+    });
+
+    setJoinSubmitted(true);
+  };
+
+  const handleAcceptInvite = () => {
+    setValidationError(null);
+    if (!inviteToken.trim()) {
+      setValidationError("Please enter an invitation token.");
+      return;
+    }
+    const result = multiTenantStore.validateInvitationToken(inviteToken.trim());
+    if (!result.valid || !result.organization) {
+      setValidationError(result.error || "Invalid invitation token.");
+      return;
+    }
+    setMatchedOrg(result.organization);
+    setSelectedRole(result.role || "INTERN");
+    setInputCode(result.organization.code);
+    setActiveTab("code");
   };
 
   const allOrganizations = multiTenantStore.getOrganizations();
@@ -257,6 +330,45 @@ function JoinPageContent() {
                     </p>
                   </div>
 
+                  {/* Applicant Details */}
+                  <div className="space-y-4 pt-2 border-t border-blue-100">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                      Your Contact & Identification Details
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 block mb-1">Full Legal Name *</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. John Doe"
+                          value={applicantName}
+                          onChange={(e) => setApplicantName(e.target.value)}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 block mb-1">Email Address *</label>
+                        <input
+                          type="email"
+                          placeholder="e.g. john@university.edu"
+                          value={applicantEmail}
+                          onChange={(e) => setApplicantEmail(e.target.value)}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 block mb-1">Personal Statement / Verification Note (Optional)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 3rd-year CS student applying for Summer 2026 Practicum batch"
+                        value={applicantNote}
+                        onChange={(e) => setApplicantNote(e.target.value)}
+                        className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
+                      />
+                    </div>
+                  </div>
+
                   {/* Role Selection */}
                   <div className="space-y-2">
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
@@ -283,10 +395,10 @@ function JoinPageContent() {
                   <div className="pt-2 flex flex-col sm:flex-row items-center justify-end gap-3">
                     <Button
                       size="lg"
-                      onClick={() => setJoinSubmitted(true)}
+                      onClick={handleConfirmJoin}
                       className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 rounded-xl shadow-md"
                     >
-                      Confirm & Request Access
+                      {matchedOrg.joining_policy === "CODE_ONLY" ? "Confirm & Join Workspace" : "Confirm & Request Access"}
                       <ArrowRight className="w-4 h-4 ml-2" />
                     </Button>
                   </div>
@@ -301,25 +413,59 @@ function JoinPageContent() {
                   <CheckCircle2 className="w-8 h-8" />
                 </div>
                 <h2 className="text-2xl font-black text-slate-900">
-                  Request Submitted Successfully!
+                  {submissionStatus === "ACTIVE" ? "Workspace Access Granted!" : "Join Request Submitted Successfully!"}
                 </h2>
                 <p className="text-sm text-slate-600 max-w-lg mx-auto font-normal">
-                  Your request to join <span className="font-bold text-slate-800">{matchedOrg.name}</span> as an authorized{" "}
-                  <span className="font-bold text-slate-800">{selectedRole}</span> has been logged. An administrator will review your application.
+                  {submissionStatus === "ACTIVE" ? (
+                    <>
+                      You have been directly enrolled into <span className="font-bold text-slate-800">{matchedOrg.name}</span> as an active{" "}
+                      <span className="font-bold text-slate-800">{selectedRole}</span>.
+                    </>
+                  ) : (
+                    <>
+                      Your application to join <span className="font-bold text-slate-800">{matchedOrg.name}</span> as a{" "}
+                      <span className="font-bold text-slate-800">{selectedRole}</span> has been securely recorded. An administrator will review and authorize your workspace credentials.
+                    </>
+                  )}
                 </p>
 
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 max-w-md mx-auto space-y-1 text-left font-mono">
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 max-w-md mx-auto space-y-1.5 text-left font-mono">
+                  <p>Applicant: <span className="font-bold text-slate-900">{applicantName}</span></p>
+                  <p>Email: <span className="font-bold text-slate-900">{applicantEmail}</span></p>
                   <p>Workspace: <span className="font-bold text-slate-900">{matchedOrg.name}</span></p>
                   <p>Code: <span className="font-bold text-slate-900">{matchedOrg.code}</span></p>
-                  <p>Status: <span className="font-bold text-amber-600">JOIN_REQUEST_PENDING</span></p>
+                  <p>Status: <span className={`font-bold ${submissionStatus === "ACTIVE" ? "text-emerald-600" : "text-amber-600"}`}>
+                    {submissionStatus === "ACTIVE" ? "ACTIVE_MEMBER" : "PENDING_APPROVAL"}
+                  </span></p>
                 </div>
 
-                <div className="pt-3 flex justify-center gap-3">
-                  <Link href="/workspace">
-                    <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 rounded-xl">
-                      Enter Workspace Preview
-                    </Button>
-                  </Link>
+                <div className="pt-3 flex justify-center gap-3 flex-wrap">
+                  {submissionStatus === "ACTIVE" && selectedRole === "STUDENT" ? (
+                    <Link href="/student/dashboard">
+                      <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 rounded-xl">
+                        Open Student Portal
+                      </Button>
+                    </Link>
+                  ) : submissionStatus === "ACTIVE" ? (
+                    <Link href="/workspace">
+                      <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 rounded-xl">
+                        Enter Workspace
+                      </Button>
+                    </Link>
+                  ) : (
+                    <>
+                      <Link href="/login">
+                        <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 rounded-xl">
+                          Return to Sign In
+                        </Button>
+                      </Link>
+                      <Link href="/">
+                        <Button variant="outline" size="lg" className="rounded-xl font-bold">
+                          Home
+                        </Button>
+                      </Link>
+                    </>
+                  )}
                 </div>
               </Card>
             )}
@@ -338,13 +484,13 @@ function JoinPageContent() {
             <div className="space-y-3">
               <input
                 type="text"
-                placeholder="e.g. inv_82f1b4a90c"
+                placeholder="e.g. INV-APX-VALID-2026"
                 value={inviteToken}
                 onChange={(e) => setInviteToken(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl border border-slate-300 font-mono text-sm focus:ring-2 focus:ring-blue-600 focus:outline-none"
               />
               <Button
-                onClick={() => handleVerifyCode("ORG-7K4P9X")}
+                onClick={handleAcceptInvite}
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 rounded-xl"
               >
                 Accept Invitation
