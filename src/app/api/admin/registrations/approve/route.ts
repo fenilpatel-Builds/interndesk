@@ -5,9 +5,17 @@ import { resolveAuthenticatedUser } from "@/lib/multitenant/auth-guard";
 export async function POST(request: Request) {
   try {
     const user = await resolveAuthenticatedUser();
-    if (user && user.role === "STUDENT") {
+    if (!user) {
       return NextResponse.json(
-        { error: "Access Denied: Students are not authorized to approve registrations." },
+        { error: "Authentication required to approve registrations." },
+        { status: 401 }
+      );
+    }
+
+    const allowedAdminRoles = ["SUPER_ADMIN", "ORG_ADMIN", "ORG_OWNER", "ADMIN", "HR_COORDINATOR", "HR_MANAGER"];
+    if (!allowedAdminRoles.includes(user.role)) {
+      return NextResponse.json(
+        { error: `Access Denied: Role '${user.role}' is not authorized to approve registrations.` },
         { status: 403 }
       );
     }

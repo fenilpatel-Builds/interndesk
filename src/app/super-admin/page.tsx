@@ -12,14 +12,31 @@ import {
   Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { AnimatedLogo } from "@/components/ui/animated-logo";
 import { multiTenantStore } from "@/lib/multitenant/store";
 import { Organization } from "@/types/multitenant";
+import { parseClientSessionCookie } from "@/lib/auth/client-session";
 
 export default function SuperAdminConsolePage() {
+  const router = useRouter();
+  const [isAuthorized] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const session = parseClientSessionCookie();
+      return !!(session && session.role === "SUPER_ADMIN");
+    }
+    return true;
+  });
   const [orgs, setOrgs] = useState<Organization[]>(multiTenantStore.getOrganizations());
   const [search, setSearch] = useState("");
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+
+  useEffect(() => {
+    if (!isAuthorized) {
+      router.push("/workspace");
+    }
+  }, [isAuthorized, router]);
 
   const metrics = multiTenantStore.getSuperAdminMetrics();
   const auditLogs = multiTenantStore.getAuditLogs();
@@ -44,6 +61,16 @@ export default function SuperAdminConsolePage() {
     o.code.toLowerCase().includes(search.toLowerCase()) ||
     o.official_email.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-100 p-6 text-center">
+        <Lock className="w-12 h-12 text-red-500 mb-4 animate-bounce" />
+        <h1 className="text-xl font-bold">Access Denied</h1>
+        <p className="text-sm text-slate-400 mt-2">Platform Super Admin authorization required. Redirecting to workspace...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col justify-between">

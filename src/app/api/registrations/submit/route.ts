@@ -3,6 +3,12 @@ import crypto from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { registrationSchema } from "@/validations/registration";
 
+function sanitizeText(val: string): string {
+  return String(val || "")
+    .replace(/<[^>]*>?/gm, "")
+    .trim();
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -23,7 +29,17 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    const data = validationResult.data;
+    const rawData = validationResult.data;
+    const data = {
+      ...rawData,
+      fullName: sanitizeText(rawData.fullName),
+      email: rawData.email.toLowerCase().trim(),
+      mobile: sanitizeText(rawData.mobile),
+      college: sanitizeText(rawData.college),
+      university: sanitizeText(rawData.university),
+      course: sanitizeText(rawData.course),
+      technology: sanitizeText(rawData.technology),
+    };
 
     const adminClient = createAdminClient();
 

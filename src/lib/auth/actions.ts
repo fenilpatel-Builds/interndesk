@@ -3,6 +3,8 @@
 import { cookies } from "next/headers";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { signSessionToken } from "./session-token";
+import { MemberRole } from "@/types/multitenant";
 
 export interface AuthResponse {
   success: boolean;
@@ -158,26 +160,24 @@ export async function verifyEmailOtp(
       }
     }
 
-    // Set application session cookie for SSR multi-tenant context
+    // Set cryptographically signed application session cookie for SSR multi-tenant context
     try {
       const cookieStore = await cookies();
       const rawName = cleanEmail.split("@")[0].replace(/[^a-zA-Z0-9]/g, " ");
       const formattedName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
-      cookieStore.set(
-        "interndesk_user",
-        JSON.stringify({
-          id: user.id,
-          name: formattedName,
-          email: cleanEmail,
-          role: role,
-        }),
-        {
-          path: "/",
-          httpOnly: false,
-          maxAge: 60 * 60 * 24 * 7,
-          sameSite: "lax",
-        }
-      );
+      const sessionToken = signSessionToken({
+        id: user.id,
+        name: formattedName,
+        email: cleanEmail,
+        role: role as MemberRole,
+      });
+
+      cookieStore.set("interndesk_user", sessionToken, {
+        path: "/",
+        httpOnly: false,
+        maxAge: 60 * 60 * 24 * 7,
+        sameSite: "lax",
+      });
     } catch (cErr) {
       console.warn("Cookie set error:", cErr);
     }
@@ -258,21 +258,19 @@ export async function loginWithPassword(email: string, password: string): Promis
       const cookieStore = await cookies();
       const rawName = profile?.full_name || cleanEmail.split("@")[0].replace(/[^a-zA-Z0-9]/g, " ");
       const formattedName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
-      cookieStore.set(
-        "interndesk_user",
-        JSON.stringify({
-          id: user.id,
-          name: formattedName,
-          email: cleanEmail,
-          role: role,
-        }),
-        {
-          path: "/",
-          httpOnly: false,
-          maxAge: 60 * 60 * 24 * 7,
-          sameSite: "lax",
-        }
-      );
+      const sessionToken = signSessionToken({
+        id: user.id,
+        name: formattedName,
+        email: cleanEmail,
+        role: role as MemberRole,
+      });
+
+      cookieStore.set("interndesk_user", sessionToken, {
+        path: "/",
+        httpOnly: false,
+        maxAge: 60 * 60 * 24 * 7,
+        sameSite: "lax",
+      });
     } catch {
       // Ignored
     }
@@ -336,22 +334,20 @@ export async function registerOrganizationSession(data: {
 }) {
   try {
     const cookieStore = await cookies();
-    cookieStore.set(
-      "interndesk_user",
-      JSON.stringify({
-        id: data.userId,
-        name: data.name,
-        email: data.email,
-        role: data.role,
-        organizationId: data.orgId,
-      }),
-      {
-        path: "/",
-        httpOnly: false,
-        maxAge: 60 * 60 * 24 * 7,
-        sameSite: "lax",
-      }
-    );
+    const sessionToken = signSessionToken({
+      id: data.userId,
+      name: data.name,
+      email: data.email,
+      role: data.role as MemberRole,
+      organizationId: data.orgId,
+    });
+
+    cookieStore.set("interndesk_user", sessionToken, {
+      path: "/",
+      httpOnly: false,
+      maxAge: 60 * 60 * 24 * 7,
+      sameSite: "lax",
+    });
     cookieStore.set("interndesk_active_org", data.orgId, {
       path: "/",
       httpOnly: false,

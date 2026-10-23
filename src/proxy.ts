@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { safeParseSession } from "./lib/auth/session-token";
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
@@ -35,19 +36,16 @@ export async function proxy(request: NextRequest) {
   // Refresh Supabase Auth user session
   await supabase.auth.getUser();
 
-  // Check application session cookie
+  // Check application session cookie with tamper-proof HMAC verification
   const interndeskSession = request.cookies.get("interndesk_user")?.value;
-  let parsedSession: { email?: string; role?: string; organizationId?: string } | null = null;
-  if (interndeskSession) {
-    try {
-      parsedSession = JSON.parse(interndeskSession);
-    } catch {
-      // Ignored
-    }
-  }
-
+  const parsedSession = safeParseSession(interndeskSession);
   const userRole = parsedSession?.role || "STUDENT";
   const path = request.nextUrl.pathname;
+
+  // Unauthenticated users attempting to access protected admin/workspace routes must sign in
+  if (!parsedSession && (path.startsWith("/workspace") || path.startsWith("/admin") || path.startsWith("/super-admin"))) {
+    return NextResponse.redirect(new URL("/auth/login", request.url));
+  }
 
   // Prevent students from accessing admin /workspace and /admin console
   if ((path.startsWith("/workspace") || path.startsWith("/admin")) && userRole === "STUDENT") {

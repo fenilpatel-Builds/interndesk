@@ -1,20 +1,68 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { BreakType } from "@/types/database";
+import { resolveAuthenticatedUser } from "@/lib/multitenant/auth-guard";
+
+const ALLOWED_ACTIONS = new Set(["CLOCK_IN", "TAKE_BREAK", "RESUME", "CLOCK_OUT"]);
+const ALLOWED_BREAKS = new Set(["LUNCH", "SHORT_BREAK", "PERSONAL"]);
 
 export async function POST(request: Request) {
   try {
+    const user = await resolveAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: "Authentication required to perform attendance actions." },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const { action, studentId, breakType = "LUNCH" } = body;
 
-    if (!studentId || !action) {
+    if (!studentId || !action || !ALLOWED_ACTIONS.has(action)) {
       return NextResponse.json(
-        { error: "studentId and action are required" },
+        { error: "Valid studentId and recognized action are required" },
         { status: 400 }
       );
     }
 
+    const safeBreakType = ALLOWED_BREAKS.has(breakType) ? breakType : "LUNCH";
     const adminClient = createAdminClient();
+
+    // IDOR Protection: Students/Interns can only mutate their own attendance record
+    const isPrivilegedManager = [
+      "SUPER_ADMIN",
+      "ORG_ADMIN",
+      "ADMIN",
+      "MANAGER_SUPERVISOR",
+      "HR_COORDINATOR",
+      "ORG_OWNER",
+    ].includes(user.role);
+
+    if (!isPrivilegedManager) {
+      let isOwner = user.userId === studentId;
+      if (!isOwner) {
+        const { data: ownSp } = await adminClient
+          .from("student_profiles")
+          .select("id")
+          .eq("user_id", user.userId)
+          .eq("id", studentId)
+          .maybeSingle();
+
+        if (ownSp) {
+          isOwner = true;
+        }
+      }
+
+      if (!isOwner) {
+        return NextResponse.json(
+          {
+            error: "Access Denied: Insecure Direct Object Reference detected. You cannot modify attendance for another student.",
+          },
+          { status: 403 }
+        );
+      }
+    }
     const todayStr = new Date().toISOString().split("T")[0];
 
     // Check for today's active work session
@@ -92,7 +140,7 @@ export async function POST(request: Request) {
         .from("work_breaks")
         .insert({
           work_session_id: existingSession.id,
-          break_type: breakType as BreakType,
+          break_type: safeBreakType as BreakType,
           started_at: nowIso,
           duration_seconds: 0,
         })
@@ -115,12 +163,12 @@ export async function POST(request: Request) {
         entity_type: "WORK_SESSION",
         entity_id: existingSession.id,
         new_status: "ON_BREAK",
-        metadata: { break_type: breakType, started_at: nowIso },
+        metadata: { break_type: safeBreakType, started_at: nowIso },
       });
 
       return NextResponse.json({
         success: true,
-        message: `Break (${breakType}) started.`,
+        message: `Break (${safeBreakType}) started.`,
       });
     }
 

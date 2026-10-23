@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from "../supabase/server";
 import { MemberRole, Organization, OrganizationMembership } from "../../types/multitenant";
 import { hasPermission, Permission } from "./permissions";
 import { multiTenantStore } from "./store";
+import { safeParseSession } from "../auth/session-token";
 
 export interface AuthenticatedUser {
   userId: string;
@@ -52,17 +53,17 @@ export async function resolveAuthenticatedUser(): Promise<AuthenticatedUser | nu
     // Non-blocking fallback to application session cookie
   }
 
-  // 2. Fallback: Parse validated HTTP-only application session cookie
+  // 2. Fallback: Parse cryptographically validated session cookie
   try {
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get("interndesk_user")?.value;
 
     if (sessionCookie) {
-      const parsed = JSON.parse(sessionCookie);
-      if (parsed.email) {
+      const parsed = safeParseSession(sessionCookie);
+      if (parsed && parsed.email) {
         const email = parsed.email.toLowerCase();
         const isSuperAdmin = email === "superadmin@interndesk.com" || parsed.role === "SUPER_ADMIN";
-        const role: MemberRole = isSuperAdmin ? "SUPER_ADMIN" : (parsed.role as MemberRole) || "STUDENT";
+        const role: MemberRole = isSuperAdmin ? "SUPER_ADMIN" : parsed.role;
 
         return {
           userId: parsed.id || `usr-${email.replace(/[^a-z0-9]/g, "")}`,
