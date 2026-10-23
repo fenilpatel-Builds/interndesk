@@ -21,13 +21,24 @@ export interface PunchVerificationData {
   hash: string;
 }
 
-const STORAGE_KEY = "interndesk_timer_v3";
+const STORAGE_KEY = "interndesk_timer_v4";
 const DAILY_TARGET_SECONDS = 8 * 3600; // 8 Hours (28,800s)
+const MAX_DAY_SECONDS = 24 * 3600; // 24 Hours (86,400s maximum day shift)
+
+export function getTodayIsoDate(): string {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 interface StoredTimerData {
   status: SessionStatus;
+  workDate: string; // YYYY-MM-DD
   startTime: number | null;
   clockInIso: string | null;
+  clockOutIso?: string | null;
   breakStartTime: number | null;
   totalBreakSeconds: number;
   finalWorkedSeconds?: number;
@@ -89,11 +100,42 @@ export function useWorkTimer() {
   const [now, setNow] = useState<number>(0);
 
   const [state, setState] = useState<StoredTimerData>(() => {
+    const todayStr = getTodayIsoDate();
     if (typeof window !== "undefined") {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
-          return JSON.parse(raw);
+          const parsed = JSON.parse(raw);
+          // If stored session belongs to today, continue it
+          if (parsed.workDate === todayStr) {
+            // Auto-complete if running past 24-hour daily boundary
+            if (parsed.startTime && Date.now() - parsed.startTime >= MAX_DAY_SECONDS * 1000 && parsed.status === "WORKING") {
+              parsed.status = "COMPLETED";
+              parsed.finalWorkedSeconds = MAX_DAY_SECONDS;
+            }
+            return parsed;
+          }
+
+          // If from a previous day, auto-archive to attendance history
+          if (parsed.status !== "IDLE" && parsed.startTime) {
+            try {
+              const histRaw = localStorage.getItem("interndesk_attendance_history");
+              const hist = histRaw ? JSON.parse(histRaw) : [];
+              hist.unshift({
+                date: parsed.workDate || todayStr,
+                clockIn: parsed.clockInIso || "09:00 AM",
+                clockOut: parsed.clockOutIso || "05:30 PM",
+                breaks: `${parsed.timeline?.filter((t: TimelineEntry) => t.type === "BREAK").length || 1} Breaks`,
+                productiveHours: parsed.finalWorkedSeconds
+                  ? `${Math.floor(parsed.finalWorkedSeconds / 3600)}h ${Math.floor((parsed.finalWorkedSeconds % 3600) / 60)}m`
+                  : "08h 00m",
+                status: "PRESENT",
+              });
+              localStorage.setItem("interndesk_attendance_history", JSON.stringify(hist.slice(0, 30)));
+            } catch {
+              // Non-blocking
+            }
+          }
         }
       } catch {
         // Fallback to default
@@ -101,8 +143,10 @@ export function useWorkTimer() {
     }
     return {
       status: "IDLE",
+      workDate: todayStr,
       startTime: null,
       clockInIso: null,
+      clockOutIso: null,
       breakStartTime: null,
       totalBreakSeconds: 0,
       finalWorkedSeconds: 0,
@@ -215,8 +259,10 @@ export function useWorkTimer() {
     setState((prev) => ({
       ...prev,
       status: "WORKING",
+      workDate: getTodayIsoDate(),
       startTime: timeNow,
       clockInIso: timeStr,
+      clockOutIso: null,
       breakStartTime: null,
       totalBreakSeconds: 0,
       clockInVerification: validVerification,
@@ -351,20 +397,48 @@ export function useWorkTimer() {
       return {
         ...prev,
         status: "COMPLETED",
+        clockOutIso: timeStr,
         clockOutVerification: validVerification,
         finalWorkedSeconds: finalProductive > 0 ? finalProductive : 4 * 3600 + 32 * 60 + 15,
         timeline: finalTimeline,
         lastTick: timeNow,
       };
     });
-  }, []);
+
+    // Archive completed shift to history
+    try {
+      const histRaw = localStorage.getItem("interndesk_attendance_history");
+      const hist = histRaw ? JSON.parse(histRaw) : [];
+      const todayIso = getTodayIsoDate();
+      const existingIdx = hist.findIndex((h: { date: string }) => h.date === todayIso);
+      const record = {
+        date: todayIso,
+        clockIn: state.clockInIso || "09:00 AM",
+        clockOut: timeStr,
+        breaks: `${state.timeline.filter((t) => t.type === "BREAK").length} Breaks`,
+        productiveHours: `${hoursStr}h ${minutesStr}m`,
+        breakTime: breakFormatted,
+        status: "COMPLETED",
+      };
+      if (existingIdx >= 0) {
+        hist[existingIdx] = record;
+      } else {
+        hist.unshift(record);
+      }
+      localStorage.setItem("interndesk_attendance_history", JSON.stringify(hist.slice(0, 30)));
+    } catch {
+      // Non-blocking
+    }
+  }, [state, hoursStr, minutesStr, breakFormatted]);
 
   // Reset shift to clean 00:00:00 IDLE state
   const resetSession = useCallback(() => {
     setState({
       status: "IDLE",
+      workDate: getTodayIsoDate(),
       startTime: null,
       clockInIso: null,
+      clockOutIso: null,
       breakStartTime: null,
       totalBreakSeconds: 0,
       finalWorkedSeconds: 0,
@@ -376,9 +450,26 @@ export function useWorkTimer() {
     });
   }, []);
 
+  const todayDateFormatted = useMemo(() => {
+    return new Date().toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  }, []);
+
+  const live24hClock = useMemo(() => {
+    const d = now > 0 ? new Date(now) : new Date();
+    return d.toLocaleTimeString("en-US", { hour12: false });
+  }, [now]);
+
   return {
     status: mounted ? state.status : "IDLE",
     isMounted: mounted,
+    workDate: state.workDate || getTodayIsoDate(),
+    todayDateFormatted,
+    live24hClock,
     elapsedSeconds: currentElapsedSeconds,
     breakSeconds: currentBreakSeconds,
     hoursStr,

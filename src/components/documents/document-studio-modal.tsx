@@ -22,6 +22,8 @@ import {
   BarChart3,
   ShieldCheck,
   TrendingUp,
+  PenTool,
+  Edit3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { IssuedDocument, TemplateTheme } from "@/types/multitenant";
@@ -202,8 +204,49 @@ export function DocumentStudioModal({
   const [copied, setCopied] = useState(false);
   const [showEmbedModal, setShowEmbedModal] = useState(false);
   const [embedCopied, setEmbedCopied] = useState<"MD" | "HTML" | null>(null);
+  const [isAccepted, setIsAccepted] = useState(false);
+  const [acceptedDate, setAcceptedDate] = useState("2026-10-23");
+  const [isSignModalOpen, setIsSignModalOpen] = useState(false);
+  const [candidateNameInput, setCandidateNameInput] = useState("");
+  const [editableTerms, setEditableTerms] = useState("");
+  const [isEditingTerms, setIsEditingTerms] = useState(false);
+
+  React.useEffect(() => {
+    if (doc) {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem(`offer_accepted_${doc.document_number}`);
+        setIsAccepted(stored === "true" || (doc.status as unknown as string) === "ACCEPTED");
+        const storedDate = localStorage.getItem(`offer_accepted_date_${doc.document_number}`);
+        setAcceptedDate(storedDate || doc.issued_date || "2026-10-23");
+      }
+      setCandidateNameInput(doc.recipient_name || "");
+      setEditableTerms(
+        doc.template_data?.custom_terms ||
+          "Official 40-hour weekly internship agreement with full academic credit verification and zero platform fees."
+      );
+    }
+  }, [doc]);
 
   if (!isOpen || !doc) return null;
+
+  const isOfferLetter = doc.document_type === "OFFER_LETTER";
+
+  const handleConfirmAcceptance = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!doc) return;
+    const today = new Date().toISOString().split("T")[0];
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(`offer_accepted_${doc.document_number}`, "true");
+        localStorage.setItem(`offer_accepted_date_${doc.document_number}`, today);
+      } catch {
+        // Ignored
+      }
+    }
+    setIsAccepted(true);
+    setAcceptedDate(today);
+    setIsSignModalOpen(false);
+  };
 
   const orgName = doc.template_data?.organization_name || organizationName;
   const isPendingApproval = doc.status === "PENDING_APPROVAL" || doc.approval_status === "PENDING";
@@ -355,6 +398,25 @@ export function DocumentStudioModal({
                 </svg>
                 <span>Add to LinkedIn</span>
               </a>
+            )}
+
+            {/* Offer Letter Candidate Acceptance Button in Top Bar */}
+            {isOfferLetter && !isAccepted && (
+              <Button
+                id="studio-accept-offer-btn"
+                size="sm"
+                onClick={() => setIsSignModalOpen(true)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl h-8 px-3 cursor-pointer shadow-xs flex items-center gap-1.5"
+              >
+                <PenTool className="w-3.5 h-3.5 mr-1" />
+                <span>Accept &amp; Sign Offer</span>
+              </Button>
+            )}
+            {isOfferLetter && isAccepted && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 text-xs font-bold font-mono">
+                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Offer Accepted</span>
+              </span>
             )}
 
             {/* Print / Download PDF */}
@@ -1089,6 +1151,55 @@ export function DocumentStudioModal({
                   SUBJECT: OFFICIAL APPOINTMENT &amp; VERIFIED INTERNSHIP OFFER ({doc.template_data?.program_or_track || "Engineering Track"})
                 </div>
 
+                {/* For Offer Letters: Candidate Acceptance Status Banner */}
+                {isOfferLetter && (
+                  <div className="my-2">
+                    {isAccepted ? (
+                      <div className="p-4 rounded-2xl bg-emerald-50/90 border border-emerald-300 flex items-center justify-between gap-3 shadow-2xs">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold">
+                            <CheckCircle2 className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="font-bold text-emerald-950 text-xs flex items-center gap-2">
+                              <span>Offer Formally Accepted &amp; Digitally Signed</span>
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold border border-emerald-200">
+                                {acceptedDate}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-emerald-700 mt-0.5">
+                              Candidate <strong>{candidateNameInput || doc.recipient_name}</strong> has confirmed acceptance of this internship appointment.
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-mono font-bold px-3 py-1 rounded-full bg-emerald-600 text-white shadow-2xs">
+                          ✓ ENROLLED
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+                        <div className="space-y-0.5 text-left">
+                          <div className="flex items-center gap-1.5 font-bold text-amber-900 text-xs">
+                            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                            <span>Candidate Acceptance Pending</span>
+                          </div>
+                          <p className="text-[11px] text-amber-700">
+                            Please review the terms and click &quot;Sign &amp; Accept Offer&quot; below to formalize your internship.
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => setIsSignModalOpen(true)}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs shrink-0 cursor-pointer"
+                        >
+                          <PenTool className="w-3.5 h-3.5 mr-1.5" />
+                          Sign &amp; Accept Offer
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Formal Letter Body */}
                 <div className="space-y-3 text-xs leading-relaxed text-slate-700">
                   <p>
@@ -1122,11 +1233,38 @@ export function DocumentStudioModal({
                     </div>
                   </div>
 
-                  {customTerms && (
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 italic">
-                      <strong>Terms &amp; Stipulations:</strong> {customTerms}
+                  {/* Dynamic Terms Customization & Zero Fee Guarantee */}
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <strong className="text-slate-900 text-[11px] uppercase tracking-wider">
+                        Terms &amp; Stipulations
+                      </strong>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingTerms(!isEditingTerms)}
+                        className="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                        <span>{isEditingTerms ? "Done Editing" : "Customize Terms"}</span>
+                      </button>
                     </div>
-                  )}
+                    {isEditingTerms ? (
+                      <textarea
+                        rows={2}
+                        value={editableTerms}
+                        onChange={(e) => setEditableTerms(e.target.value)}
+                        className="w-full p-2 text-xs border border-blue-400 rounded-lg focus:outline-none bg-white"
+                      />
+                    ) : (
+                      <p className="text-[11px] text-slate-600 leading-relaxed italic">
+                        {editableTerms}
+                      </p>
+                    )}
+                    <div className="pt-2 border-t border-slate-200/80 flex items-center gap-2 text-[10px] text-emerald-700 font-bold">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>100% Free Placement Guarantee: Zero upfront fees, tuition costs, or deposit charges.</span>
+                    </div>
+                  </div>
 
                   <p>
                     This credential is cryptographically anchored. Any alteration or tampering renders this offer null and void.
@@ -1134,8 +1272,12 @@ export function DocumentStudioModal({
                 </div>
 
                 {/* Signatory & Security Footer */}
-                <div className="pt-6 border-t border-slate-200 flex items-end justify-between">
+                <div className="pt-6 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-6 items-end">
+                  {/* Left: Organization Authorized Signatory */}
                   <div className="space-y-1 text-xs">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      Authorized Employer Signatory:
+                    </span>
                     {signatorySig ? (
                       <div className="h-9 flex items-center">
                         <img src={signatorySig} alt="Signatory Signature" className="h-8 max-w-[130px] object-contain" />
@@ -1150,28 +1292,58 @@ export function DocumentStudioModal({
                     <p className="text-slate-500 text-[11px]">{doc.template_data?.signatory_title || "Director of Talent Operations"}</p>
                   </div>
 
-                  {/* Verification QR Box */}
-                  <Link
-                    href={verifyPath}
-                    target="_blank"
-                    className="flex items-center gap-2 p-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors"
-                  >
-                    <div className="w-10 h-10 bg-white p-1 rounded border border-slate-300 flex flex-col justify-between">
-                      <div className="flex justify-between">
-                        <div className="w-2.5 h-2.5 bg-slate-900" />
-                        <div className="w-2.5 h-2.5 bg-slate-900" />
+                  {/* Center: Candidate Acceptance Signature */}
+                  <div className="space-y-1 text-xs text-center sm:text-left">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      Candidate Acceptance:
+                    </span>
+                    {isAccepted ? (
+                      <div>
+                        <p className="font-serif text-blue-900 italic text-sm font-bold tracking-wider">
+                          {candidateNameInput || doc.recipient_name}
+                        </p>
+                        <div className="w-36 h-0.5 bg-emerald-500 my-1" />
+                        <p className="font-bold text-emerald-800">{candidateNameInput || doc.recipient_name}</p>
+                        <p className="text-emerald-600 text-[10px] font-mono">Signed: {acceptedDate} • Accepted</p>
                       </div>
-                      <div className="w-1.5 h-1.5 bg-blue-600 mx-auto" />
-                      <div className="flex justify-between">
-                        <div className="w-2.5 h-2.5 bg-slate-900" />
-                        <div className="w-2 bg-emerald-600" />
+                    ) : (
+                      <div className="p-2 border border-dashed border-amber-300 rounded-lg bg-amber-50/50">
+                        <span className="text-[11px] text-amber-700 italic block">Pending Candidate Signature</span>
+                        <button
+                          type="button"
+                          onClick={() => setIsSignModalOpen(true)}
+                          className="text-[10px] text-blue-600 font-bold hover:underline cursor-pointer"
+                        >
+                          Sign now →
+                        </button>
                       </div>
-                    </div>
-                    <div className="text-[9px] text-left">
-                      <span className="font-bold text-slate-900 block">Verify Document</span>
-                      <span className="text-blue-600 font-mono">{doc.document_number}</span>
-                    </div>
-                  </Link>
+                    )}
+                  </div>
+
+                  {/* Right: Verification QR Box */}
+                  <div className="flex justify-end">
+                    <Link
+                      href={verifyPath}
+                      target="_blank"
+                      className="flex items-center gap-2 p-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors"
+                    >
+                      <div className="w-10 h-10 bg-white p-1 rounded border border-slate-300 flex flex-col justify-between">
+                        <div className="flex justify-between">
+                          <div className="w-2.5 h-2.5 bg-slate-900" />
+                          <div className="w-2.5 h-2.5 bg-slate-900" />
+                        </div>
+                        <div className="w-1.5 h-1.5 bg-blue-600 mx-auto" />
+                        <div className="flex justify-between">
+                          <div className="w-2.5 h-2.5 bg-slate-900" />
+                          <div className="w-2 bg-emerald-600" />
+                        </div>
+                      </div>
+                      <div className="text-[9px] text-left">
+                        <span className="font-bold text-slate-900 block">Verify Document</span>
+                        <span className="text-blue-600 font-mono">{doc.document_number}</span>
+                      </div>
+                    </Link>
+                  </div>
                 </div>
 
                 {/* SHA-256 Fingerprint */}
@@ -1196,6 +1368,16 @@ export function DocumentStudioModal({
           </div>
 
           <div className="flex items-center gap-2">
+            {isOfferLetter && !isAccepted && (
+              <Button
+                size="sm"
+                onClick={() => setIsSignModalOpen(true)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
+              >
+                <PenTool className="w-3.5 h-3.5 mr-1.5" />
+                Sign &amp; Accept Offer
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -1214,6 +1396,90 @@ export function DocumentStudioModal({
             </Button>
           </div>
         </div>
+
+        {/* Candidate Acceptance & Signature Modal */}
+        {isSignModalOpen && (
+          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+            <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+              <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                    <PenTool className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold">Accept &amp; Electronically Sign Offer</h3>
+                    <p className="text-[11px] text-slate-400">{doc.document_number} • {orgName}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsSignModalOpen(false)}
+                  className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleConfirmAcceptance} className="p-6 space-y-4 text-xs">
+                <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 space-y-1">
+                  <p className="font-bold">Internship Offer Acceptance Statement:</p>
+                  <p className="text-[11px] text-blue-800 leading-relaxed">
+                    I hereby formally accept the position of <strong>{doc.recipient_role}</strong> at <strong>{orgName}</strong> under the InternDesk verified program. I agree to uphold professional standards and complete required project milestones.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Full Legal Name (Electronic Signature) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={candidateNameInput}
+                    onChange={(e) => setCandidateNameInput(e.target.value)}
+                    placeholder="Type your full name"
+                    className="w-full rounded-xl border border-slate-300 p-2.5 text-xs font-semibold focus:outline-none focus:border-blue-600"
+                  />
+                </div>
+
+                {/* Live Cursive Signature Preview */}
+                <div>
+                  <label className="block font-semibold text-slate-500 mb-1">Signature Glyph Preview:</label>
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                    <span className="font-serif italic text-lg text-blue-900 font-bold tracking-wider">
+                      {candidateNameInput || "Your Signature"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] space-y-0.5">
+                  <div className="font-bold flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    100% Free Program Assurance
+                  </div>
+                  <p>InternDesk is completely free. No payments, deposits, or card details are ever required.</p>
+                </div>
+
+                <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsSignModalOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                  >
+                    Confirm &amp; Sign Offer Letter
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* Developer / Portfolio Embed Badge Modal */}
         {showEmbedModal && (

@@ -14,66 +14,82 @@ import { useWorkTimer } from "@/hooks/use-work-timer";
 import { SelfieViewerModal } from "@/components/attendance/selfie-viewer-modal";
 
 export default function StudentAttendancePage() {
-  const [currentDate] = useState("Today, Oct 8, 2026");
   const [activeFilter, setActiveFilter] = useState<"TODAY" | "WEEK" | "MONTH" | "CUSTOM">("WEEK");
   const [isSelfieViewerOpen, setIsSelfieViewerOpen] = useState(false);
 
   const {
+    status,
+    todayDateFormatted,
+    live24hClock,
+    clockInTime,
     hoursStr,
     minutesStr,
     secondsStr,
+    breakFormatted,
     progressPercent,
     clockInVerification,
   } = useWorkTimer();
 
-  // Full attendance history records matching Section 20
-  const attendanceHistory = [
-    {
-      date: "Oct 8, 2026",
-      clockIn: "09:00 AM",
-      breaks: "2 (Lunch, Coffee)",
-      clockOut: "In Progress",
+  // Full dynamic attendance history records with today's live session
+  const attendanceHistory = React.useMemo(() => {
+    const records = [];
+
+    // Today's session
+    records.push({
+      date: `Today, ${todayDateFormatted}`,
+      clockIn: status !== "IDLE" ? clockInTime : "Pending Punch",
+      breaks: status === "ON_BREAK" ? "1 Active Break" : breakFormatted !== "00m 00s" ? `Breaks (${breakFormatted})` : "0 Breaks",
+      clockOut: status === "COMPLETED" ? "Shift Finished" : status === "WORKING" || status === "ON_BREAK" ? "In Progress" : "Not Started",
       productiveHours: `${hoursStr}h ${minutesStr}m`,
-      breakTime: "00h 45m",
-      status: "IN_PROGRESS",
-    },
-    {
-      date: "Oct 7, 2026",
-      clockIn: "08:58 AM",
-      breaks: "1 (Lunch)",
-      clockOut: "05:15 PM",
-      productiveHours: "07h 45m",
-      breakTime: "00h 32m",
-      status: "PRESENT",
-    },
-    {
-      date: "Oct 6, 2026",
-      clockIn: "09:05 AM",
-      breaks: "2 (Coffee, Personal)",
-      clockOut: "05:30 PM",
-      productiveHours: "08h 10m",
-      breakTime: "00h 25m",
-      status: "PRESENT",
-    },
-    {
-      date: "Oct 5, 2026",
-      clockIn: "09:00 AM",
-      breaks: "1 (Lunch)",
-      clockOut: "05:00 PM",
-      productiveHours: "08h 00m",
-      breakTime: "00h 30m",
-      status: "PRESENT",
-    },
-    {
-      date: "Oct 4, 2026",
-      clockIn: "09:12 AM",
-      breaks: "2 (Lunch, Coffee)",
-      clockOut: "05:40 PM",
-      productiveHours: "08h 05m",
-      breakTime: "00h 38m",
-      status: "PRESENT",
-    },
-  ];
+      breakTime: breakFormatted,
+      status: status === "COMPLETED" ? "PRESENT" : status === "WORKING" || status === "ON_BREAK" ? "IN_PROGRESS" : "PENDING",
+    });
+
+    // Past audited sessions
+    records.push(
+      {
+        date: "Yesterday",
+        clockIn: "08:58 AM",
+        breaks: "1 (Lunch)",
+        clockOut: "05:15 PM",
+        productiveHours: "07h 45m",
+        breakTime: "00h 32m",
+        status: "PRESENT",
+      },
+      {
+        date: "2 Days Ago",
+        clockIn: "09:05 AM",
+        breaks: "2 (Coffee, Personal)",
+        clockOut: "05:30 PM",
+        productiveHours: "08h 10m",
+        breakTime: "00h 25m",
+        status: "PRESENT",
+      },
+      {
+        date: "3 Days Ago",
+        clockIn: "09:00 AM",
+        breaks: "1 (Lunch)",
+        clockOut: "05:00 PM",
+        productiveHours: "08h 00m",
+        breakTime: "00h 30m",
+        status: "PRESENT",
+      },
+      {
+        date: "4 Days Ago",
+        clockIn: "09:12 AM",
+        breaks: "2 (Lunch, Coffee)",
+        clockOut: "05:40 PM",
+        productiveHours: "08h 05m",
+        breakTime: "00h 38m",
+        status: "PRESENT",
+      }
+    );
+
+    if (activeFilter === "TODAY") {
+      return records.slice(0, 1);
+    }
+    return records;
+  }, [status, todayDateFormatted, clockInTime, breakFormatted, hoursStr, minutesStr, activeFilter]);
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
@@ -91,14 +107,18 @@ export default function StudentAttendancePage() {
               </span>
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Accurate hour tracking with dynamic break computation and certified attendance logging.
+              Accurate 24-hour daily cycle hour tracking with dynamic break computation and certified attendance logging.
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white shadow-2xs text-xs font-semibold text-slate-700">
               <Calendar className="w-3.5 h-3.5 text-blue-600" />
-              <span>{currentDate}</span>
+              <span>{todayDateFormatted}</span>
+            </div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-blue-200 bg-blue-50/80 shadow-2xs text-xs font-mono font-bold text-blue-700">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>24H: {live24hClock}</span>
             </div>
           </div>
         </div>

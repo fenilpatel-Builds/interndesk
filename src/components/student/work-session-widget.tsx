@@ -29,6 +29,8 @@ interface WorkSessionWidgetProps {
 export function WorkSessionWidget({ compact = false, className = "" }: WorkSessionWidgetProps) {
   const {
     status,
+    todayDateFormatted,
+    live24hClock,
     hoursStr,
     minutesStr,
     secondsStr,
@@ -105,9 +107,14 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
               <Clock className="w-4 h-4" />
             </div>
             <div>
-              <span className="text-xs font-bold text-slate-800 tracking-tight block">
-                Current Work Session
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-800 tracking-tight block">
+                  Current Work Session
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                  {todayDateFormatted} • 24H: {live24hClock}
+                </span>
+              </div>
               <span className="text-[11px] text-slate-400 font-medium">
                 {status === "WORKING"
                   ? `Active Shift • Since ${clockInTime}`

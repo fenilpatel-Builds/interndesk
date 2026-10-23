@@ -9,10 +9,17 @@ import { Modal } from "@/components/ui/modal";
 import {
   Kanban,
   List,
+  Plus,
+  Search,
+  Filter,
+  CheckCircle2,
+  Clock,
+  Sparkles,
+  Trash2,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
-interface TaskItem {
+export interface TaskItem {
   id: string;
   title: string;
   description: string;
@@ -25,87 +32,159 @@ interface TaskItem {
   completionNotes?: string;
 }
 
+const INITIAL_TASKS: TaskItem[] = [
+  {
+    id: "t1",
+    title: "Implement Supabase Auth with Row Level Security",
+    description: "Write zero-trust PostgreSQL policies ensuring students can query only their own profile and records.",
+    priority: "HIGH",
+    status: "COMPLETED",
+    dueAt: "2026-10-05",
+    assignedTo: "Fenil Patel",
+    technology: "PostgreSQL & RLS",
+    progress: 100,
+    completionNotes: "Completed RLS migrations with policy helper functions.",
+  },
+  {
+    id: "t2",
+    title: "Build Responsive Multi-Step Registration Flow",
+    description: "Capture personal, academic, and internship specialization preferences with client & server Zod validation.",
+    priority: "HIGH",
+    status: "COMPLETED",
+    dueAt: "2026-10-06",
+    assignedTo: "Fenil Patel",
+    technology: "Next.js & Zod",
+    progress: 100,
+    completionNotes: "Created 4-step free registration flow with email OTP verification.",
+  },
+  {
+    id: "t3",
+    title: "Real-Time Work Session & Timer Engine",
+    description: "Connect attendance timers, break switchers, and server-side duration computation.",
+    priority: "URGENT",
+    status: "IN_PROGRESS",
+    dueAt: "2026-10-10",
+    assignedTo: "Fenil Patel",
+    technology: "TypeScript & Web Audio",
+    progress: 75,
+  },
+  {
+    id: "t4",
+    title: "Take Module 3 JavaScript & React Assessment",
+    description: "Complete the 30-minute timed MCQ test on state management, hooks, and async rendering.",
+    priority: "MEDIUM",
+    status: "PENDING",
+    dueAt: "2026-10-12",
+    assignedTo: "Fenil Patel",
+    technology: "React & Next.js",
+    progress: 0,
+  },
+  {
+    id: "t5",
+    title: "Submit Daily Work Log for Capstone Milestone",
+    description: "Itemize work blocks, time distribution, and push commits to GitHub.",
+    priority: "LOW",
+    status: "OVERDUE",
+    dueAt: "2026-10-04",
+    assignedTo: "Fenil Patel",
+    technology: "Git & Documentation",
+    progress: 40,
+  },
+];
+
 export default function StudentTasksPage() {
   const [viewMode, setViewMode] = useState<"BOARD" | "LIST">("BOARD");
-
-  const [tasks, setTasks] = useState<TaskItem[]>([
-    {
-      id: "t1",
-      title: "Implement Supabase Auth with Row Level Security",
-      description: "Write zero-trust PostgreSQL policies ensuring students can query only their own profile and records.",
-      priority: "HIGH",
-      status: "COMPLETED",
-      dueAt: "2026-10-05",
-      assignedTo: "Fenil Patel",
-      technology: "PostgreSQL & RLS",
-      progress: 100,
-      completionNotes: "Completed RLS migrations with policy helper functions.",
-    },
-    {
-      id: "t2",
-      title: "Build Responsive Multi-Step Registration Flow",
-      description: "Capture personal, academic, and internship specialization preferences with client & server Zod validation.",
-      priority: "HIGH",
-      status: "COMPLETED",
-      dueAt: "2026-10-06",
-      assignedTo: "Fenil Patel",
-      technology: "Next.js & Zod",
-      progress: 100,
-      completionNotes: "Created 4-step free registration flow with email OTP verification.",
-    },
-    {
-      id: "t3",
-      title: "Real-Time Work Session & Timer Engine",
-      description: "Connect attendance timers, break switchers, and server-side duration computation.",
-      priority: "URGENT",
-      status: "IN_PROGRESS",
-      dueAt: "2026-10-10",
-      assignedTo: "Fenil Patel",
-      technology: "TypeScript & Web Audio",
-      progress: 75,
-    },
-    {
-      id: "t4",
-      title: "Take Module 3 JavaScript & React Assessment",
-      description: "Complete the 30-minute timed MCQ test on state management, hooks, and async rendering.",
-      priority: "MEDIUM",
-      status: "PENDING",
-      dueAt: "2026-10-12",
-      assignedTo: "Fenil Patel",
-      technology: "React & Next.js",
-      progress: 0,
-    },
-    {
-      id: "t5",
-      title: "Submit Daily Work Log for Capstone Milestone",
-      description: "Itemize work blocks, time distribution, and push commits to GitHub.",
-      priority: "LOW",
-      status: "OVERDUE",
-      dueAt: "2026-10-04",
-      assignedTo: "Fenil Patel",
-      technology: "Git & Documentation",
-      progress: 40,
-    },
-  ]);
+  const [tasks, setTasks] = useState<TaskItem[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("interndesk_student_tasks_v2");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {
+        // Fallback
+      }
+    }
+    return INITIAL_TASKS;
+  });
 
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
   const [notes, setNotes] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState("ALL");
+
+  // Create Task Modal State
+  const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [newPriority, setNewPriority] = useState<TaskItem["priority"]>("MEDIUM");
+  const [newDue, setNewDue] = useState("2026-10-28");
+  const [newTech, setNewTech] = useState("Full Stack Web");
+  const [newAssignee, setNewAssignee] = useState("Fenil Patel");
+
+  const saveTasks = (updated: TaskItem[]) => {
+    setTasks(updated);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("interndesk_student_tasks_v2", JSON.stringify(updated));
+      } catch {
+        // Ignored
+      }
+    }
+  };
+
+  const handleCreateTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim()) return;
+
+    const newTask: TaskItem = {
+      id: `task-${Date.now()}`,
+      title: newTitle.trim(),
+      description: newDesc.trim() || "Assigned task deliverable.",
+      priority: newPriority,
+      status: "PENDING",
+      dueAt: newDue,
+      assignedTo: newAssignee,
+      technology: newTech,
+      progress: 0,
+    };
+
+    saveTasks([newTask, ...tasks]);
+    setIsNewTaskOpen(false);
+    setNewTitle("");
+    setNewDesc("");
+  };
 
   const handleUpdateStatus = (taskId: string, newStatus: TaskItem["status"]) => {
-    setTasks(
-      tasks.map((t) =>
-        t.id === taskId
-          ? {
-              ...t,
-              status: newStatus,
-              progress: newStatus === "COMPLETED" ? 100 : newStatus === "IN_PROGRESS" ? 60 : 0,
-              completionNotes: notes || t.completionNotes,
-            }
-          : t
-      )
+    const updated = tasks.map((t) =>
+      t.id === taskId
+        ? {
+            ...t,
+            status: newStatus,
+            progress: newStatus === "COMPLETED" ? 100 : newStatus === "IN_PROGRESS" ? 60 : 0,
+            completionNotes: notes || t.completionNotes,
+          }
+        : t
     );
+    saveTasks(updated);
     setSelectedTask(null);
   };
+
+  const handleDeleteTask = (taskId: string) => {
+    const updated = tasks.filter((t) => t.id !== taskId);
+    saveTasks(updated);
+    setSelectedTask(null);
+  };
+
+  const filteredTasks = tasks.filter((t) => {
+    const matchesSearch =
+      t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.technology.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesPriority = priorityFilter === "ALL" || t.priority === priorityFilter;
+    return matchesSearch && matchesPriority;
+  });
 
   const columns: { id: TaskItem["status"]; title: string; color: string }[] = [
     { id: "PENDING", title: "Pending", color: "bg-slate-100 text-slate-700" },
@@ -119,48 +198,91 @@ export default function StudentTasksPage() {
       <StudentTopbar title="Task Management" studentName="Fenil Patel" />
 
       <main className="flex-1 overflow-y-auto p-6 space-y-6">
-        {/* Header with Switcher */}
+        {/* Header with Switcher and New Task Button */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+            <h2 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
               Internship Task Board
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold font-mono">
+                {tasks.length} Total ({filteredTasks.length} Visible)
+              </span>
             </h2>
             <p className="text-xs text-slate-500">
-              Manage your project deliverables, sprint tickets, and track individual completion progress.
+              Manage your project deliverables, sprint tickets, and submit code solutions for review.
             </p>
           </div>
 
-          <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200">
-            <button
-              onClick={() => setViewMode("BOARD")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                viewMode === "BOARD"
-                  ? "bg-blue-600 text-white shadow-2xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              size="sm"
+              onClick={() => setIsNewTaskOpen(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs flex items-center gap-1.5"
             >
-              <Kanban className="w-3.5 h-3.5" />
-              <span>Kanban Board</span>
-            </button>
-            <button
-              onClick={() => setViewMode("LIST")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                viewMode === "LIST"
-                  ? "bg-blue-600 text-white shadow-2xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <List className="w-3.5 h-3.5" />
-              <span>List View</span>
-            </button>
+              <Plus className="w-3.5 h-3.5" />
+              <span>Create / Assign Task</span>
+            </Button>
+
+            <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200">
+              <button
+                onClick={() => setViewMode("BOARD")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  viewMode === "BOARD"
+                    ? "bg-blue-600 text-white shadow-2xs font-bold"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <Kanban className="w-3.5 h-3.5" />
+                <span>Kanban</span>
+              </button>
+              <button
+                onClick={() => setViewMode("LIST")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  viewMode === "LIST"
+                    ? "bg-blue-600 text-white shadow-2xs font-bold"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <List className="w-3.5 h-3.5" />
+                <span>List</span>
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* KANBAN BOARD VIEW (Section 22) */}
+        {/* Filter and Search Bar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200/90 shadow-2xs">
+          <div className="relative w-full sm:w-72">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search tasks, tech, or tickets..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Priority:</span>
+            <select
+              value={priorityFilter}
+              onChange={(e) => setPriorityFilter(e.target.value)}
+              className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="ALL">All Priorities</option>
+              <option value="URGENT">Urgent</option>
+              <option value="HIGH">High</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="LOW">Low</option>
+            </select>
+          </div>
+        </div>
+
+        {/* KANBAN BOARD VIEW */}
         {viewMode === "BOARD" && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
             {columns.map((col) => {
-              const colTasks = tasks.filter((t) => t.status === col.id);
+              const colTasks = filteredTasks.filter((t) => t.status === col.id);
               return (
                 <div
                   key={col.id}
@@ -256,7 +378,7 @@ export default function StudentTasksPage() {
         {/* LIST VIEW */}
         {viewMode === "LIST" && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {tasks.map((task) => (
+            {filteredTasks.map((task) => (
               <Card
                 key={task.id}
                 className="border-slate-200/90 shadow-2xs hover:border-blue-300 transition-all rounded-2xl bg-white p-5 flex flex-col justify-between"
@@ -348,6 +470,14 @@ export default function StudentTasksPage() {
                 >
                   Mark Completed
                 </Button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteTask(selectedTask.id)}
+                  className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer ml-1"
+                  title="Delete Task"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
 
               <Button variant="outline" size="sm" onClick={() => setSelectedTask(null)}>
@@ -357,6 +487,115 @@ export default function StudentTasksPage() {
           </div>
         </Modal>
       )}
+
+      {/* CREATE / ASSIGN TASK MODAL */}
+      <Modal
+        isOpen={isNewTaskOpen}
+        onClose={() => setIsNewTaskOpen(false)}
+        title="Create & Assign New Task"
+        description="Assign a project deliverable or sprint milestone to an intern, student, or team member."
+        maxWidth="md"
+      >
+        <form onSubmit={handleCreateTask} className="space-y-4 text-xs">
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">
+              Task Title <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. Build GraphQL API endpoint for analytics"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              className="w-full rounded-xl border border-slate-300 p-2.5 text-xs focus:outline-none focus:border-blue-600"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">
+              Description & Acceptance Criteria
+            </label>
+            <textarea
+              rows={3}
+              placeholder="Describe deliverables, requirements, test criteria..."
+              value={newDesc}
+              onChange={(e) => setNewDesc(e.target.value)}
+              className="w-full rounded-xl border border-slate-300 p-2.5 text-xs focus:outline-none focus:border-blue-600"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Priority</label>
+              <select
+                value={newPriority}
+                onChange={(e) => setNewPriority(e.target.value as TaskItem["priority"])}
+                className="w-full rounded-xl border border-slate-300 p-2 text-xs focus:outline-none focus:border-blue-600 bg-white"
+              >
+                <option value="LOW">Low</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HIGH">High</option>
+                <option value="URGENT">Urgent</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Due Date</label>
+              <input
+                type="date"
+                value={newDue}
+                onChange={(e) => setNewDue(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 p-2 text-xs focus:outline-none focus:border-blue-600"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Technology / Stack</label>
+              <input
+                type="text"
+                placeholder="e.g. Next.js, Node, PyTorch"
+                value={newTech}
+                onChange={(e) => setNewTech(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 p-2 text-xs focus:outline-none focus:border-blue-600"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Assignee</label>
+              <select
+                value={newAssignee}
+                onChange={(e) => setNewAssignee(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 p-2 text-xs focus:outline-none focus:border-blue-600 bg-white"
+              >
+                <option value="Fenil Patel">Fenil Patel (Student Intern)</option>
+                <option value="Marcus Vance">Marcus Vance (Lead Mentor)</option>
+                <option value="Elena Rostova">Elena Rostova (CTO / Founder)</option>
+                <option value="David Kumar">David Kumar (Dean / Admin)</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsNewTaskOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold"
+            >
+              Create Task
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
