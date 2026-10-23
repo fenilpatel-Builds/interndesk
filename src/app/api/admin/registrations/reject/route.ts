@@ -1,8 +1,17 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveAuthenticatedUser } from "@/lib/multitenant/auth-guard";
 
 export async function POST(request: Request) {
   try {
+    const user = await resolveAuthenticatedUser();
+    if (user && user.role === "STUDENT") {
+      return NextResponse.json(
+        { error: "Access Denied: Students are not authorized to reject registrations." },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { registrationId, studentId, reason } = body;
 
@@ -13,7 +22,12 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!reason || reason.trim().length < 5) {
+    // Sanitize reason to prevent injection/XSS
+    const cleanReason = String(reason || "")
+      .replace(/<[^>]*>?/gm, "")
+      .trim();
+
+    if (!cleanReason || cleanReason.length < 5) {
       return NextResponse.json(
         { error: "A detailed rejection reason is required (minimum 5 characters)." },
         { status: 400 }
@@ -28,7 +42,7 @@ export async function POST(request: Request) {
       .update({
         status: "REJECTED",
         rejected_at: new Date().toISOString(),
-        rejection_reason: reason.trim(),
+        rejection_reason: cleanReason,
       })
       .eq("id", registrationId);
 
@@ -54,7 +68,7 @@ export async function POST(request: Request) {
         user_id: userId,
         type: "REGISTRATION_REJECTED",
         title: "Registration Update",
-        message: `Your internship registration could not be approved. Reason: ${reason.trim()}`,
+        message: `Your internship registration could not be approved. Reason: ${cleanReason}`,
       });
     }
 

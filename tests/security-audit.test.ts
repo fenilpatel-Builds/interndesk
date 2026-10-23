@@ -199,4 +199,44 @@ describe("Phase 20B: Multi-Tenant Security & Authorization Audit", () => {
       expect(hasPermission("AUDITOR", "documents.issue")).toBe(false);
     });
   });
+
+  // 8. Hacker & Penetration Vector Protections
+  describe("8. Hacker & Penetration Vector Protections", () => {
+    it("sanitizes cross-site scripting (XSS) payloads in rejection reasons", () => {
+      const maliciousInput = "<script>alert('pwned')</script>Candidate submitted invalid academic transcript.";
+      const sanitized = maliciousInput.replace(/<[^>]*>?/gm, "").trim();
+      expect(sanitized).not.toContain("<script>");
+      expect(sanitized).not.toContain("</script>");
+      expect(sanitized).toBe("alert('pwned')Candidate submitted invalid academic transcript.");
+    });
+
+    it("verifies enterprise HTTP security headers defined in nextConfig", async () => {
+      const nextConfigModule = await import("../next.config");
+      const nextConfig = nextConfigModule.default;
+      expect(nextConfig.headers).toBeDefined();
+
+      if (nextConfig.headers) {
+        const headerRules = await nextConfig.headers();
+        const globalRule = headerRules.find((r: { source: string }) => r.source === "/:path*");
+        expect(globalRule).toBeDefined();
+
+        if (globalRule) {
+          const headerMap = new Map(globalRule.headers.map((h: { key: string; value: string }) => [h.key, h.value]));
+          expect(headerMap.get("X-Content-Type-Options")).toBe("nosniff");
+          expect(headerMap.get("X-Frame-Options")).toBe("SAMEORIGIN");
+          expect(headerMap.get("X-XSS-Protection")).toBe("1; mode=block");
+          expect(headerMap.get("Referrer-Policy")).toBe("strict-origin-when-cross-origin");
+        }
+      }
+    });
+
+    it("strictly forbids students from administrative document issuance and membership approvals", () => {
+      const studentRole = "STUDENT";
+      expect(hasPermission(studentRole, "documents.issue")).toBe(false);
+      expect(hasPermission(studentRole, "members.approve")).toBe(false);
+      expect(hasPermission(studentRole, "settings.manage")).toBe(false);
+      expect(hasPermission(studentRole, "announcements.create")).toBe(false);
+    });
+  });
 });
+

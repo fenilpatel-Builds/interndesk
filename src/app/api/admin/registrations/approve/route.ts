@@ -1,8 +1,17 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveAuthenticatedUser } from "@/lib/multitenant/auth-guard";
 
 export async function POST(request: Request) {
   try {
+    const user = await resolveAuthenticatedUser();
+    if (user && user.role === "STUDENT") {
+      return NextResponse.json(
+        { error: "Access Denied: Students are not authorized to approve registrations." },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { registrationId, studentId } = body;
 

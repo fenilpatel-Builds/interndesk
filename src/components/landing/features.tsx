@@ -82,13 +82,14 @@ export function Features() {
           {features.map((feature, idx) => (
             <Card
               key={idx}
-              className="border-slate-200/90 shadow-2xs hover:shadow-lg transition-all duration-200 hover:-translate-y-1 bg-white rounded-2xl"
+              className="group border-slate-200/90 shadow-2xs hover:shadow-xl hover:shadow-blue-600/10 hover:border-blue-300 transition-all duration-300 hover:-translate-y-1.5 bg-white rounded-2xl overflow-hidden relative"
             >
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               <CardContent className="p-6 flex flex-col h-full">
-                <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-5">
+                <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-5 group-hover:scale-110 group-hover:bg-blue-50/80 group-hover:border-blue-200 transition-all duration-300 shadow-2xs">
                   {feature.icon}
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 mb-2">
+                <h3 className="text-lg font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors">
                   {feature.title}
                 </h3>
                 <p className="text-sm text-slate-600 leading-relaxed mt-auto font-normal">

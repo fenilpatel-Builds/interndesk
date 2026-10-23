@@ -231,6 +231,35 @@ body {
   box-shadow: 0 0 35px -5px rgba(217, 119, 6, 0.16);
 }
 
+@keyframes borderGlow {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.gradient-border-glow {
+  background: linear-gradient(60deg, #3b82f6, #6366f1, #8b5cf6, #3b82f6);
+  background-size: 300% 300%;
+  animation: borderGlow 6s ease infinite;
+}
+
+.pulse-ring {
+  position: relative;
+}
+.pulse-ring::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0.35;
+  animation: pulseSubtle 2s infinite ease-out;
+  pointer-events: none;
+}
+
 /* Clean Document Studio Print Styles */
 @media print {
   body {

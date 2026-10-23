@@ -1,8 +1,17 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveAuthenticatedUser } from "@/lib/multitenant/auth-guard";
 
 export async function GET() {
   try {
+    const user = await resolveAuthenticatedUser();
+    if (user && user.role === "STUDENT") {
+      return NextResponse.json(
+        { error: "Access Denied: Students are not authorized to view admin registrations." },
+        { status: 403 }
+      );
+    }
+
     const adminClient = createAdminClient();
     const { data: registrations, error } = await adminClient
       .from("registrations")

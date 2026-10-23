@@ -32,10 +32,8 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  // Check Supabase Auth user session
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Refresh Supabase Auth user session
+  await supabase.auth.getUser();
 
   // Check application session cookie
   const interndeskSession = request.cookies.get("interndesk_user")?.value;
@@ -48,19 +46,18 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  const isAuthenticated = !!user || !!parsedSession?.email;
   const userRole = parsedSession?.role || "STUDENT";
   const path = request.nextUrl.pathname;
 
-  // Prevent students from accessing admin /workspace
-  if (path.startsWith("/workspace") && parsedSession?.role === "STUDENT") {
+  // Prevent students from accessing admin /workspace and /admin console
+  if ((path.startsWith("/workspace") || path.startsWith("/admin")) && userRole === "STUDENT") {
     return NextResponse.redirect(new URL("/student/dashboard", request.url));
   }
 
-  // Protect /super-admin
+  // Protect /super-admin against non-superadmin access
   if (path.startsWith("/super-admin")) {
-    if (!isAuthenticated && userRole !== "SUPER_ADMIN") {
-      // Allow in development / preview, or redirect to login
+    if (userRole !== "SUPER_ADMIN") {
+      return NextResponse.redirect(new URL("/workspace", request.url));
     }
   }
 
@@ -78,6 +75,7 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     "/workspace/:path*",
+    "/admin/:path*",
     "/super-admin/:path*",
   ],
 };

@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Menu, X, Building2, Search } from "lucide-react";
+import { Menu, X, Building2, Search, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatedLogo } from "@/components/ui/animated-logo";
 
@@ -38,12 +38,12 @@ export function Navbar() {
           </nav>
 
           {/* Action CTAs */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-2.5">
             <Link href="/join">
               <Button
                 variant="outline"
                 size="sm"
-                className="font-semibold text-slate-700 border-slate-300 hover:bg-slate-50 px-4 rounded-xl flex items-center gap-1.5"
+                className="font-semibold text-slate-700 border-slate-300 hover:bg-slate-50 px-3.5 rounded-xl flex items-center gap-1.5"
               >
                 <Search className="w-3.5 h-3.5 text-slate-500" />
                 Find Org
@@ -53,15 +53,24 @@ export function Navbar() {
               <Button
                 variant="outline"
                 size="sm"
-                className="font-semibold text-slate-700 border-slate-300 hover:bg-slate-50 px-4 rounded-xl"
+                className="font-semibold text-slate-700 border-slate-300 hover:bg-slate-50 px-3.5 rounded-xl"
               >
                 Sign In
+              </Button>
+            </Link>
+            <Link href="/register">
+              <Button
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 rounded-xl shadow-xs flex items-center gap-1.5"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Free Register</span>
               </Button>
             </Link>
             <Link href="/onboard/organization">
               <Button
                 size="sm"
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-500/10 px-5 rounded-xl flex items-center gap-1.5"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-500/10 px-4 rounded-xl flex items-center gap-1.5"
               >
                 <Building2 className="w-4 h-4" />
                 Create Workspace
@@ -98,6 +107,12 @@ export function Navbar() {
             ))}
           </div>
           <div className="pt-4 border-t border-slate-100 flex flex-col gap-2.5">
+            <Link href="/register" onClick={() => setMobileMenuOpen(false)}>
+              <Button className="w-full justify-center bg-emerald-600 hover:bg-emerald-700 font-bold rounded-xl text-white flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                Free Register (Students, Companies & Institutes)
+              </Button>
+            </Link>
             <Link href="/join" onClick={() => setMobileMenuOpen(false)}>
               <Button variant="outline" className="w-full justify-center rounded-xl">
                 Find Your Organization (Enter Code)
