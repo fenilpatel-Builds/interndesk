@@ -1,8 +1,8 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
-import { MemberRole } from "@/types/multitenant";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { MemberRole } from "../../types/multitenant";
+import { createAdminClient } from "../supabase/admin";
 
 export interface RegisteredAccount {
   id: string;

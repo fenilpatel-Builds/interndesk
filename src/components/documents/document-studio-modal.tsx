@@ -190,6 +190,56 @@ function OfficialExecutiveSovereignSeal() {
   );
 }
 
+// Official Akash Technolabs Circular Blue Ink Rubber Seal Stamp
+export function OfficialAkashStamp() {
+  return (
+    <div className="relative w-28 h-28 flex items-center justify-center select-none" style={{ transform: "rotate(-5deg)" }}>
+      <svg viewBox="0 0 140 140" className="w-full h-full text-blue-800 opacity-95 drop-shadow-xs">
+        <defs>
+          {/* Circular path for top curved text */}
+          <path
+            id="akashStampTopPath"
+            d="M 22, 70 A 48,48 0 0,1 118, 70"
+          />
+          {/* Circular path for bottom curved text */}
+          <path
+            id="akashStampBottomPath"
+            d="M 118, 70 A 48,48 0 0,1 22, 70"
+          />
+        </defs>
+        {/* Outer Stamped Circles */}
+        <circle cx="70" cy="70" r="63" fill="none" stroke="currentColor" strokeWidth="2.5" strokeDasharray="4,1" />
+        <circle cx="70" cy="70" r="59" fill="none" stroke="currentColor" strokeWidth="1" />
+        {/* Inner Boundary Circle */}
+        <circle cx="70" cy="70" r="39" fill="none" stroke="currentColor" strokeWidth="1.2" />
+        
+        {/* Curved Arched Text */}
+        <text fontSize="8.5" fontWeight="900" fill="currentColor" letterSpacing="2.2">
+          <textPath href="#akashStampTopPath" startOffset="50%" textAnchor="middle">
+            AKASH TECHNOLABS
+          </textPath>
+        </text>
+        <text fontSize="7" fontWeight="800" fill="currentColor" letterSpacing="1.8">
+          <textPath href="#akashStampBottomPath" startOffset="50%" textAnchor="middle">
+            ★ AHMEDABAD ★
+          </textPath>
+        </text>
+
+        {/* Authentic Cursive Handwritten Ink Signature in Center */}
+        <path
+          d="M 42 74 C 47 58, 52 56, 57 72 C 61 82, 66 62, 74 66 C 81 70, 88 62, 98 67 M 48 70 Q 72 75 94 64"
+          stroke="currentColor"
+          strokeWidth="2.4"
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <circle cx="70" cy="70" r="1.5" fill="currentColor" />
+      </svg>
+    </div>
+  );
+}
+
 function ThemeSeal({ theme }: { theme?: TemplateTheme }) {
   if (theme === "MODERN_TECH") return <OfficialModernTechSeal />;
   if (theme === "EXECUTIVE_SOVEREIGN") return <OfficialExecutiveSovereignSeal />;
@@ -251,6 +301,11 @@ export function DocumentStudioModal({
   };
 
   const orgName = doc.template_data?.organization_name || organizationName;
+  const isAkashOrg =
+    doc.organization_id === "org-akash-01" ||
+    Boolean(orgName && orgName.toLowerCase().includes("akash")) ||
+    Boolean(doc.template_data?.is_akash_template) ||
+    Boolean(doc.template_data?.organization_name && doc.template_data.organization_name.toLowerCase().includes("akash"));
   const isPendingApproval = doc.status === "PENDING_APPROVAL" || doc.approval_status === "PENDING";
   const brandColor = doc.template_data?.brand_color || "#2563EB";
   const orgLogo = doc.template_data?.organization_logo;
@@ -326,7 +381,7 @@ export function DocumentStudioModal({
         }
       `}</style>
 
-      <div className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-auto max-h-[95vh]">
+      <div className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-auto h-[92vh] max-h-[92vh]">
         {/* Studio Action Header */}
         <div className="px-6 py-4 bg-slate-900 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
@@ -483,11 +538,11 @@ export function DocumentStudioModal({
         </div>
 
         {/* Studio Viewport (Scrollable) */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-100 flex justify-center">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-8 bg-slate-100 flex justify-center items-start">
           {/* Printable Document Canvas */}
           <div
             id="document-studio-canvas"
-            className="w-full max-w-3xl bg-white shadow-xl rounded-2xl border-4 border-slate-200 overflow-hidden text-slate-900 transition-all relative"
+            className="w-full max-w-3xl bg-white shadow-xl rounded-2xl border-4 border-slate-200 text-slate-900 transition-all relative mb-12"
           >
             {/* Diagonal Watermark for Unreleased Drafts */}
             {isPendingApproval && (
@@ -1091,6 +1146,143 @@ export function DocumentStudioModal({
                   </div>
                 </div>
               )
+            ) : isAkashOrg && isOfferLetter ? (
+              // ================= OFFICIAL AKASH TECHNOLABS OFFER LETTER =================
+              <div className="relative bg-white p-6 sm:p-12 text-slate-800 space-y-6">
+                {/* Faint 'At' Watermark in center */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.06] z-0">
+                  <img
+                    src="/images/akash-technolabs-logo.png"
+                    alt="Akash Technolabs Watermark"
+                    className="w-80 h-80 object-contain grayscale"
+                  />
+                </div>
+
+                <div className="relative z-10 space-y-6">
+                  {/* Header with Akash Logo and Split Bar */}
+                  <div>
+                    <div className="flex items-center justify-between pb-3">
+                      <img
+                        src="/images/akash-technolabs-logo.png"
+                        alt="Akash Technolabs"
+                        className="h-16 sm:h-20 w-auto object-contain"
+                      />
+                    </div>
+                    {/* Split Two-Color Bar matching PDF: Navy blue left ~28%, Red right ~72% */}
+                    <div className="w-full flex h-1">
+                      <div className="w-[28%] bg-[#1e3264]" />
+                      <div className="w-[72%] bg-[#d32f2f]" />
+                    </div>
+                  </div>
+
+                  {/* Right aligned date matching PDF */}
+                  <div className="text-right text-xs sm:text-sm font-medium text-slate-900 pr-1">
+                    <span>Date :{doc.issued_date || "01-07-2026"}</span>
+                  </div>
+
+                  {/* Centered Bold Underlined Title */}
+                  <div className="text-center pt-2 pb-3">
+                    <h1 className="text-lg sm:text-xl font-bold tracking-wider text-slate-900 uppercase underline underline-offset-4 decoration-slate-900 decoration-1">
+                      INTERNSHIP OFFER LETTER
+                    </h1>
+                  </div>
+
+                  {/* 4 Official Letter Paragraphs matching PDF */}
+                  <div className="space-y-4 text-xs sm:text-[13px] leading-relaxed text-slate-800 font-normal text-justify">
+                    <p>
+                      This is to inform that <strong>{doc.recipient_name}</strong> has been selected for an internship at{" "}
+                      <strong>Akash Technolabs</strong> as a <strong>{doc.recipient_role}</strong>. His internship will commence on{" "}
+                      <strong>{doc.template_data?.commencement_date || "3rd July 2026"}</strong> and continue until{" "}
+                      <strong>{doc.template_data?.continue_until_date || "30th April 2027"}</strong>.
+                    </p>
+
+                    <p>
+                      During the internship period, he will work on <strong>{doc.template_data?.program_or_track || "AI/ML technology"}</strong> and will be involved in projects and assignments designed to enhance his technical knowledge and practical skills. He is expected to maintain a professional attitude, follow the company&apos;s policies and guidelines, and perform his assigned responsibilities with sincerity and dedication throughout the internship.
+                    </p>
+
+                    <p>
+                      Upon successful completion of the internship, he will be awarded an <strong>Internship Completion Certificate</strong> based on his performance and adherence to the company&apos;s rules and regulations.
+                    </p>
+
+                    <p>
+                      We are pleased to welcome him to Akash Technolabs and wish him a successful and enriching internship experience.
+                    </p>
+                  </div>
+
+                  {/* Candidate Acceptance / Signing Widget */}
+                  {isOfferLetter && !isAccepted && (
+                    <div className="my-2 p-3.5 rounded-xl bg-amber-50/90 border border-amber-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                      <span className="text-amber-800 font-medium">
+                        Welcome to Akash Technolabs! Please review the terms and click &quot;Sign &amp; Accept Offer&quot; below.
+                      </span>
+                      <Button
+                        size="sm"
+                        onClick={() => setIsSignModalOpen(true)}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg px-3 py-1 text-xs shrink-0 cursor-pointer"
+                      >
+                        <PenTool className="w-3.5 h-3.5 mr-1" />
+                        Sign &amp; Accept Offer
+                      </Button>
+                    </div>
+                  )}
+
+                  {isOfferLetter && isAccepted && (
+                    <div className="my-2 p-3 rounded-xl bg-emerald-50 border border-emerald-300 flex items-center justify-between text-xs text-emerald-800 font-medium">
+                      <span className="flex items-center gap-1.5 font-bold">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        Offer Formally Accepted by {candidateNameInput || doc.recipient_name}
+                      </span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-100 border border-emerald-300">
+                        Signed: {acceptedDate}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Signatory Section */}
+                  <div className="pt-4 space-y-1 text-xs sm:text-sm">
+                    <p className="text-slate-800 font-medium">Sincerely</p>
+                    
+                    {/* Official Akash Technolabs Seal & Signature */}
+                    <div className="py-1">
+                      <OfficialAkashStamp />
+                    </div>
+
+                    <p className="font-bold text-slate-900 text-sm">Akash Padhiyar</p>
+                    <p className="font-medium text-slate-700 text-xs">CEO</p>
+                  </div>
+                </div>
+
+                {/* Footer matching PDF with split bar and 2-line info */}
+                <div className="relative z-10 pt-8 mt-6">
+                  <div className="w-full flex h-1 mb-3">
+                    <div className="w-[28%] bg-[#1e3264]" />
+                    <div className="w-[72%] bg-[#d32f2f]" />
+                  </div>
+
+                  <div className="text-center space-y-1 text-[10px] sm:text-[11px] text-slate-600">
+                    <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 font-medium text-slate-700">
+                      <span className="inline-flex items-center gap-1">
+                        <span className="text-[#1e3264]">🌐</span> www.akashtechnolabs.com
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <span className="text-[#d32f2f]">✉</span> info@akashtechnolabs.com
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <span className="text-[#1e3264]">📞</span> +91 99786 21654
+                      </span>
+                    </div>
+                    <p className="text-slate-600 font-medium">
+                      202, Aarya Arcade, Above Passport Seva Kendra, Mithakhali Six Road, Navrangpura, Ahmedabad-09.
+                    </p>
+                  </div>
+
+                  {/* Public Verification Stamp for InternDesk Authenticity */}
+                  <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between text-[9px] font-mono text-slate-400">
+                    <span className="truncate">REF: {doc.document_number} • SHA-256: {sha256Fingerprint.slice(0, 24)}...</span>
+                    <span className="text-emerald-600 font-bold">VERIFIED ON INTERNDESK</span>
+                  </div>
+                </div>
+              </div>
             ) : (
               // ================= OFFICIAL OFFER / INTERNSHIP LETTER TEMPLATE =================
               <div className="p-8 sm:p-12 space-y-6 relative bg-white">

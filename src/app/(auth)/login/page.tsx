@@ -596,27 +596,33 @@ export default function LoginPage() {
             </div>
 
             {registeredAccounts.length > 0 ? (
-              <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                 {registeredAccounts.map((acc) => (
                   <button
                     key={acc.id}
                     type="button"
                     onClick={() => {
                       setEmail(acc.email);
+                      setPassword(acc.role === "STUDENT" ? "student123" : "password123");
                       setErrorMessage("");
                     }}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-blue-50/80 hover:border-blue-300 text-left transition-all flex items-center justify-between group cursor-pointer"
+                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-blue-50/80 hover:border-blue-300 text-left transition-all flex items-center justify-between group cursor-pointer shadow-2xs"
                   >
                     <div className="truncate pr-2">
-                      <p className="text-xs font-bold text-slate-900 group-hover:text-blue-700 truncate">
-                        {acc.name}
+                      <p className="text-xs font-bold text-slate-900 group-hover:text-blue-700 truncate flex items-center gap-1.5">
+                        <span>{acc.name}</span>
+                        {acc.organizationName && (
+                          <span className="text-[10px] font-normal text-slate-500">
+                            • {acc.organizationName}
+                          </span>
+                        )}
                       </p>
                       <p className="text-[10px] text-slate-500 font-mono truncate">
-                        {acc.email} {acc.organizationName ? `• ${acc.organizationName}` : ""}
+                        {acc.email} <span className="text-blue-600 font-bold ml-1 font-sans">({acc.role === "STUDENT" ? "student123" : "password123"})</span>
                       </p>
                     </div>
                     <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-700 shrink-0">
-                      {acc.role === "STUDENT" ? "Student" : (acc.organizationType === "EDUCATIONAL" ? "Institute" : "Company")}
+                      {acc.role === "STUDENT" ? "Student Intern" : (acc.organizationType === "EDUCATIONAL" ? "Institute" : "Company CEO")}
                     </span>
                   </button>
                 ))}

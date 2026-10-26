@@ -424,6 +424,13 @@ export interface IssuedDocument {
     signatory_signature?: string;
     official_stamp?: string;
     brand_color?: string;
+    secondary_color?: string;
+    contact_email?: string;
+    contact_phone?: string;
+    is_akash_template?: boolean;
+    commencement_date?: string;
+    continue_until_date?: string;
+    technology?: string;
     program_or_track: string;
     grade_or_evaluation?: string;
     validity?: string;
