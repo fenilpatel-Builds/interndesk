@@ -1149,27 +1149,27 @@ export function DocumentStudioModal({
             ) : isAkashOrg && isOfferLetter ? (
               // ================= OFFICIAL AKASH TECHNOLABS OFFER LETTER =================
               <div className="relative bg-white p-6 sm:p-12 text-slate-800 space-y-6">
-                {/* Faint 'At' Watermark in center */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.06] z-0">
+                {/* Authentic 'At' Dual-Tone Watermark matching PDF */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
                   <img
-                    src="/images/akash-technolabs-logo.png"
-                    alt="Akash Technolabs Watermark"
-                    className="w-80 h-80 object-contain grayscale"
+                    src="/images/akash-at-watermark-hd.png"
+                    alt="Akash Technolabs Official Watermark"
+                    className="w-[320px] sm:w-[440px] max-w-[85%] object-contain opacity-[0.08] select-none pointer-events-none"
                   />
                 </div>
 
                 <div className="relative z-10 space-y-6">
-                  {/* Header with Akash Logo and Split Bar */}
+                  {/* Header with Akash Horizontal Logo and Split Bar matching PDF */}
                   <div>
-                    <div className="flex items-center justify-between pb-3">
+                    <div className="flex items-center justify-between pb-2">
                       <img
-                        src="/images/akash-technolabs-logo.png"
+                        src="/images/akash-technolabs-header-logo.png"
                         alt="Akash Technolabs"
-                        className="h-16 sm:h-20 w-auto object-contain"
+                        className="h-12 sm:h-14 w-auto object-contain"
                       />
                     </div>
                     {/* Split Two-Color Bar matching PDF: Navy blue left ~28%, Red right ~72% */}
-                    <div className="w-full flex h-1">
+                    <div className="w-full flex h-[3px]">
                       <div className="w-[28%] bg-[#1e3264]" />
                       <div className="w-[72%] bg-[#d32f2f]" />
                     </div>

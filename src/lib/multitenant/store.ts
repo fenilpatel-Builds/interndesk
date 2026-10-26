@@ -179,7 +179,7 @@ const INITIAL_ORGANIZATIONS: Organization[] = [
     country: "India",
     size: "50-100",
     industry_or_category: "AI/ML, Web Development & IT Solutions",
-    logo_url: "/images/akash-technolabs-logo.png",
+    logo_url: "/images/akash-technolabs-header-logo.png",
     description: "Leading IT training & software solutions institute specializing in AI/ML, Python, Cloud, Web and Mobile development.",
     joining_policy: "REQUEST_APPROVAL",
     allowed_email_domains: ["@akashtechnolabs.com"],
@@ -196,7 +196,7 @@ const INITIAL_ORGANIZATIONS: Organization[] = [
       requireDocumentApproval: true,
     },
     branding: {
-      logoUrl: "/images/akash-technolabs-logo.png",
+      logoUrl: "/images/akash-technolabs-header-logo.png",
       brandColor: "#dc2626",
       secondaryColor: "#1e3a8a",
       address: "202, Aarya Arcade, Above Passport Seva Kendra, Mithakhali Six Road, Navrangpura, Ahmedabad-09.",
@@ -1021,7 +1021,7 @@ const INITIAL_DOCUMENTS: IssuedDocument[] = [
     template_data: {
       organization_name: "Akash Technolabs",
       organization_type: "CORPORATE",
-      organization_logo: "/images/akash-technolabs-logo.png",
+      organization_logo: "/images/akash-technolabs-header-logo.png",
       organization_address: "202, Aarya Arcade, Above Passport Seva Kendra, Mithakhali Six Road, Navrangpura, Ahmedabad-09.",
       organization_website: "www.akashtechnolabs.com",
       contact_email: "info@akashtechnolabs.com",
@@ -1057,7 +1057,7 @@ const INITIAL_DOCUMENTS: IssuedDocument[] = [
     template_data: {
       organization_name: "Akash Technolabs",
       organization_type: "CORPORATE",
-      organization_logo: "/images/akash-technolabs-logo.png",
+      organization_logo: "/images/akash-technolabs-header-logo.png",
       organization_address: "202, Aarya Arcade, Above Passport Seva Kendra, Mithakhali Six Road, Navrangpura, Ahmedabad-09.",
       organization_website: "www.akashtechnolabs.com",
       contact_email: "info@akashtechnolabs.com",
@@ -1093,7 +1093,7 @@ const INITIAL_DOCUMENTS: IssuedDocument[] = [
     template_data: {
       organization_name: "Akash Technolabs",
       organization_type: "CORPORATE",
-      organization_logo: "/images/akash-technolabs-logo.png",
+      organization_logo: "/images/akash-technolabs-header-logo.png",
       organization_address: "202, Aarya Arcade, Above Passport Seva Kendra, Mithakhali Six Road, Navrangpura, Ahmedabad-09.",
       organization_website: "www.akashtechnolabs.com",
       contact_email: "info@akashtechnolabs.com",

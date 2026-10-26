@@ -45,7 +45,7 @@ const STUDENT_DOCUMENTS: IssuedDocument[] = [
     template_data: {
       organization_name: "Akash Technolabs",
       organization_type: "CORPORATE",
-      organization_logo: "/images/akash-technolabs-logo.png",
+      organization_logo: "/images/akash-technolabs-header-logo.png",
       organization_address: "202, Aarya Arcade, Above Passport Seva Kendra, Mithakhali Six Road, Navrangpura, Ahmedabad-09.",
       organization_website: "www.akashtechnolabs.com",
       contact_email: "info@akashtechnolabs.com",
