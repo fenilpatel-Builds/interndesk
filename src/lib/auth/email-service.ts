@@ -6,7 +6,7 @@
 export interface SendOtpResult {
   success: boolean;
   error?: string;
-  provider?: "RESEND" | "SIMULATION";
+  provider?: "RESEND" | "SMTP" | "SIMULATION";
   forwardedTo?: string;
 }
 
@@ -73,7 +73,40 @@ export async function sendOtpEmail(email: string, otpCode: string): Promise<Send
   `;
 
   // =========================================================================
-  // RESEND REST API (Official Provider)
+  // 1. SMTP / Nodemailer (Sends to ANY email worldwide without domain restrictions)
+  // =========================================================================
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  if (smtpUser && smtpPass) {
+    try {
+      const nodemailer = await import("nodemailer");
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST || "smtp.gmail.com",
+        port: Number(process.env.SMTP_PORT) || 465,
+        secure: Number(process.env.SMTP_PORT) === 465 || !process.env.SMTP_PORT,
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+      });
+
+      await transporter.sendMail({
+        from: process.env.SMTP_FROM || `"Akash Technolabs" <${smtpUser}>`,
+        to: cleanEmail,
+        subject: `[Akash Technolabs] Your Verification Code: ${otpCode}`,
+        html: emailHtml,
+      });
+
+      console.log(`[SMTP Success]: Akash Technolabs OTP code delivered directly to ${cleanEmail}`);
+      return { success: true, provider: "SMTP" };
+    } catch (smtpErr: unknown) {
+      const msg = smtpErr instanceof Error ? smtpErr.message : "SMTP sending failed";
+      console.warn("[SMTP Warning, falling back to Resend]:", msg);
+    }
+  }
+
+  // =========================================================================
+  // 2. RESEND REST API
   // =========================================================================
   const resendApiKey = process.env.RESEND_API_KEY;
   const resendFrom = process.env.EMAIL_FROM || "Akash Technolabs <onboarding@resend.dev>";
@@ -208,6 +241,29 @@ export async function sendTransactionalEmail(options: {
   `;
 
   try {
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPass = process.env.SMTP_PASS;
+    if (smtpUser && smtpPass) {
+      try {
+        const nodemailer = await import("nodemailer");
+        const transporter = nodemailer.createTransport({
+          host: process.env.SMTP_HOST || "smtp.gmail.com",
+          port: Number(process.env.SMTP_PORT) || 465,
+          secure: Number(process.env.SMTP_PORT) === 465 || !process.env.SMTP_PORT,
+          auth: { user: smtpUser, pass: smtpPass },
+        });
+        await transporter.sendMail({
+          from: process.env.SMTP_FROM || `"Akash Technolabs" <${smtpUser}>`,
+          to: cleanEmail,
+          subject: options.subject,
+          html: fullHtml,
+        });
+        return { success: true, provider: "SMTP" };
+      } catch {
+        // Fall back to Resend
+      }
+    }
+
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
