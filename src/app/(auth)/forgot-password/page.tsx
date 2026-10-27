@@ -13,7 +13,6 @@ export default function ForgotPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [isSent, setIsSent] = useState(false);
-  const [resetCodePreview, setResetCodePreview] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,9 +31,6 @@ export default function ForgotPasswordPage() {
           text: `Recovery instructions and verification code sent to ${email}.`,
           type: "success",
         });
-        if (res.otpPreview) {
-          setResetCodePreview(res.otpPreview);
-        }
       } else {
         setMessage({ text: res.message || "Failed to dispatch recovery email.", type: "error" });
       }
@@ -81,15 +77,6 @@ export default function ForgotPasswordPage() {
                   We have sent a verification code to <strong className="text-slate-200">{email}</strong>.
                 </p>
               </div>
-
-              {resetCodePreview && (
-                <div className="p-3.5 rounded-xl bg-red-950/40 border border-red-800/60 text-xs text-slate-200 text-left">
-                  <span className="font-semibold text-red-300 block mb-1">Testing Recovery Assistant:</span>
-                  <span className="text-slate-400 text-[11px]">
-                    Use verification code: <strong className="font-mono text-red-400 text-sm tracking-widest">{resetCodePreview}</strong>
-                  </span>
-                </div>
-              )}
 
               <Link href={`/reset-password?email=${encodeURIComponent(email)}`}>
                 <Button size="lg" className="w-full bg-[#d32f2f] hover:bg-[#b71c1c] text-white font-bold rounded-xl mt-2">

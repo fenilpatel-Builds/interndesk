@@ -19,7 +19,6 @@ export default function VerifyEmailPage() {
   const [isResending, setIsResending] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
-  const [otpPreview, setOtpPreview] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
 
   useEffect(() => {
@@ -42,9 +41,6 @@ export default function VerifyEmailPage() {
       if (res.success) {
         setResendCooldown(30);
         setMessage({ text: res.message, type: "success" });
-        if (res.otpPreview) {
-          setOtpPreview(res.otpPreview);
-        }
       } else {
         setMessage({ text: res.message || "Failed to dispatch verification code.", type: "error" });
       }
@@ -159,26 +155,7 @@ export default function VerifyEmailPage() {
                 />
               </div>
 
-              {otpPreview && (
-                <div className="p-3 rounded-xl bg-red-950/40 border border-red-800/60 text-xs text-slate-200 flex items-center justify-between">
-                  <div>
-                    <span className="font-semibold text-red-300 block">Resend Dispatch Assistant</span>
-                    <span className="text-[11px] text-slate-400">
-                      Code: <strong className="font-mono text-red-400 text-sm tracking-widest">{otpPreview}</strong>
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOtpCode(otpPreview);
-                      setMessage(null);
-                    }}
-                    className="px-2.5 py-1 text-xs font-bold rounded-lg bg-red-600 hover:bg-red-700 text-white transition shadow-sm"
-                  >
-                    Auto-fill
-                  </button>
-                </div>
-              )}
+
 
               {message && (
                 <div

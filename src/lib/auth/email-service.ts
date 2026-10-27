@@ -1,19 +1,12 @@
 /**
- * Akash Technolabs Multi-Provider Transactional Email Service
- * Supports:
- * 1. Resend REST API (Primary Enterprise Provider)
- * 2. EmailJS (Direct personal inbox delivery)
- * 3. SMTP / Nodemailer (Gmail / Custom domain)
- * 4. Brevo (Sendinblue)
- * 5. Simulation Fallback for local testing
+ * Akash Technolabs Transactional Email Service
+ * Powered by Resend REST API
  */
-
-import nodemailer from "nodemailer";
 
 export interface SendOtpResult {
   success: boolean;
   error?: string;
-  provider?: "RESEND" | "EMAILJS" | "SMTP" | "BREVO" | "SIMULATION";
+  provider?: "RESEND" | "SIMULATION";
   forwardedTo?: string;
 }
 
@@ -80,14 +73,43 @@ export async function sendOtpEmail(email: string, otpCode: string): Promise<Send
   `;
 
   // =========================================================================
-  // PROVIDER 1: RESEND REST API (Primary requested provider)
+  // RESEND REST API (Official Provider)
   // =========================================================================
-  const resendApiKey = process.env.RESEND_API_KEY || process.env.EMAIL_PROVIDER_API_KEY;
+  const resendApiKey = process.env.RESEND_API_KEY;
   const resendFrom = process.env.EMAIL_FROM || "Akash Technolabs <onboarding@resend.dev>";
 
-  if (resendApiKey && !resendApiKey.startsWith("re_placeholder") && !resendApiKey.startsWith("re_...")) {
-    try {
-      const response = await fetch("https://api.resend.com/emails", {
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: resendFrom,
+        to: [cleanEmail],
+        subject: `[Akash Technolabs] Your Verification Code: ${otpCode}`,
+        html: emailHtml,
+      }),
+    });
+
+    if (response.ok) {
+      console.log(`[Resend Success]: Akash Technolabs OTP code delivered directly to ${cleanEmail}`);
+      return { success: true, provider: "RESEND" };
+    }
+
+    const errData = await response.json().catch(() => ({}));
+    const errorMessage = typeof errData.message === "string" ? errData.message : "";
+    console.warn("[Resend Warning]:", errorMessage);
+
+    // If Resend free tier restricts to verified owner email (huntking002@gmail.com)
+    const isSandboxRestriction =
+      errorMessage.toLowerCase().includes("testing emails to your own email address") ||
+      errorMessage.toLowerCase().includes("huntking002@gmail.com");
+
+    if (isSandboxRestriction) {
+      const sandboxOwner = "huntking002@gmail.com";
+      const fallbackResponse = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${resendApiKey}`,
@@ -95,153 +117,30 @@ export async function sendOtpEmail(email: string, otpCode: string): Promise<Send
         },
         body: JSON.stringify({
           from: resendFrom,
-          to: [cleanEmail],
-          subject: `[Akash Technolabs] Your Login Verification Code: ${otpCode}`,
+          to: [sandboxOwner],
+          subject: `[Akash Technolabs] Your Verification Code: ${otpCode} (for ${cleanEmail})`,
           html: emailHtml,
         }),
       });
 
-      if (response.ok) {
-        console.log(`[Resend Success]: Akash Technolabs OTP code ${otpCode} delivered to ${cleanEmail}`);
-        return { success: true, provider: "RESEND" };
+      if (fallbackResponse.ok) {
+        console.log(`[Resend Sandbox Delivery]: Delivered to verified account inbox (${sandboxOwner}) for ${cleanEmail}`);
+        return { success: true, provider: "RESEND", forwardedTo: sandboxOwner };
       }
-
-      const errData = await response.json().catch(() => ({}));
-      const errorMessage = typeof errData.message === "string" ? errData.message : "";
-      console.warn("[Resend Warning]:", errorMessage);
-
-      const isSandboxRestriction =
-        errorMessage.toLowerCase().includes("testing emails to your own email address") ||
-        errorMessage.toLowerCase().includes("huntking002@gmail.com");
-
-      if (isSandboxRestriction) {
-        // Forward sandbox notification to verified owner address
-        await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${resendApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: resendFrom,
-            to: ["huntking002@gmail.com"],
-            subject: `[Akash Technolabs OTP for ${cleanEmail}]: ${otpCode}`,
-            html: `
-              <div style="font-family: sans-serif; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px;">
-                <h3 style="color: #1e3264; margin-top: 0;">Akash Technolabs Login OTP</h3>
-                <p><strong>Recipient:</strong> ${cleanEmail}</p>
-                <p><strong>OTP Code:</strong> <span style="font-size: 28px; font-weight: bold; color: #d32f2f;">${otpCode}</span></p>
-                <p style="color: #64748b; font-size: 12px;">Forwarded via Resend sandbox.</p>
-              </div>
-            `,
-          }),
-        }).catch(() => {});
-
-        console.log(`\n================================================================`);
-        console.log(`[AKASH TECHNOLABS RESEND OTP]`);
-        console.log(`Target Recipient : ${cleanEmail}`);
-        console.log(`OTP CODE         : ${otpCode}`);
-        console.log(`Delivered via    : Resend (Forwarded to huntking002@gmail.com sandbox)`);
-        console.log(`================================================================\n`);
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Resend transmission error";
-      console.error("[Resend Network Error]:", message);
     }
+
+    return {
+      success: false,
+      error: errorMessage || "Email delivery failed via Resend.",
+    };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Resend transmission error";
+    console.error("[Resend Network Error]:", message);
+    return {
+      success: false,
+      error: message,
+    };
   }
-
-  // =========================================================================
-  // PROVIDER 2: EMAILJS (Zero Phone Number, Zero Domain, Sends to ANY recipient)
-  // =========================================================================
-  const emailjsServiceId = process.env.EMAILJS_SERVICE_ID;
-  const emailjsTemplateId = process.env.EMAILJS_TEMPLATE_ID;
-  const emailjsPublicKey = process.env.EMAILJS_PUBLIC_KEY;
-  const emailjsPrivateKey = process.env.EMAILJS_PRIVATE_KEY;
-
-  if (emailjsServiceId && emailjsTemplateId && emailjsPublicKey) {
-    try {
-      const ejsRes = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "origin": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-        },
-        body: JSON.stringify({
-          service_id: emailjsServiceId,
-          template_id: emailjsTemplateId,
-          user_id: emailjsPublicKey,
-          accessToken: emailjsPrivateKey || undefined,
-          template_params: {
-            to_email: cleanEmail,
-            email: cleanEmail,
-            user_email: cleanEmail,
-            to_name: cleanEmail.split("@")[0],
-            otp_code: otpCode,
-            code: otpCode,
-            token: otpCode,
-            message: `Your 6-digit Akash Technolabs verification code is: ${otpCode}`,
-          },
-        }),
-      });
-
-      if (ejsRes.ok) {
-        console.log(`[EmailJS Success]: Akash Technolabs OTP code ${otpCode} delivered directly to ${cleanEmail}`);
-        return { success: true, provider: "EMAILJS" };
-      }
-    } catch (ejsErr) {
-      console.error("[EmailJS REST Error]:", ejsErr);
-    }
-  }
-
-  // =========================================================================
-  // PROVIDER 3: SMTP / GMAIL APP PASSWORD
-  // =========================================================================
-  const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER;
-  const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
-  const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";
-  const smtpPort = Number(process.env.SMTP_PORT) || 465;
-
-  if (smtpUser && smtpPass) {
-    try {
-      const transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port: smtpPort,
-        secure: smtpPort === 465,
-        auth: {
-          user: smtpUser,
-          pass: smtpPass,
-        },
-      });
-
-      await transporter.sendMail({
-        from: `Akash Technolabs <${smtpUser}>`,
-        to: cleanEmail,
-        subject: `[Akash Technolabs] Your Login Verification Code: ${otpCode}`,
-        html: emailHtml,
-      });
-
-      console.log(`[SMTP Success]: OTP code ${otpCode} delivered directly to ${cleanEmail}`);
-      return { success: true, provider: "SMTP" };
-    } catch (smtpErr: unknown) {
-      const msg = smtpErr instanceof Error ? smtpErr.message : "SMTP delivery error";
-      console.error("[SMTP Error]:", msg);
-    }
-  }
-
-  // =========================================================================
-  // PROVIDER 4: LOCAL DEVELOPMENT SIMULATION & CONSOLE DELIVERY
-  // =========================================================================
-  console.log(`\n================================================================`);
-  console.log(`[AKASH TECHNOLABS OTP DISPATCHED]`);
-  console.log(`Recipient : ${cleanEmail}`);
-  console.log(`OTP Code  : ${otpCode}`);
-  console.log(`Provider  : Resend / Transactional Dispatch`);
-  console.log(`================================================================\n`);
-
-  return {
-    success: true,
-    provider: resendApiKey ? "RESEND" : "SIMULATION",
-  };
 }
 
 /**
@@ -255,7 +154,7 @@ export async function sendTransactionalEmail(options: {
   actionButton?: { text: string; url: string };
 }): Promise<SendOtpResult> {
   const cleanEmail = options.to.toLowerCase().trim();
-  const resendApiKey = process.env.RESEND_API_KEY || process.env.EMAIL_PROVIDER_API_KEY;
+  const resendApiKey = process.env.RESEND_API_KEY;
   const resendFrom = process.env.EMAIL_FROM || "Akash Technolabs <onboarding@resend.dev>";
 
   const fullHtml = `
@@ -280,7 +179,7 @@ export async function sendTransactionalEmail(options: {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo-text">Akash<span class="logo-red">®</span> Technolabs</div>
+            <div class="logo-text">Akash Technolabs</div>
             <div class="sub-brand">Student &amp; Intern Management Portal</div>
           </div>
           <div class="body-content">
@@ -302,30 +201,27 @@ export async function sendTransactionalEmail(options: {
     </html>
   `;
 
-  if (resendApiKey && !resendApiKey.startsWith("re_placeholder")) {
-    try {
-      const res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${resendApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: resendFrom,
-          to: [cleanEmail],
-          subject: options.subject,
-          html: fullHtml,
-        }),
-      });
-      if (res.ok) {
-        return { success: true, provider: "RESEND" };
-      }
-    } catch {
-      // Non-blocking fallback
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: resendFrom,
+        to: [cleanEmail],
+        subject: options.subject,
+        html: fullHtml,
+      }),
+    });
+    if (res.ok) {
+      return { success: true, provider: "RESEND" };
     }
+  } catch {
+    // Non-blocking fallback
   }
 
-  console.log(`[Akash Email Notice to ${cleanEmail}]: ${options.subject}`);
   return { success: true, provider: "SIMULATION" };
 }
 
@@ -423,4 +319,3 @@ export async function sendSubmissionReviewedEmail(
     },
   });
 }
-

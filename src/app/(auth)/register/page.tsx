@@ -49,7 +49,6 @@ export default function RegisterPage() {
   // Email OTP Modal State
   const [otpModalOpen, setOtpModalOpen] = useState(false);
   const [otpCode, setOtpCode] = useState("");
-  const [sandboxOtp, setSandboxOtp] = useState<string | null>(null);
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -73,32 +72,6 @@ export default function RegisterPage() {
       setActiveStepHighlight(1);
     }
   }, [fullName, email, studentId, department, course, password, confirmPassword]);
-
-  // Quick fill preset helper for instantaneous testing
-  const handleQuickFill = (preset: "Priya" | "Rahul") => {
-    if (preset === "Priya") {
-      setFullName("Priya Sharma");
-      setEmail("priya.sharma@akashtechnolabs.com");
-      setStudentId("AT2024001");
-      setDepartment("Information Technology");
-      setCourse("B.Tech (CSE / IT)");
-      setSemester("Year 3 - Semester 5/6");
-      setPassword("Priya@2026");
-      setConfirmPassword("Priya@2026");
-      setAgreeTerms(true);
-    } else {
-      setFullName("Rahul Verma");
-      setEmail("rahul.verma@akashtechnolabs.com");
-      setStudentId("AT2024045");
-      setDepartment("Computer Science & Engineering");
-      setCourse("B.Tech Computer Science");
-      setSemester("Year 2 - Semester 3/4");
-      setPassword("Rahul@2026");
-      setConfirmPassword("Rahul@2026");
-      setAgreeTerms(true);
-    }
-    setErrors({});
-  };
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,9 +116,10 @@ export default function RegisterPage() {
     try {
       // 1. Dispatch real Email OTP verification code
       const otpRes = await sendEmailOtp(email.trim().toLowerCase());
-      if (otpRes.sandboxOtp) {
-        setSandboxOtp(otpRes.sandboxOtp);
-        setOtpCode(otpRes.sandboxOtp);
+      if (!otpRes.success) {
+        setErrors({ submit: otpRes.message || "Failed to dispatch verification email. Please check your address." });
+        setIsSubmitting(false);
+        return;
       }
       setResendCooldown(30);
 
@@ -245,13 +219,9 @@ export default function RegisterPage() {
     try {
       const res = await sendEmailOtp(email.trim().toLowerCase());
       if (res.success) {
-        if (res.sandboxOtp) {
-          setSandboxOtp(res.sandboxOtp);
-          setOtpCode(res.sandboxOtp);
-        }
         setResendCooldown(30);
       } else {
-        setOtpError(res.error || "Failed to resend code.");
+        setOtpError(res.message || "Failed to resend code.");
       }
     } catch {
       setOtpError("Network error resending OTP.");
@@ -357,27 +327,13 @@ export default function RegisterPage() {
         <div className="lg:col-span-7 p-7 sm:p-9 flex flex-col justify-between bg-white relative">
           <div>
             {/* Header Title */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-5">
-              <div>
-                <h3 className="text-2xl font-black text-slate-900 tracking-tight">
-                  Student Registration
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Complete your verified profile to access the student portal
-                </p>
-              </div>
-
-              {/* Quick Fill Demo Helper */}
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => handleQuickFill("Priya")}
-                  className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-[10px] font-bold border border-blue-200 transition-colors cursor-pointer"
-                  title="Auto-fill Priya Sharma profile"
-                >
-                  ⚡ Auto-Fill
-                </button>
-              </div>
+            <div className="pb-3 border-b border-slate-100 mb-5">
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+                Student Registration
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Complete your verified profile to access the student portal
+              </p>
             </div>
 
             {/* Stepper Progress Bar matching Image 1: ① Personal  ② Academic  ③ Account */}
@@ -720,20 +676,6 @@ export default function RegisterPage() {
                 <strong className="text-slate-900">{email}</strong>. Enter it below to activate your student credentials.
               </p>
 
-              {sandboxOtp && (
-                <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center justify-between">
-                  <span className="font-semibold">Instant Sandbox Code:</span>
-                  <button
-                    type="button"
-                    onClick={() => setOtpCode(sandboxOtp)}
-                    className="px-2.5 py-1 rounded-lg bg-white hover:bg-emerald-100 font-mono font-bold text-emerald-700 border border-emerald-300 transition-colors cursor-pointer text-xs"
-                    title="Click to auto-fill sandbox OTP"
-                  >
-                    {sandboxOtp} (click to fill)
-                  </button>
-                </div>
-              )}
-
               {otpError && (
                 <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-xs font-semibold text-red-700 flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
@@ -743,14 +685,14 @@ export default function RegisterPage() {
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  6-Digit Verification Code
+                  6-Digit Verification Code (from your Email)
                 </label>
                 <input
                   type="text"
                   maxLength={6}
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                  placeholder="123456"
+                  placeholder="Enter 6-digit OTP"
                   required
                   autoFocus
                   className="w-full tracking-widest text-center text-xl font-mono font-black py-2.5 rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white"
@@ -765,7 +707,7 @@ export default function RegisterPage() {
                 {otpLoading ? "Verifying..." : "Verify & Activate Account"}
               </Button>
 
-              <div className="flex items-center justify-between pt-2 text-xs">
+              <div className="text-center pt-2 text-xs">
                 <button
                   type="button"
                   onClick={handleResendOtp}
@@ -775,14 +717,6 @@ export default function RegisterPage() {
                   }`}
                 >
                   {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Resend Code"}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={finalizeRegistration}
-                  className="text-slate-500 hover:text-slate-800 font-semibold cursor-pointer text-[11px]"
-                >
-                  Skip verification in dev →
                 </button>
               </div>
             </form>

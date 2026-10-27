@@ -34,28 +34,20 @@ export async function sendEmailOtp(email: string): Promise<AuthResponse> {
     // 1. Generate secure 6-digit OTP code in persistent store
     const otpCode = otpStore.generate(cleanEmail);
 
-    // 2. Dispatch official Akash Technolabs branded email via Resend (with EmailJS fallback)
+    // 2. Dispatch official Akash Technolabs branded email via Resend
     const emailRes = await sendOtpEmail(cleanEmail, otpCode);
 
-    // 3. Attempt Supabase Auth in background (non-blocking)
-    try {
-      const supabase = await createServerSupabaseClient();
-      await supabase.auth.signInWithOtp({
-        email: cleanEmail,
-        options: { shouldCreateUser: true },
-      });
-    } catch {
-      // Non-blocking
+    if (!emailRes.success) {
+      return {
+        success: false,
+        message: emailRes.error || "Failed to dispatch verification email. Please check your address or try again.",
+      };
     }
-
-    const providerName = emailRes.provider === "RESEND" ? "Resend" : emailRes.provider === "EMAILJS" ? "EmailJS" : "Transactional Email";
 
     return {
       success: true,
-      message: `A 6-digit verification code has been dispatched to ${cleanEmail} via ${providerName}. Please check your inbox!`,
-      otpPreview: otpCode,
-      sandboxOtp: otpCode,
-      provider: emailRes.provider || "RESEND",
+      message: `A 6-digit verification code has been dispatched to your email address (${cleanEmail}). Please check your inbox!`,
+      provider: "Resend",
     };
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : "Failed to dispatch verification code.";
@@ -95,26 +87,8 @@ export async function verifyEmailOtp(
   try {
     // 1. Check persistent OTP store
     const otpResult = otpStore.verify(cleanEmail, cleanToken);
-    let isOtpValid = otpResult.valid;
 
-    // 2. Fallback: Check Supabase Auth verifyOtp
-    if (!isOtpValid) {
-      try {
-        const supabase = await createServerSupabaseClient();
-        const { data, error } = await supabase.auth.verifyOtp({
-          email: cleanEmail,
-          token: cleanToken,
-          type: "email",
-        });
-        if (!error && data?.user) {
-          isOtpValid = true;
-        }
-      } catch {
-        // Fallback suppressed
-      }
-    }
-
-    if (!isOtpValid) {
+    if (!otpResult.valid) {
       return {
         success: false,
         message: otpResult.error || "Invalid or expired OTP code. Please check your inbox or request a fresh code.",

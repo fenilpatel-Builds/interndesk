@@ -32,8 +32,8 @@ export default function LoginPage() {
 
   // Role tab state: Student, Faculty, Admin matching Image 1
   const [selectedRole, setSelectedRole] = useState<"Student" | "Faculty" | "Admin">("Student");
-  const [email, setEmail] = useState("priya.sharma@akashtechnolabs.com");
-  const [password, setPassword] = useState("Priya@2026");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -43,26 +43,15 @@ export default function LoginPage() {
   const [authMode, setAuthMode] = useState<"PASSWORD" | "OTP">("PASSWORD");
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
-  const [sandboxOtp, setSandboxOtp] = useState<string | null>(null);
   const [otpSuccessMessage, setOtpSuccessMessage] = useState<string | null>(null);
 
   // Watch Demo Modal
   const [demoModalOpen, setDemoModalOpen] = useState(false);
 
-  // Quick preset account selection
+  // Role selection
   const handleRoleSelect = (role: "Student" | "Faculty" | "Admin") => {
     setSelectedRole(role);
     setErrorMessage(null);
-    if (role === "Student") {
-      setEmail("priya.sharma@akashtechnolabs.com");
-      setPassword("Priya@2026");
-    } else if (role === "Faculty") {
-      setEmail("akash@akashtechnolabs.com");
-      setPassword("Akash@2026");
-    } else {
-      setEmail("akash@akashtechnolabs.com");
-      setPassword("Akash@2026");
-    }
   };
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
@@ -100,11 +89,6 @@ export default function LoginPage() {
       const res = await sendEmailOtp(email.trim().toLowerCase());
       if (res.success) {
         setOtpSent(true);
-        if (res.sandboxOtp || res.otpPreview) {
-          const code = res.sandboxOtp || res.otpPreview || "";
-          setSandboxOtp(code);
-          setOtpCode(code);
-        }
         setOtpSuccessMessage(res.message || `Verification OTP sent to ${email}`);
       } else {
         setErrorMessage(res.error || res.message || "Failed to dispatch email verification code.");
@@ -330,6 +314,7 @@ export default function LoginPage() {
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="you@akashtechnolabs.com"
                         required
+                        autoComplete="off"
                         className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-900 bg-white placeholder-slate-400"
                       />
                       <Mail className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -355,6 +340,7 @@ export default function LoginPage() {
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Enter your password"
                         required
+                        autoComplete="new-password"
                         className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-900 bg-white placeholder-slate-400"
                       />
                       <button
@@ -412,6 +398,7 @@ export default function LoginPage() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="you@akashtechnolabs.com"
+                        autoComplete="off"
                         className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
                       />
                       <Mail className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -430,28 +417,19 @@ export default function LoginPage() {
                   ) : (
                     <form onSubmit={handleVerifyOtp} className="space-y-3">
                       <div>
-                        <div className="flex items-center justify-between mb-1">
+                        <div className="mb-1">
                           <label className="text-xs font-bold text-slate-700">
-                            6-Digit Security OTP
+                            6-Digit Security OTP (Check your Email Inbox)
                           </label>
-                          {sandboxOtp && (
-                            <button
-                              type="button"
-                              onClick={() => setOtpCode(sandboxOtp)}
-                              className="text-[11px] font-mono font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200 transition-colors cursor-pointer"
-                              title="Click to auto-fill sandbox OTP"
-                            >
-                              Sandbox Code: {sandboxOtp} (click to fill)
-                            </button>
-                          )}
                         </div>
                         <input
                           type="text"
                           maxLength={6}
                           value={otpCode}
                           onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                          placeholder="123456"
+                          placeholder="Enter 6-digit OTP"
                           required
+                          autoFocus
                           className="w-full tracking-widest text-center text-lg font-mono font-bold py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 text-slate-900"
                         />
                       </div>
@@ -508,9 +486,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setEmail("priya.sharma@akashtechnolabs.com");
-                  setPassword("Priya@2026");
-                  handlePasswordLogin({ preventDefault: () => {} } as React.FormEvent);
+                  setErrorMessage("Please use your registered email address with OTP or password to authenticate.");
                 }}
                 className="w-full py-2.5 px-4 rounded-xl border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center justify-center gap-2.5 transition-colors cursor-pointer"
               >
@@ -534,51 +510,6 @@ export default function LoginPage() {
                 </svg>
                 <span>Continue with Google</span>
               </button>
-
-              {/* Instant Persona Quick Login Drawer */}
-              <div className="mt-4 pt-3 border-t border-slate-100">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block mb-2 text-center">
-                  Quick Testing Accounts (Click to Fill)
-                </span>
-                <div className="grid grid-cols-3 gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedRole("Student");
-                      setEmail("priya.sharma@akashtechnolabs.com");
-                      setPassword("Priya@2026");
-                    }}
-                    className="p-1.5 rounded-lg border border-slate-200 hover:border-blue-400 bg-slate-50 text-left cursor-pointer"
-                  >
-                    <span className="block text-[11px] font-bold text-slate-800 truncate">Priya (IT)</span>
-                    <span className="block text-[9px] text-blue-600 font-semibold">Student</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedRole("Student");
-                      setEmail("fenil.patel@akashtechnolabs.com");
-                      setPassword("Fenil@2026");
-                    }}
-                    className="p-1.5 rounded-lg border border-slate-200 hover:border-blue-400 bg-slate-50 text-left cursor-pointer"
-                  >
-                    <span className="block text-[11px] font-bold text-slate-800 truncate">Fenil (CSE)</span>
-                    <span className="block text-[9px] text-blue-600 font-semibold">Student</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedRole("Admin");
-                      setEmail("akash@akashtechnolabs.com");
-                      setPassword("Akash@2026");
-                    }}
-                    className="p-1.5 rounded-lg border border-red-200 hover:border-red-400 bg-red-50/60 text-left cursor-pointer"
-                  >
-                    <span className="block text-[11px] font-bold text-slate-800 truncate">Akash P.</span>
-                    <span className="block text-[9px] text-red-600 font-semibold">Admin</span>
-                  </button>
-                </div>
-              </div>
 
               {/* Card Footer: Don't have an account? Register now */}
               <div className="text-center mt-5 pt-3 border-t border-slate-100 text-xs text-slate-500 font-medium">
