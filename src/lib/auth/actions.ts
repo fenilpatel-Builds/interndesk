@@ -165,7 +165,21 @@ export async function verifyEmailOtp(
       sameSite: "lax",
     });
 
+    cookieStore.set("akash_user", sessionToken, {
+      path: "/",
+      httpOnly: false,
+      maxAge: 60 * 60 * 24 * 7,
+      sameSite: "lax",
+    });
+
     cookieStore.set("interndesk_active_org", localAccount.organizationId || "org-akash-01", {
+      path: "/",
+      httpOnly: false,
+      maxAge: 60 * 60 * 24 * 7,
+      sameSite: "lax",
+    });
+
+    cookieStore.set("akash_active_org", localAccount.organizationId || "org-akash-01", {
       path: "/",
       httpOnly: false,
       maxAge: 60 * 60 * 24 * 7,
@@ -246,7 +260,21 @@ export async function loginWithPassword(email: string, password: string): Promis
         sameSite: "lax",
       });
 
+      cookieStore.set("akash_user", sessionToken, {
+        path: "/",
+        httpOnly: false,
+        maxAge: 60 * 60 * 24 * 7,
+        sameSite: "lax",
+      });
+
       cookieStore.set("interndesk_active_org", localAccount.organizationId || "org-akash-01", {
+        path: "/",
+        httpOnly: false,
+        maxAge: 60 * 60 * 24 * 7,
+        sameSite: "lax",
+      });
+
+      cookieStore.set("akash_active_org", localAccount.organizationId || "org-akash-01", {
         path: "/",
         httpOnly: false,
         maxAge: 60 * 60 * 24 * 7,
@@ -526,6 +554,8 @@ export async function signOutUser() {
     const cookieStore = await cookies();
     cookieStore.delete("interndesk_user");
     cookieStore.delete("interndesk_active_org");
+    cookieStore.delete("akash_user");
+    cookieStore.delete("akash_active_org");
   } catch {
     // Ignored
   }

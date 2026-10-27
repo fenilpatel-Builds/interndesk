@@ -7,6 +7,7 @@ interface AnimatedLogoProps {
   className?: string;
   size?: "sm" | "md" | "lg";
   showTagline?: boolean;
+  taglineText?: string;
   href?: string;
   variant?: "light" | "dark" | "auto";
 }
@@ -15,44 +16,73 @@ export function AnimatedLogo({
   className = "",
   size = "md",
   showTagline = true,
+  taglineText = "INSTITUTE ACTIVITY MANAGEMENT SYSTEM",
   href = "/",
-  variant = "auto",
+  variant = "light",
 }: AnimatedLogoProps) {
   const sizeMap = {
-    sm: { icon: "h-7 w-auto", text: "text-base", sub: "text-[9px]" },
-    md: { icon: "h-9 w-auto", text: "text-lg", sub: "text-[10px]" },
-    lg: { icon: "h-11 w-auto", text: "text-xl", sub: "text-xs" },
+    sm: { icon: "h-6 w-auto", box: "w-8 h-8 p-1", text: "text-base", sub: "text-[8px]" },
+    md: { icon: "h-7 w-auto", box: "w-9 h-9 p-1.5", text: "text-lg", sub: "text-[9px]" },
+    lg: { icon: "h-9 w-auto", box: "w-11 h-11 p-2", text: "text-2xl", sub: "text-[10px]" },
   };
 
   const currentSize = sizeMap[size];
+  const isDark = variant === "dark";
 
   const content = (
     <div className={`inline-flex items-center gap-2.5 select-none group ${className}`}>
-      {/* Official Akash Technolabs Emblem with Subtle Ambient Glow */}
-      <div className="relative shrink-0 flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
-        <div className="absolute -inset-1 bg-gradient-to-r from-red-600/30 to-blue-700/30 rounded-xl blur-xs opacity-60 group-hover:opacity-100 transition-opacity" />
-        <img
-          src="/images/akash-at-watermark-hd.png"
-          alt="Akash Technolabs"
-          className={`${currentSize.icon} relative z-10 object-contain drop-shadow-xs`}
-        />
-      </div>
-
-      {/* Brand Wordmark & Official Tagline */}
-      <div className="flex flex-col text-left">
-        <div className="flex items-center leading-none">
-          <span className={`font-black tracking-tight text-[#d32f2f] ${currentSize.text}`}>
-            Akash<span className="text-[10px] align-super font-bold ml-0.5">®</span>
-          </span>
-          <span className={`font-black tracking-tight text-[#1e3264] ml-1.5 ${currentSize.text}`}>
-            Technolabs
-          </span>
+      {/* Icon: Image 1 (direct emblem) or Image 2 (white squircle container) */}
+      {isDark ? (
+        <div className={`${currentSize.box} rounded-xl bg-white flex items-center justify-center shrink-0 shadow-sm border border-slate-700/60 transition-transform duration-200 group-hover:scale-105`}>
+          <img
+            src="/images/akash-at-watermark-hd.png"
+            alt="Akash Technolabs"
+            className={`${currentSize.icon} object-contain`}
+          />
         </div>
+      ) : (
+        <div className="relative shrink-0 flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
+          <img
+            src="/images/akash-at-watermark-hd.png"
+            alt="Akash Technolabs"
+            className={`${currentSize.icon} object-contain`}
+          />
+        </div>
+      )}
+
+      {/* Brand Wordmark matching user's Image 1 & Image 2 */}
+      <div className="flex flex-col text-left justify-center">
+        <div className="flex items-center leading-none">
+          {isDark ? (
+            <>
+              <span className={`font-black tracking-tight text-white ${currentSize.text}`}>
+                Akash
+              </span>
+              <sup className="text-xs font-bold text-[#E52329] ml-0.5">®</sup>
+              <span className={`font-black tracking-tight text-white ml-1 ${currentSize.text}`}>
+                Technolabs
+              </span>
+            </>
+          ) : (
+            <>
+              <span className={`font-black tracking-tight text-[#E52329] ${currentSize.text}`}>
+                Akash
+              </span>
+              <sup className="text-xs font-bold text-[#E52329] ml-0.5">®</sup>
+              <span className={`font-black tracking-tight text-[#0B192C] ml-1 ${currentSize.text}`}>
+                Technolabs
+              </span>
+            </>
+          )}
+        </div>
+
         {showTagline && (
           <span
-            className={`font-bold uppercase tracking-wider text-slate-500 mt-1 leading-none ${currentSize.sub}`}
+            className={`font-bold uppercase tracking-wider mt-1 leading-none ${currentSize.sub} ${
+              isDark ? "text-sky-400" : "text-slate-500"
+            }`}
           >
-            Student &amp; Intern Workspace
+            {taglineText}
           </span>
         )}
       </div>

@@ -13,14 +13,14 @@ export default function AboutPage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           {/* Header */}
           <div className="text-center space-y-3">
-            <span className="text-xs uppercase font-bold tracking-wider text-blue-600">
-              About InternDesk
+            <span className="text-xs uppercase font-bold tracking-wider text-[#E52329] bg-red-50 px-3 py-1 rounded-full border border-red-200">
+              About Akash Technolabs
             </span>
             <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">
-              Bridging the Gap Between Academics and Industry
+              Empowering Students with Real-World Technology Practicum
             </h1>
             <p className="text-base text-slate-600 max-w-2xl mx-auto">
-              InternDesk is a dedicated enterprise training and internship platform providing students with verified, project-driven industrial experience.
+              Akash Technolabs is a premier institute managing student academic activities, project submissions, faculty evaluations, attendance, and certified credentials.
             </p>
           </div>
 

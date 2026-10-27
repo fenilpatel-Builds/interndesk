@@ -16,9 +16,9 @@ const serifFont = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Akash Technolabs — Student & Intern Management Portal",
+  title: "Akash Technolabs — Institute Activity Management System",
   description:
-    "Official internship workspace, attendance tracking, daily reports, task practicum, and verified offer letters for Akash Technolabs.",
+    "Empowering students, faculty and administrators with a smart, secure and seamless platform for activities, submissions, learning and progress at Akash Technolabs.",
   icons: {
     icon: "/images/akash-at-watermark-hd.png",
   },

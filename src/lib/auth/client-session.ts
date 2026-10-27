@@ -18,7 +18,7 @@ export function parseClientSessionCookie(): ClientSession | null {
   if (typeof window === "undefined") return null;
 
   try {
-    const match = document.cookie.match(/(?:^|;\s*)interndesk_user=([^;]+)/);
+    const match = document.cookie.match(/(?:^|;\s*)(?:interndesk_user|akash_user)=([^;]+)/);
     if (!match) return null;
 
     const rawVal = decodeURIComponent(match[1]).trim();

@@ -51,12 +51,12 @@ export async function sendOtpEmail(email: string, otpCode: string): Promise<Send
         <div class="container">
           <div class="header">
             <div class="logo-text">Akash<span class="logo-red">®</span> Technolabs</div>
-            <div class="sub-brand">Student &amp; Intern Management Portal</div>
+            <div class="sub-brand">Institute Activity Management System</div>
           </div>
           <div class="body-content">
             <h1>Official Login Verification Code</h1>
             <p>Hello,</p>
-            <p>You have requested access to the <strong>Akash Technolabs</strong> Practicum &amp; Internship Platform. Please use the 6-digit one-time password below to authenticate securely:</p>
+            <p>You have requested access to the <strong>Akash Technolabs</strong> Institute Activity Management System. Please use the 6-digit one-time password below to authenticate securely:</p>
             
             <div class="otp-box">
               <div class="otp-label">One-Time Security Code</div>

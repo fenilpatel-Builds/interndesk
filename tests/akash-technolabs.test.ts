@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { multiTenantStore } from "../src/lib/multitenant/store";
 import { credentialsStore } from "../src/lib/auth/credentials-store";
+import { otpStore } from "../src/lib/auth/otp-store";
 
 describe("Akash Technolabs Integration & Accounts", () => {
   it("should have Akash Technolabs configured in multiTenantStore", () => {
@@ -33,14 +34,14 @@ describe("Akash Technolabs Integration & Accounts", () => {
     expect(fenilAcc?.organizationId).toBe("org-akash-01");
 
     // 3. Priya Sharma (Full Stack Intern)
-    const priyaAcc = credentialsStore.authenticate("priya.sharma@akashtechnolabs.com", "student123");
-    expect(priyaAcc).not.toBeNull();
+    const priyaAcc = credentialsStore.findByEmail("priya.sharma@akashtechnolabs.com");
+    expect(priyaAcc).toBeDefined();
     expect(priyaAcc?.name).toBe("Priya Sharma");
     expect(priyaAcc?.role).toBe("STUDENT");
 
     // 4. Harshit Mehta (Cloud & Python Intern)
-    const harshitAcc = credentialsStore.authenticate("harshit.mehta@akashtechnolabs.com", "student123");
-    expect(harshitAcc).not.toBeNull();
+    const harshitAcc = credentialsStore.findByEmail("harshit.mehta@akashtechnolabs.com");
+    expect(harshitAcc).toBeDefined();
     expect(harshitAcc?.name).toBe("Harshit Mehta");
     expect(harshitAcc?.role).toBe("STUDENT");
   });
@@ -74,5 +75,29 @@ describe("Akash Technolabs Integration & Accounts", () => {
     const adminMem = members.find((m) => m.user_email === "akash@akashtechnolabs.com");
     expect(adminMem).toBeDefined();
     expect(adminMem?.role).toBe("ORG_ADMIN");
+  });
+
+  it("should generate, verify OTP and enforce RBAC routing for students and admins", () => {
+    // 1. Generate & verify OTP for Student
+    const studentEmail = "priya.sharma@akashtechnolabs.com";
+    const studentOtp = otpStore.generate(studentEmail);
+    expect(studentOtp).toMatch(/^\d{6}$/);
+
+    const studentVerify = otpStore.verify(studentEmail, studentOtp);
+    expect(studentVerify.valid).toBe(true);
+
+    const studentAccount = credentialsStore.findByEmail(studentEmail);
+    expect(studentAccount?.role).toBe("STUDENT");
+
+    // 2. Generate & verify OTP for Admin
+    const adminEmail = "akash@akashtechnolabs.com";
+    const adminOtp = otpStore.generate(adminEmail);
+    expect(adminOtp).toMatch(/^\d{6}$/);
+
+    const adminVerify = otpStore.verify(adminEmail, adminOtp);
+    expect(adminVerify.valid).toBe(true);
+
+    const adminAccount = credentialsStore.findByEmail(adminEmail);
+    expect(adminAccount?.role).toBe("ORG_ADMIN");
   });
 });

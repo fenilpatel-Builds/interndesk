@@ -23,14 +23,14 @@ export default function ContactPage() {
       <main className="flex-1 py-16 bg-slate-50">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           <div className="text-center space-y-3">
-            <span className="text-xs uppercase font-bold tracking-wider text-blue-600">
+            <span className="text-xs uppercase font-bold tracking-wider text-[#E52329] bg-red-50 px-3 py-1 rounded-full border border-red-200">
               Get In Touch
             </span>
             <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">
-              Contact InternDesk Support
+              Contact Akash Technolabs
             </h1>
             <p className="text-base text-slate-600 max-w-xl mx-auto">
-              Have questions regarding workspace onboarding, organization verification, or institutional partnerships? Our team is here to assist.
+              Have questions regarding student activities, project submissions, faculty evaluations, or academic credentials? Our team is here to assist.
             </p>
           </div>
 
@@ -40,24 +40,35 @@ export default function ContactPage() {
               <Card className="border-slate-200/90 shadow-xs">
                 <CardContent className="p-6 space-y-6 text-xs text-slate-700">
                   <div className="flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                    <div className="w-9 h-9 rounded-lg bg-red-50 text-[#E52329] flex items-center justify-center shrink-0">
                       <Mail className="w-4 h-4" />
                     </div>
                     <div>
                       <h4 className="font-bold text-slate-900">Official Support</h4>
-                      <p className="text-slate-500">support@interndesk.local</p>
-                      <p className="text-slate-500">admissions@interndesk.local</p>
+                      <p className="text-slate-500">info@akashtechnolabs.com</p>
+                      <p className="text-slate-500">admissions@akashtechnolabs.com</p>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                    <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
                       <MapPin className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-slate-900">Headquarters</h4>
-                      <p className="text-slate-500">Cyber City Innovation Hub, Tower B</p>
-                      <p className="text-slate-500">Bengaluru, Karnataka, 560100</p>
+                      <h4 className="font-bold text-slate-900">Institute Campus</h4>
+                      <p className="text-slate-500">202, Aarya Arcade, Above Passport Seva Kendra</p>
+                      <p className="text-slate-500">Mithakhali Six Road, Navrangpura, Ahmedabad-380009</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                      <Phone className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-900">Helpline Phone</h4>
+                      <p className="text-slate-500">+91 99786 21654</p>
+                      <p className="text-slate-500">Mon - Sat: 9:00 AM - 6:00 PM</p>
                     </div>
                   </div>
 

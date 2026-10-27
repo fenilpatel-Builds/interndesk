@@ -435,9 +435,14 @@ export default function LoginPage() {
                             6-Digit Security OTP
                           </label>
                           {sandboxOtp && (
-                            <span className="text-[11px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                              Sandbox Code: {sandboxOtp}
-                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setOtpCode(sandboxOtp)}
+                              className="text-[11px] font-mono font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200 transition-colors cursor-pointer"
+                              title="Click to auto-fill sandbox OTP"
+                            >
+                              Sandbox Code: {sandboxOtp} (click to fill)
+                            </button>
                           )}
                         </div>
                         <input

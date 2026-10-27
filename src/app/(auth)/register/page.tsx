@@ -270,9 +270,9 @@ export default function RegisterPage() {
           <div className="absolute -bottom-16 -right-16 w-56 h-56 bg-[#00A8E8]/25 rounded-full blur-3xl pointer-events-none" />
 
           <div className="relative z-10">
-            {/* Akash Technolabs Logo */}
+            {/* Akash Technolabs Logo matching Image 2 */}
             <div className="flex items-center gap-2.5 mb-8">
-              <div className="w-9 h-9 rounded-xl bg-white p-1.5 flex items-center justify-center shrink-0 shadow-sm border border-slate-700">
+              <div className="w-9 h-9 rounded-xl bg-white p-1.5 flex items-center justify-center shrink-0 shadow-sm border border-slate-700/60">
                 <img
                   src="/images/akash-at-watermark-hd.png"
                   alt="Akash Technolabs"
@@ -281,11 +281,12 @@ export default function RegisterPage() {
               </div>
               <div className="flex flex-col">
                 <div className="flex items-center leading-tight">
-                  <span className="text-base font-black text-[#E52329] tracking-tight">Akash®</span>
+                  <span className="text-base font-black text-white tracking-tight">Akash</span>
+                  <sup className="text-xs font-bold text-[#E52329] ml-0.5">®</sup>
                   <span className="text-base font-black text-white ml-1 tracking-tight">Technolabs</span>
                 </div>
                 <span className="text-[9px] uppercase font-bold text-sky-400 tracking-wider">
-                  STUDENT PORTAL
+                  INSTITUTE ACTIVITY MANAGEMENT SYSTEM
                 </span>
               </div>
             </div>
@@ -723,9 +724,14 @@ export default function RegisterPage() {
               {sandboxOtp && (
                 <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center justify-between">
                   <span className="font-semibold">Instant Sandbox Code:</span>
-                  <code className="px-2 py-0.5 rounded bg-white font-mono font-bold text-emerald-700 border border-emerald-300">
-                    {sandboxOtp}
-                  </code>
+                  <button
+                    type="button"
+                    onClick={() => setOtpCode(sandboxOtp)}
+                    className="px-2.5 py-1 rounded-lg bg-white hover:bg-emerald-100 font-mono font-bold text-emerald-700 border border-emerald-300 transition-colors cursor-pointer text-xs"
+                    title="Click to auto-fill sandbox OTP"
+                  >
+                    {sandboxOtp} (click to fill)
+                  </button>
                 </div>
               )}
 
