@@ -80,34 +80,51 @@ export async function sendOtpEmail(email: string, otpCode: string): Promise<Send
   const emailjsPublicKey = process.env.EMAILJS_PUBLIC_KEY;
   const emailjsPrivateKey = process.env.EMAILJS_PRIVATE_KEY;
 
-  if (emailjsServiceId && emailjsTemplateId && emailjsPublicKey) {
-    try {
-      const emailjs = await import("@emailjs/nodejs");
-      await emailjs.default.send(
-        emailjsServiceId,
-        emailjsTemplateId,
-        {
-          to_email: cleanEmail,
-          email: cleanEmail,
-          user_email: cleanEmail,
-          to_name: cleanEmail.split("@")[0],
-          otp_code: otpCode,
-          code: otpCode,
-          passcode: otpCode,
-          message: `Your Akash Technolabs 6-digit verification code is: ${otpCode}. It is valid for 10 minutes.`,
-          institute: "Akash Technolabs",
-        },
-        {
-          publicKey: emailjsPublicKey,
-          privateKey: emailjsPrivateKey,
-        }
-      );
+  if (emailjsServiceId && emailjsPublicKey) {
+    const templatesToTry = [
+      emailjsTemplateId,
+      "template_uyp4nwp",
+      "template_zcj7aqe",
+    ].filter((t, idx, arr) => Boolean(t) && arr.indexOf(t) === idx);
 
-      console.log(`[EmailJS Success]: Akash Technolabs OTP code delivered directly to ${cleanEmail}`);
-      return { success: true, provider: "EMAILJS" };
-    } catch (emailjsErr: unknown) {
-      const msg = emailjsErr instanceof Error ? emailjsErr.message : "EmailJS transmission failed";
-      console.warn("[EmailJS Warning, falling back]:", msg);
+    for (const tid of templatesToTry) {
+      try {
+        const ejsRes = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "origin": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+          },
+          body: JSON.stringify({
+            service_id: emailjsServiceId,
+            template_id: tid,
+            user_id: emailjsPublicKey,
+            accessToken: emailjsPrivateKey || undefined,
+            template_params: {
+              to_email: cleanEmail,
+              email: cleanEmail,
+              user_email: cleanEmail,
+              to_name: cleanEmail.split("@")[0],
+              otp_code: otpCode,
+              code: otpCode,
+              token: otpCode,
+              passcode: otpCode,
+              message: `Your 6-digit Akash Technolabs verification code is: ${otpCode}. It is valid for 10 minutes.`,
+              institute: "Akash Technolabs",
+            },
+          }),
+        });
+
+        if (ejsRes.ok) {
+          console.log(`[EmailJS Success]: 6-digit OTP code ${otpCode} delivered via template ${tid} directly to ${cleanEmail}`);
+          return { success: true, provider: "EMAILJS" };
+        }
+        const errText = await ejsRes.text().catch(() => "");
+        console.warn(`[EmailJS Template ${tid} non-200]:`, errText);
+      } catch (emailjsErr: unknown) {
+        const msg = emailjsErr instanceof Error ? emailjsErr.message : "EmailJS transmission failed";
+        console.warn(`[EmailJS Warning on ${tid}]:`, msg);
+      }
     }
   }
 
@@ -287,24 +304,30 @@ export async function sendTransactionalEmail(options: {
 
     if (emailjsServiceId && emailjsTemplateId && emailjsPublicKey) {
       try {
-        const emailjs = await import("@emailjs/nodejs");
-        await emailjs.default.send(
-          emailjsServiceId,
-          emailjsTemplateId,
-          {
-            to_email: cleanEmail,
-            email: cleanEmail,
-            subject: options.subject,
-            headline: options.headline,
-            message: options.bodyHtml.replace(/<[^>]+>/g, " "),
-            body_html: options.bodyHtml,
+        const ejsRes = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "origin": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
           },
-          {
-            publicKey: emailjsPublicKey,
-            privateKey: emailjsPrivateKey,
-          }
-        );
-        return { success: true, provider: "EMAILJS" };
+          body: JSON.stringify({
+            service_id: emailjsServiceId,
+            template_id: emailjsTemplateId,
+            user_id: emailjsPublicKey,
+            accessToken: emailjsPrivateKey || undefined,
+            template_params: {
+              to_email: cleanEmail,
+              email: cleanEmail,
+              subject: options.subject,
+              headline: options.headline,
+              message: options.bodyHtml.replace(/<[^>]+>/g, " "),
+              body_html: options.bodyHtml,
+            },
+          }),
+        });
+        if (ejsRes.ok) {
+          return { success: true, provider: "EMAILJS" };
+        }
       } catch {
         // Fall back to SMTP or Resend
       }
