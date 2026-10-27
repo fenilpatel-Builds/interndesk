@@ -26,14 +26,14 @@
   {
     "id": "usr-student-priya",
     "email": "priya.sharma@akashtechnolabs.com",
-    "passwordHash": "826b87a09fa5602309f6b6a5ae35ce71f6974f1699ab56acc4acc55bef02e3ab",
-    "salt": "f91409580c2812c96725d7fe33494639",
+    "passwordHash": "3a9646c5c4ac6576eb044870130a2e69cf25611805ee2ed03564b3dc82356596",
+    "salt": "dcb03535a0836f2b005d0c4de0f80f66",
     "name": "Priya Sharma",
     "role": "STUDENT",
     "organizationId": "org-akash-01",
     "organizationName": "Akash Technolabs",
     "organizationType": "CORPORATE",
-    "createdAt": "2026-10-26T05:45:49.390Z"
+    "createdAt": "2026-10-27T09:12:30.094Z"
   },
   {
     "id": "usr-student-harshit",

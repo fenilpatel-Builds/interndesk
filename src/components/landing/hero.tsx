@@ -156,7 +156,7 @@ export function Hero() {
             {/* Main Headline */}
             <h1 className="text-3xl sm:text-5xl lg:text-[3.25rem] font-black text-slate-900 tracking-tight leading-[1.15]">
               Institute Activity <br />
-              <span className="text-[#0F4C81]">Management System</span>
+              <span className="text-[#E52329]">Management System</span>
             </h1>
 
             {/* Subtitle */}

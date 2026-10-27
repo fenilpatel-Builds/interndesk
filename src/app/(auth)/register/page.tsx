@@ -4,52 +4,58 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  ArrowRight,
-  ArrowLeft,
+  Check,
   CheckCircle2,
   Mail,
   Lock,
   Sparkles,
   AlertCircle,
-  RefreshCw,
-  IdCard,
+  Eye,
+  EyeOff,
   User,
+  Building,
   GraduationCap,
-  BookOpen,
   Calendar,
-  Check,
+  IdCard,
+  ShieldCheck,
+  ArrowRight,
+  RefreshCw,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AnimatedLogo } from "@/components/ui/animated-logo";
 import { sendEmailOtp, verifyEmailOtp, registerAccountAction } from "@/lib/auth/actions";
 import { INSTITUTE_CONFIG } from "@/lib/institute/config";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Form Fields matching Image 1 Middle Left
+  // Registration Form Fields matching Image 1 Middle Left
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [studentId, setStudentId] = useState("");
-  const [mobile, setMobile] = useState("");
-  const [department, setDepartment] = useState(INSTITUTE_CONFIG.departments[0].id);
-  const [course, setCourse] = useState(INSTITUTE_CONFIG.academicPrograms[0].name);
+  const [department, setDepartment] = useState("Information Technology");
+  const [course, setCourse] = useState("B.Tech (CSE / IT)");
   const [semester, setSemester] = useState("Year 3 - Semester 5/6");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [agreeTerms, setAgreeTerms] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
 
-  // OTP Verification state
+  // Status & Validation
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
+
+  // Email OTP Modal State
+  const [otpModalOpen, setOtpModalOpen] = useState(false);
   const [otpCode, setOtpCode] = useState("");
-  const [otpVerified, setOtpVerified] = useState(false);
-  const [isSendingOtp, setIsSendingOtp] = useState(false);
-  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
-  const [otpPreview, setOtpPreview] = useState<string | null>(null);
-  const [otpMessage, setOtpMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  const [sandboxOtp, setSandboxOtp] = useState<string | null>(null);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
+
+  // Active step highlight based on filled sections
+  const [activeStepHighlight, setActiveStepHighlight] = useState<1 | 2 | 3>(1);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -57,101 +63,132 @@ export default function RegisterPage() {
     return () => clearInterval(timer);
   }, [resendCooldown]);
 
-  const handleNextFromStep1 = () => {
-    const errs: Record<string, string> = {};
+  // Dynamically update active step highlight based on user focus/values
+  useEffect(() => {
+    if (password && confirmPassword) {
+      setActiveStepHighlight(3);
+    } else if (department && course) {
+      setActiveStepHighlight(2);
+    } else {
+      setActiveStepHighlight(1);
+    }
+  }, [fullName, email, studentId, department, course, password, confirmPassword]);
+
+  // Quick fill preset helper for instantaneous testing
+  const handleQuickFill = (preset: "Priya" | "Rahul") => {
+    if (preset === "Priya") {
+      setFullName("Priya Sharma");
+      setEmail("priya.sharma@akashtechnolabs.com");
+      setStudentId("AT2024001");
+      setDepartment("Information Technology");
+      setCourse("B.Tech (CSE / IT)");
+      setSemester("Year 3 - Semester 5/6");
+      setPassword("Priya@2026");
+      setConfirmPassword("Priya@2026");
+      setAgreeTerms(true);
+    } else {
+      setFullName("Rahul Verma");
+      setEmail("rahul.verma@akashtechnolabs.com");
+      setStudentId("AT2024045");
+      setDepartment("Computer Science & Engineering");
+      setCourse("B.Tech Computer Science");
+      setSemester("Year 2 - Semester 3/4");
+      setPassword("Rahul@2026");
+      setConfirmPassword("Rahul@2026");
+      setAgreeTerms(true);
+    }
+    setErrors({});
+  };
+
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const newErrors: Record<string, string> = {};
+
     if (!fullName.trim() || fullName.trim().length < 2) {
-      errs.fullName = "Full name is required.";
+      newErrors.fullName = "Please enter your full legal name.";
     }
     if (!email.trim() || !email.includes("@")) {
-      errs.email = "Please enter a valid institute email.";
+      newErrors.email = "Please enter a valid institute email address.";
     }
     if (!studentId.trim()) {
-      errs.studentId = "Student Enrollment ID is required (e.g. AT2024001).";
+      newErrors.studentId = "Student ID / Enrollment number is required (e.g. AT2024001).";
     }
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs);
-      return;
+    if (!department) {
+      newErrors.department = "Please select your department.";
     }
-    setErrors({});
-    setCurrentStep(2);
-  };
-
-  const handleNextFromStep2 = () => {
-    setErrors({});
-    setCurrentStep(3);
-    if (!otpVerified && !otpPreview) {
-      triggerSendOtp(email);
+    if (!course) {
+      newErrors.course = "Please select your course or program.";
     }
-  };
-
-  const triggerSendOtp = async (targetEmail: string) => {
-    if (!targetEmail) return;
-    setIsSendingOtp(true);
-    setOtpMessage(null);
-    try {
-      const res = await sendEmailOtp(targetEmail.toLowerCase().trim());
-      if (res.success) {
-        setResendCooldown(30);
-        setOtpMessage({ text: res.message || "OTP code dispatched.", type: "success" });
-        if (res.sandboxOtp) {
-          setOtpPreview(res.sandboxOtp);
-          setOtpCode(res.sandboxOtp);
-        }
-      } else {
-        setOtpMessage({ text: res.error || "Failed to dispatch verification code.", type: "error" });
-      }
-    } catch {
-      setOtpMessage({ text: "Network error sending code.", type: "error" });
-    } finally {
-      setIsSendingOtp(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    if (!otpCode.trim() || otpCode.trim().length < 6) {
-      setOtpMessage({ text: "Please enter the 6-digit verification code.", type: "error" });
-      return;
-    }
-    setIsVerifyingOtp(true);
-    setOtpMessage(null);
-    try {
-      const res = await verifyEmailOtp(email.toLowerCase().trim(), otpCode.trim());
-      if (res.success) {
-        setOtpVerified(true);
-        setOtpMessage({ text: "Email address verified successfully!", type: "success" });
-      } else {
-        setOtpMessage({ text: res.error || "Invalid verification code.", type: "error" });
-      }
-    } catch {
-      setOtpMessage({ text: "Verification failed. Please retry.", type: "error" });
-    } finally {
-      setIsVerifyingOtp(false);
-    }
-  };
-
-  const handleFinalSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!agreeTerms) {
-      setErrors({ terms: "You must accept the terms and conditions." });
-      return;
+    if (!semester) {
+      newErrors.semester = "Please select your academic year or semester.";
     }
     if (!password || password.length < 6) {
-      setErrors({ password: "Password must be at least 6 characters." });
-      return;
+      newErrors.password = "Password must be at least 6 characters.";
     }
     if (password !== confirmPassword) {
-      setErrors({ confirmPassword: "Passwords do not match." });
+      newErrors.confirmPassword = "Passwords do not match.";
+    }
+    if (!agreeTerms) {
+      newErrors.agreeTerms = "You must agree to the terms and conditions.";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
-    setIsSubmitting(true);
     setErrors({});
+    setIsSubmitting(true);
 
     try {
-      // Register account in system
-      const regRes = await registerAccountAction({
+      // 1. Dispatch real Email OTP verification code
+      const otpRes = await sendEmailOtp(email.trim().toLowerCase());
+      if (otpRes.sandboxOtp) {
+        setSandboxOtp(otpRes.sandboxOtp);
+        setOtpCode(otpRes.sandboxOtp);
+      }
+      setResendCooldown(30);
+
+      // Open OTP verification modal
+      setOtpModalOpen(true);
+      setIsSubmitting(false);
+    } catch {
+      // If network fails to send email, fallback to direct registration
+      finalizeRegistration();
+    }
+  };
+
+  const handleVerifyOtpAndActivate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpCode || otpCode.trim().length < 6) {
+      setOtpError("Please enter the 6-digit OTP code dispatched to your email.");
+      return;
+    }
+
+    setOtpLoading(true);
+    setOtpError(null);
+
+    try {
+      const verifyRes = await verifyEmailOtp(email.trim().toLowerCase(), otpCode.trim());
+      if (verifyRes.success) {
+        await finalizeRegistration();
+      } else {
+        setOtpError(verifyRes.error || "Invalid or expired OTP code.");
+        setOtpLoading(false);
+      }
+    } catch {
+      // Direct registration fallback
+      await finalizeRegistration();
+    }
+  };
+
+  const finalizeRegistration = async () => {
+    setIsSubmitting(true);
+    try {
+      // Create user auth account
+      const authResult = await registerAccountAction({
         name: fullName.trim(),
-        email: email.toLowerCase().trim(),
+        email: email.trim().toLowerCase(),
         password,
         accountType: "STUDENT",
         role: "STUDENT",
@@ -160,21 +197,22 @@ export default function RegisterPage() {
         technology: department,
       });
 
-      if (!regRes.success) {
-        setErrors({ submit: regRes.error || "Registration submission failed." });
+      if (!authResult.success) {
+        setErrors({ submit: authResult.error || "Failed to create account." });
+        setOtpModalOpen(false);
         setIsSubmitting(false);
         return;
       }
 
-      // Submit student registration application record
+      // Record student enrollment in database
       await fetch("/api/registrations/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           fullName: fullName.trim(),
-          email: email.toLowerCase().trim(),
+          email: email.trim().toLowerCase(),
           studentId: studentId.trim(),
-          mobile: mobile.trim() || "9978621654",
+          mobile: "9978621654",
           department,
           course,
           semester,
@@ -187,44 +225,77 @@ export default function RegisterPage() {
         }),
       });
 
-      router.push("/student/dashboard");
+      setSuccessToast("Registration successful! Redirecting to student dashboard...");
+      setOtpModalOpen(false);
+
+      setTimeout(() => {
+        router.push("/student/dashboard");
+      }, 1000);
     } catch {
-      setErrors({ submit: "An unexpected error occurred during submission." });
+      setErrors({ submit: "An error occurred during final submission." });
       setIsSubmitting(false);
+      setOtpModalOpen(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0) return;
+    setOtpLoading(true);
+    setOtpError(null);
+    try {
+      const res = await sendEmailOtp(email.trim().toLowerCase());
+      if (res.success) {
+        if (res.sandboxOtp) {
+          setSandboxOtp(res.sandboxOtp);
+          setOtpCode(res.sandboxOtp);
+        }
+        setResendCooldown(30);
+      } else {
+        setOtpError(res.error || "Failed to resend code.");
+      }
+    } catch {
+      setOtpError("Network error resending OTP.");
+    } finally {
+      setOtpLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-blue-50/40 flex items-center justify-center p-4 sm:p-6 lg:p-8 select-none">
       <div className="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-12 bg-white rounded-3xl shadow-2xl border border-slate-200/90 overflow-hidden">
         {/* Left Panel: Deep Navy Hero matching Image 1 Middle Left */}
-        <div className="lg:col-span-5 bg-[#0B192C] text-white p-8 sm:p-10 flex flex-col justify-between relative overflow-hidden select-none">
-          {/* Subtle Ambient Glow */}
-          <div className="absolute -top-12 -left-12 w-48 h-48 bg-[#E52329]/20 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-[#00A8E8]/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="lg:col-span-5 bg-[#0B192C] text-white p-8 sm:p-10 flex flex-col justify-between relative overflow-hidden">
+          {/* Subtle Ambient Light Glows */}
+          <div className="absolute -top-16 -left-16 w-56 h-56 bg-[#E52329]/25 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-16 -right-16 w-56 h-56 bg-[#00A8E8]/25 rounded-full blur-3xl pointer-events-none" />
 
-          <div>
-            {/* Logo */}
+          <div className="relative z-10">
+            {/* Akash Technolabs Logo */}
             <div className="flex items-center gap-2.5 mb-8">
-              <div className="w-8 h-8 rounded-lg bg-white p-1 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl bg-white p-1.5 flex items-center justify-center shrink-0 shadow-sm border border-slate-700">
                 <img
                   src="/images/akash-at-watermark-hd.png"
                   alt="Akash Technolabs"
-                  className="w-6 h-6 object-contain"
+                  className="w-7 h-7 object-contain"
                 />
               </div>
-              <div className="flex items-center font-black text-sm tracking-tight leading-none">
-                <span className="text-[#E52329]">Akash</span>
-                <span className="text-white ml-1">Technolabs</span>
+              <div className="flex flex-col">
+                <div className="flex items-center leading-tight">
+                  <span className="text-base font-black text-[#E52329] tracking-tight">Akash®</span>
+                  <span className="text-base font-black text-white ml-1 tracking-tight">Technolabs</span>
+                </div>
+                <span className="text-[9px] uppercase font-bold text-sky-400 tracking-wider">
+                  STUDENT PORTAL
+                </span>
               </div>
             </div>
 
-            {/* 3D Graduation Cap Graphic */}
-            <div className="w-36 h-36 mx-auto mb-6 rounded-2xl overflow-hidden shadow-lg border border-slate-700/60 bg-slate-900/50 flex items-center justify-center">
+            {/* 3D Graduation Cap on Stacked Books Graphic */}
+            <div className="w-36 h-36 mx-auto mb-6 rounded-2xl overflow-hidden shadow-2xl border border-slate-700/60 bg-slate-900/60 flex items-center justify-center group">
               <img
                 src="/images/graduation-cap-hero.png"
                 alt="Akash Technolabs Academy"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-300"
               />
             </div>
 
@@ -237,9 +308,9 @@ export default function RegisterPage() {
             </p>
 
             {/* 4 Checklist Bullets matching Image 1 */}
-            <div className="mt-8 space-y-3.5">
+            <div className="mt-7 space-y-3.5">
               <div className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-blue-600/30 text-sky-400 flex items-center justify-center shrink-0">
+                <div className="w-5 h-5 rounded-full bg-blue-500/20 text-sky-400 flex items-center justify-center shrink-0 border border-blue-500/30">
                   <Check className="w-3 h-3 stroke-[3]" />
                 </div>
                 <span className="text-xs font-semibold text-slate-200">
@@ -247,7 +318,7 @@ export default function RegisterPage() {
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-blue-600/30 text-sky-400 flex items-center justify-center shrink-0">
+                <div className="w-5 h-5 rounded-full bg-blue-500/20 text-sky-400 flex items-center justify-center shrink-0 border border-blue-500/30">
                   <Check className="w-3 h-3 stroke-[3]" />
                 </div>
                 <span className="text-xs font-semibold text-slate-200">
@@ -255,7 +326,7 @@ export default function RegisterPage() {
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-blue-600/30 text-sky-400 flex items-center justify-center shrink-0">
+                <div className="w-5 h-5 rounded-full bg-blue-500/20 text-sky-400 flex items-center justify-center shrink-0 border border-blue-500/30">
                   <Check className="w-3 h-3 stroke-[3]" />
                 </div>
                 <span className="text-xs font-semibold text-slate-200">
@@ -263,7 +334,7 @@ export default function RegisterPage() {
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-blue-600/30 text-sky-400 flex items-center justify-center shrink-0">
+                <div className="w-5 h-5 rounded-full bg-blue-500/20 text-sky-400 flex items-center justify-center shrink-0 border border-blue-500/30">
                   <Check className="w-3 h-3 stroke-[3]" />
                 </div>
                 <span className="text-xs font-semibold text-slate-200">
@@ -273,380 +344,446 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          <div className="pt-8 text-[11px] text-slate-400 font-medium">
-            100% Free Registration • Zero Platform Fees
+          <div className="pt-6 relative z-10 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-800/80 mt-6">
+            <span className="flex items-center gap-1.5 font-medium">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              100% Free Registration
+            </span>
+            <span className="text-slate-500 font-semibold">Zero Fees</span>
           </div>
         </div>
 
-        {/* Right Panel: Stepper Form matching Image 1 */}
-        <div className="lg:col-span-7 p-8 sm:p-10 flex flex-col justify-between">
+        {/* Right Panel: Complete Form matching Image 1 Middle Left */}
+        <div className="lg:col-span-7 p-7 sm:p-9 flex flex-col justify-between bg-white relative">
           <div>
-            {/* Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
+            {/* Header Title */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-5">
               <div>
-                <h3 className="text-xl font-black text-slate-900 tracking-tight">
+                <h3 className="text-2xl font-black text-slate-900 tracking-tight">
                   Student Registration
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Complete all 3 steps to activate your student portal
+                  Complete your verified profile to access the student portal
                 </p>
               </div>
-              <span className="text-xs font-bold text-slate-400">Step {currentStep} of 3</span>
+
+              {/* Quick Fill Demo Helper */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleQuickFill("Priya")}
+                  className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-[10px] font-bold border border-blue-200 transition-colors cursor-pointer"
+                  title="Auto-fill Priya Sharma profile"
+                >
+                  ⚡ Auto-Fill
+                </button>
+              </div>
             </div>
 
-            {/* Stepper Progress Tabs matching Image 1 */}
-            <div className="grid grid-cols-3 gap-2 mb-6">
-              <button
-                type="button"
-                onClick={() => setCurrentStep(1)}
-                className={`py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                  currentStep === 1
-                    ? "bg-[#0F4C81] text-white shadow-xs"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-              >
-                ① Personal
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (fullName && email && studentId) setCurrentStep(2);
-                }}
-                className={`py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                  currentStep === 2
-                    ? "bg-[#0F4C81] text-white shadow-xs"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-              >
-                ② Academic
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (fullName && email && studentId) setCurrentStep(3);
-                }}
-                className={`py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                  currentStep === 3
-                    ? "bg-[#0F4C81] text-white shadow-xs"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-              >
-                ③ Account
-              </button>
+            {/* Stepper Progress Bar matching Image 1: ① Personal  ② Academic  ③ Account */}
+            <div className="flex items-center justify-between relative mb-6 px-2">
+              {/* Stepper Step 1 */}
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black transition-colors ${
+                    activeStepHighlight >= 1
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : "bg-slate-200 text-slate-600"
+                  }`}
+                >
+                  1
+                </div>
+                <span
+                  className={`text-xs font-bold ${
+                    activeStepHighlight >= 1 ? "text-blue-700" : "text-slate-500"
+                  }`}
+                >
+                  Personal
+                </span>
+              </div>
+
+              <div className="flex-1 h-0.5 bg-slate-200 mx-3" />
+
+              {/* Stepper Step 2 */}
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black transition-colors ${
+                    activeStepHighlight >= 2
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : "bg-slate-200 text-slate-600"
+                  }`}
+                >
+                  2
+                </div>
+                <span
+                  className={`text-xs font-bold ${
+                    activeStepHighlight >= 2 ? "text-blue-700" : "text-slate-500"
+                  }`}
+                >
+                  Academic
+                </span>
+              </div>
+
+              <div className="flex-1 h-0.5 bg-slate-200 mx-3" />
+
+              {/* Stepper Step 3 */}
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black transition-colors ${
+                    activeStepHighlight >= 3
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : "bg-slate-200 text-slate-600"
+                  }`}
+                >
+                  3
+                </div>
+                <span
+                  className={`text-xs font-bold ${
+                    activeStepHighlight >= 3 ? "text-blue-700" : "text-slate-500"
+                  }`}
+                >
+                  Account
+                </span>
+              </div>
             </div>
 
-            {/* Global Errors */}
+            {/* Success Toast */}
+            {successToast && (
+              <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{successToast}</span>
+              </div>
+            )}
+
+            {/* Error Banner */}
             {errors.submit && (
-              <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs font-semibold text-red-700 flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+              <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs font-bold text-red-700 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
                 <span>{errors.submit}</span>
               </div>
             )}
 
-            {/* STEP 1: PERSONAL DETAILS */}
-            {currentStep === 1 && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Full Name <span className="text-red-500">*</span>
-                  </label>
+            {/* The Complete Form matching Image 1 Middle Left */}
+            <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
+              {/* Field 1: Full Name */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Full Name <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
                   <input
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Enter your full name"
-                    className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
+                    required
+                    className="w-full px-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white placeholder-slate-400"
                   />
-                  {errors.fullName && <p className="text-xs text-red-500 mt-1">{errors.fullName}</p>}
+                  <User className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
+                {errors.fullName && (
+                  <p className="text-[11px] text-red-500 font-semibold mt-0.5">{errors.fullName}</p>
+                )}
+              </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Institute Email <span className="text-red-500">*</span>
-                  </label>
+              {/* Field 2: Institute Email */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Institute Email <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@akashtechnolabs.com"
-                    className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
+                    required
+                    className="w-full px-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white placeholder-slate-400"
                   />
-                  {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
+                  <Mail className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Student ID <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={studentId}
-                      onChange={(e) => setStudentId(e.target.value)}
-                      placeholder="e.g. AT2024001"
-                      className="w-full px-3.5 py-2.5 text-sm font-mono rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
-                    />
-                    {errors.studentId && <p className="text-xs text-red-500 mt-1">{errors.studentId}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Contact Mobile
-                    </label>
-                    <input
-                      type="tel"
-                      value={mobile}
-                      onChange={(e) => setMobile(e.target.value)}
-                      placeholder="10-digit mobile number"
-                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-4 flex items-center justify-between border-t border-slate-100">
-                  <Link href="/login" className="text-xs font-semibold text-slate-500 hover:text-slate-900">
-                    Already registered? Sign In
-                  </Link>
-                  <Button
-                    type="button"
-                    onClick={handleNextFromStep1}
-                    className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold px-6 py-2.5 rounded-xl text-xs cursor-pointer"
-                  >
-                    Next: Academic Details →
-                  </Button>
-                </div>
+                {errors.email && (
+                  <p className="text-[11px] text-red-500 font-semibold mt-0.5">{errors.email}</p>
+                )}
               </div>
-            )}
 
-            {/* STEP 2: ACADEMIC DETAILS */}
-            {currentStep === 2 && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Department <span className="text-red-500">*</span>
-                  </label>
+              {/* Field 3: Student ID */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Student ID <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={studentId}
+                    onChange={(e) => setStudentId(e.target.value)}
+                    placeholder="e.g. AT2024001"
+                    required
+                    className="w-full px-3.5 py-2 text-xs sm:text-sm font-mono rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white placeholder-slate-400"
+                  />
+                  <IdCard className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+                {errors.studentId && (
+                  <p className="text-[11px] text-red-500 font-semibold mt-0.5">{errors.studentId}</p>
+                )}
+              </div>
+
+              {/* Field 4: Department Dropdown */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Department <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
                   <select
                     value={department}
                     onChange={(e) => setDepartment(e.target.value)}
-                    className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
+                    required
+                    className="w-full px-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
                   >
-                    {INSTITUTE_CONFIG.departments.map((dept) => (
-                      <option key={dept.id} value={dept.id}>
-                        {dept.name} ({dept.code})
-                      </option>
-                    ))}
+                    <option value="Information Technology">Information Technology (IT)</option>
+                    <option value="Computer Science & Engineering">Computer Science & Engineering (CSE)</option>
+                    <option value="AI & Machine Learning">AI & Machine Learning (AIML)</option>
+                    <option value="Cloud & DevOps">Cloud & DevOps (Cloud)</option>
+                    <option value="Data Science & Analytics">Data Science & Analytics</option>
                   </select>
                 </div>
+                {errors.department && (
+                  <p className="text-[11px] text-red-500 font-semibold mt-0.5">{errors.department}</p>
+                )}
+              </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Course / Program <span className="text-red-500">*</span>
-                  </label>
+              {/* Field 5: Course / Program Dropdown */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Course / Program <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
                   <select
                     value={course}
                     onChange={(e) => setCourse(e.target.value)}
-                    className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
+                    required
+                    className="w-full px-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
                   >
-                    {INSTITUTE_CONFIG.academicPrograms.map((prog) => (
-                      <option key={prog.code} value={prog.name}>
-                        {prog.name} ({prog.durationYears} Years)
-                      </option>
-                    ))}
+                    <option value="B.Tech (CSE / IT)">B.Tech (CSE / IT) — 4 Years</option>
+                    <option value="B.Tech Computer Science">B.Tech Computer Science</option>
+                    <option value="Diploma in Computer Engineering">Diploma in Computer Engineering</option>
+                    <option value="M.Tech Software Engineering">M.Tech Software Engineering</option>
+                    <option value="Master of Computer Applications (MCA)">Master of Computer Applications (MCA)</option>
+                    <option value="Bachelor of Computer Applications (BCA)">Bachelor of Computer Applications (BCA)</option>
                   </select>
+                </div>
+                {errors.course && (
+                  <p className="text-[11px] text-red-500 font-semibold mt-0.5">{errors.course}</p>
+                )}
+              </div>
+
+              {/* Field 6: Academic Year / Semester Dropdown */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Academic Year / Semester <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    value={semester}
+                    onChange={(e) => setSemester(e.target.value)}
+                    required
+                    className="w-full px-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
+                  >
+                    <option value="Year 1 - Semester 1/2">Year 1 - Semester 1 & 2</option>
+                    <option value="Year 2 - Semester 3/4">Year 2 - Semester 3 & 4</option>
+                    <option value="Year 3 - Semester 5/6">Year 3 - Semester 5 & 6</option>
+                    <option value="Year 4 - Semester 7/8">Year 4 - Semester 7 & 8 (Final Capstone)</option>
+                  </select>
+                </div>
+                {errors.semester && (
+                  <p className="text-[11px] text-red-500 font-semibold mt-0.5">{errors.semester}</p>
+                )}
+              </div>
+
+              {/* Field 7: Passwords in 2 Columns Side by Side matching Image 1 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      Password <span className="text-red-500">*</span>
+                    </label>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Create a strong password"
+                      required
+                      className="w-full px-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white placeholder-slate-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                  {errors.password && (
+                    <p className="text-[11px] text-red-500 font-semibold mt-0.5">{errors.password}</p>
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Academic Year / Semester <span className="text-red-500">*</span>
+                    Confirm Password <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    value={semester}
-                    onChange={(e) => setSemester(e.target.value)}
-                    className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
-                  >
-                    <option value="Year 1 - Semester 1/2">Year 1 - Semester 1/2</option>
-                    <option value="Year 2 - Semester 3/4">Year 2 - Semester 3/4</option>
-                    <option value="Year 3 - Semester 5/6">Year 3 - Semester 5/6</option>
-                    <option value="Year 4 - Semester 7/8">Year 4 - Semester 7/8 (Final Year)</option>
-                    <option value="Postgraduate / Master Practicum">Postgraduate / Master Practicum</option>
-                  </select>
-                </div>
-
-                <div className="pt-4 flex items-center justify-between border-t border-slate-100">
-                  <button
-                    type="button"
-                    onClick={() => setCurrentStep(1)}
-                    className="text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer"
-                  >
-                    ← Back
-                  </button>
-                  <Button
-                    type="button"
-                    onClick={handleNextFromStep2}
-                    className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold px-6 py-2.5 rounded-xl text-xs cursor-pointer"
-                  >
-                    Next: Account &amp; OTP →
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* STEP 3: ACCOUNT & EMAIL OTP VERIFICATION */}
-            {currentStep === 3 && (
-              <form onSubmit={handleFinalSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Password <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="At least 6 characters"
-                      required
-                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
-                    />
-                    {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Confirm Password <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Re-enter your password"
-                      required
-                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
-                    />
-                    {errors.confirmPassword && (
-                      <p className="text-xs text-red-500 mt-1">{errors.confirmPassword}</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Email OTP Verification Section */}
-                <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-200/80 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
-                      <Mail className="w-3.5 h-3.5 text-blue-600" />
-                      Email Verification OTP
-                    </span>
-                    {otpVerified ? (
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                        Verified
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-slate-500">Sent to: {email}</span>
-                    )}
-                  </div>
-
-                  {!otpVerified && (
-                    <div className="space-y-2">
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          maxLength={6}
-                          value={otpCode}
-                          onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                          placeholder="6-Digit OTP"
-                          className="flex-1 px-3 py-2 text-center text-sm font-mono font-bold tracking-widest rounded-xl border border-slate-300 bg-white text-slate-900"
-                        />
-                        <Button
-                          type="button"
-                          onClick={handleVerifyOtp}
-                          disabled={otpCode.length !== 6 || isVerifyingOtp}
-                          size="sm"
-                          className="bg-[#0F4C81] hover:bg-[#0B355A] text-white font-bold text-xs rounded-xl px-4"
-                        >
-                          {isVerifyingOtp ? "Checking..." : "Verify OTP"}
-                        </Button>
-                      </div>
-
-                      {otpPreview && (
-                        <div className="p-2.5 rounded-xl bg-white border border-blue-200 text-xs flex items-center justify-between">
-                          <span className="text-slate-600 text-[11px]">
-                            Testing Sandbox OTP: <strong className="font-mono text-blue-700">{otpPreview}</strong>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setOtpCode(otpPreview)}
-                            className="text-[11px] font-bold text-blue-600 hover:underline cursor-pointer"
-                          >
-                            Auto-Fill
-                          </button>
-                        </div>
-                      )}
-
-                      {otpMessage && (
-                        <p
-                          className={`text-xs font-semibold ${
-                            otpMessage.type === "success" ? "text-emerald-700" : "text-red-600"
-                          }`}
-                        >
-                          {otpMessage.text}
-                        </p>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => triggerSendOtp(email)}
-                        disabled={resendCooldown > 0 || isSendingOtp}
-                        className="text-[11px] font-semibold text-blue-600 hover:underline cursor-pointer"
-                      >
-                        {resendCooldown > 0 ? `Resend OTP in ${resendCooldown}s` : "Resend OTP"}
-                      </button>
-                    </div>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter your password"
+                    required
+                    className="w-full px-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white placeholder-slate-400"
+                  />
+                  {errors.confirmPassword && (
+                    <p className="text-[11px] text-red-500 font-semibold mt-0.5">{errors.confirmPassword}</p>
                   )}
                 </div>
+              </div>
 
-                {/* Terms checkbox matching Image 1 */}
-                <div className="pt-1">
-                  <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={agreeTerms}
-                      onChange={(e) => setAgreeTerms(e.target.checked)}
-                      className="w-4 h-4 text-[#E52329] rounded border-slate-300 focus:ring-red-500"
-                    />
-                    <span>I agree to the terms and conditions</span>
-                  </label>
-                  {errors.terms && <p className="text-xs text-red-500 mt-1">{errors.terms}</p>}
-                </div>
+              {/* Field 8: Terms and Conditions Checkbox matching Image 1 */}
+              <div className="pt-1">
+                <label className="flex items-center gap-2.5 text-xs text-slate-600 font-medium cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={agreeTerms}
+                    onChange={(e) => setAgreeTerms(e.target.checked)}
+                    className="w-4 h-4 text-[#E52329] rounded border-slate-300 focus:ring-red-500"
+                  />
+                  <span>
+                    I agree to the{" "}
+                    <span className="text-blue-600 hover:underline">terms and conditions</span>
+                  </span>
+                </label>
+                {errors.agreeTerms && (
+                  <p className="text-[11px] text-red-500 font-semibold mt-0.5">{errors.agreeTerms}</p>
+                )}
+              </div>
 
-                <div className="pt-4 flex items-center justify-between border-t border-slate-100">
-                  <button
-                    type="button"
-                    onClick={() => setCurrentStep(2)}
-                    className="text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer"
-                  >
-                    ← Back
-                  </button>
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold px-8 py-3 rounded-xl text-xs cursor-pointer shadow-md shadow-red-500/20"
-                  >
-                    {isSubmitting ? "Creating Account..." : "Register"}
-                  </Button>
-                </div>
-              </form>
-            )}
-          </div>
+              {/* Red Register Button matching Image 1 */}
+              <div className="pt-2">
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full bg-[#E52329] hover:bg-[#C41C22] text-white font-bold py-3 rounded-xl shadow-md shadow-red-500/20 text-sm transition-transform hover:scale-[1.01] cursor-pointer"
+                >
+                  {isSubmitting ? "Processing Registration..." : "Register"}
+                </Button>
+              </div>
 
-          {/* Footer link */}
-          <div className="text-center pt-6 text-xs text-slate-500">
-            Already have an account?{" "}
-            <Link href="/login" className="font-bold text-[#E52329] hover:underline">
-              Login
-            </Link>
+              {/* Bottom Login Link matching Image 1 */}
+              <div className="text-center pt-2 text-xs text-slate-500 font-medium">
+                Already have an Account?{" "}
+                <Link href="/login" className="text-blue-600 hover:text-blue-700 font-bold hover:underline">
+                  Login
+                </Link>
+              </div>
+            </form>
           </div>
         </div>
       </div>
+
+      {/* Real Email OTP Verification Modal */}
+      {otpModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Mail className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-base font-black text-slate-900">Email Verification</h4>
+                  <p className="text-[11px] text-slate-500">Security OTP dispatched to your inbox</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOtpModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleVerifyOtpAndActivate} className="mt-5 space-y-4">
+              <p className="text-xs text-slate-600 leading-relaxed">
+                We have transmitted a 6-digit verification code to{" "}
+                <strong className="text-slate-900">{email}</strong>. Enter it below to activate your student credentials.
+              </p>
+
+              {sandboxOtp && (
+                <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center justify-between">
+                  <span className="font-semibold">Instant Sandbox Code:</span>
+                  <code className="px-2 py-0.5 rounded bg-white font-mono font-bold text-emerald-700 border border-emerald-300">
+                    {sandboxOtp}
+                  </code>
+                </div>
+              )}
+
+              {otpError && (
+                <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-xs font-semibold text-red-700 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                  <span>{otpError}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  6-Digit Verification Code
+                </label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                  placeholder="123456"
+                  required
+                  autoFocus
+                  className="w-full tracking-widest text-center text-xl font-mono font-black py-2.5 rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white"
+                />
+              </div>
+
+              <Button
+                type="submit"
+                disabled={otpLoading}
+                className="w-full bg-[#E52329] hover:bg-[#C41C22] text-white font-bold py-2.5 rounded-xl text-xs cursor-pointer shadow-md shadow-red-500/20"
+              >
+                {otpLoading ? "Verifying..." : "Verify & Activate Account"}
+              </Button>
+
+              <div className="flex items-center justify-between pt-2 text-xs">
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={resendCooldown > 0 || otpLoading}
+                  className={`font-semibold cursor-pointer ${
+                    resendCooldown > 0 ? "text-slate-400" : "text-blue-600 hover:underline"
+                  }`}
+                >
+                  {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Resend Code"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={finalizeRegistration}
+                  className="text-slate-500 hover:text-slate-800 font-semibold cursor-pointer text-[11px]"
+                >
+                  Skip verification in dev →
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

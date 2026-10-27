@@ -10,10 +10,17 @@ import {
   TrendingUp,
   Clock,
   CheckSquare,
-  Bell,
+  FileSpreadsheet,
+  BookOpen,
+  Award,
+  Calendar,
+  GraduationCap,
   FileText,
   PieChart,
+  Bell,
   Settings,
+  Shield,
+  LifeBuoy,
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -23,17 +30,44 @@ export function StudentSidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const navItems = [
-    { label: "Dashboard", href: "/student/dashboard", icon: LayoutDashboard },
-    { label: "Activities", href: "/student/activities", icon: Layers },
-    { label: "Submissions", href: "/student/submissions", icon: FileCheck },
-    { label: "My Progress", href: "/student/progress", icon: TrendingUp },
-    { label: "Attendance", href: "/student/attendance", icon: Clock },
-    { label: "Tasks", href: "/student/tasks", icon: CheckSquare, badge: "3" },
-    { label: "Notifications", href: "/student/notifications", icon: Bell },
-    { label: "Documents", href: "/student/documents", icon: FileText },
-    { label: "Reports", href: "/student/reports", icon: PieChart },
-    { label: "Settings", href: "/student/settings", icon: Settings },
+  const navSections = [
+    {
+      title: "CORE ACTIVITIES",
+      items: [
+        { label: "Dashboard", href: "/student/dashboard", icon: LayoutDashboard },
+        { label: "Activities & Tasks", href: "/student/activities", icon: Layers },
+        { label: "Submissions", href: "/student/submissions", icon: FileCheck },
+        { label: "My Progress", href: "/student/progress", icon: TrendingUp },
+        { label: "Attendance & Clock", href: "/student/attendance", icon: Clock },
+        { label: "Project Tasks", href: "/student/tasks", icon: CheckSquare, badge: "3" },
+        { label: "Daily Work Reports", href: "/student/daily-reports", icon: FileSpreadsheet },
+      ],
+    },
+    {
+      title: "ACADEMICS & LEARNING",
+      items: [
+        { label: "Learning Center", href: "/student/learning", icon: BookOpen },
+        { label: "Assessments & Tests", href: "/student/assessments", icon: Award },
+        { label: "Academic Calendar", href: "/student/calendar", icon: Calendar },
+        { label: "Browse Programs", href: "/student/programs", icon: GraduationCap },
+      ],
+    },
+    {
+      title: "REPORTS & DOCUMENTS",
+      items: [
+        { label: "Reports & Analytics", href: "/student/reports", icon: PieChart },
+        { label: "Offer & Certificates", href: "/student/documents", icon: FileText },
+        { label: "Notifications", href: "/student/notifications", icon: Bell },
+      ],
+    },
+    {
+      title: "ACCOUNT & SUPPORT",
+      items: [
+        { label: "Profile & Settings", href: "/student/settings", icon: Settings },
+        { label: "Security & Devices", href: "/student/security", icon: Shield },
+        { label: "Help & Support", href: "/student/support", icon: LifeBuoy },
+      ],
+    },
   ];
 
   const handleSignOut = async () => {
@@ -67,44 +101,52 @@ export function StudentSidebar() {
         </div>
       </div>
 
-      {/* Navigation List matching Image 1 Top-Right */}
-      <div className="flex-1 overflow-y-auto px-3.5 py-4 space-y-1 relative z-10">
-        {navItems.map((item) => {
-          const isActive =
-            pathname === item.href ||
-            (item.href !== "/student/dashboard" && pathname.startsWith(item.href));
-          const Icon = item.icon;
+      {/* Navigation Sections with all functions kept */}
+      <div className="flex-1 overflow-y-auto px-3.5 py-4 space-y-5 relative z-10 custom-scrollbar">
+        {navSections.map((sec, idx) => (
+          <div key={idx} className="space-y-1">
+            <span className="text-[9px] font-black uppercase tracking-wider text-slate-500 px-3 block mb-1">
+              {sec.title}
+            </span>
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-150",
-                isActive
-                  ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md shadow-blue-500/25"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/60"
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <Icon className={cn("w-4 h-4 shrink-0", isActive ? "text-white" : "text-slate-400")} />
-                <span className="tracking-tight">{item.label}</span>
-              </div>
-              {item.badge && (
-                <span
+            {sec.items.map((item) => {
+              const isActive =
+                pathname === item.href ||
+                (item.href !== "/student/dashboard" && pathname.startsWith(item.href));
+              const Icon = item.icon;
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
                   className={cn(
-                    "text-[10px] font-black px-1.5 py-0.2 rounded-full",
+                    "flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all duration-150",
                     isActive
-                      ? "bg-white text-blue-700"
-                      : "bg-[#E52329] text-white"
+                      ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md shadow-blue-500/25"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/60"
                   )}
                 >
-                  {item.badge}
-                </span>
-              )}
-            </Link>
-          );
-        })}
+                  <div className="flex items-center gap-2.5">
+                    <Icon className={cn("w-4 h-4 shrink-0", isActive ? "text-white" : "text-slate-400")} />
+                    <span className="tracking-tight">{item.label}</span>
+                  </div>
+                  {item.badge && (
+                    <span
+                      className={cn(
+                        "text-[10px] font-black px-1.5 py-0.2 rounded-full",
+                        isActive
+                          ? "bg-white text-blue-700"
+                          : "bg-[#E52329] text-white"
+                      )}
+                    >
+                      {item.badge}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </div>
 
       {/* User Session Footer & Sign Out */}
