@@ -51,7 +51,7 @@ export async function sendEmailOtp(email: string): Promise<AuthResponse> {
       message: isForwarded
         ? `Verification code delivered to your verified Resend account: ${emailRes.forwardedTo} (Resend Sandbox). Please check that inbox!`
         : `A 6-digit verification code has been dispatched to your email address (${cleanEmail}). Please check your inbox!`,
-      provider: "Resend",
+      provider: emailRes.provider || "Resend",
       forwardedTo: emailRes.forwardedTo,
     };
   } catch (err: unknown) {

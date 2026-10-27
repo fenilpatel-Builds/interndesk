@@ -6,7 +6,7 @@
 export interface SendOtpResult {
   success: boolean;
   error?: string;
-  provider?: "RESEND" | "SMTP" | "SIMULATION";
+  provider?: "RESEND" | "EMAILJS" | "SMTP" | "SIMULATION";
   forwardedTo?: string;
 }
 
@@ -73,7 +73,46 @@ export async function sendOtpEmail(email: string, otpCode: string): Promise<Send
   `;
 
   // =========================================================================
-  // 1. SMTP / Nodemailer (Sends to ANY email worldwide without domain restrictions)
+  // 1. EMAILJS (Direct Gmail OAuth delivery to ANY recipient worldwide)
+  // =========================================================================
+  const emailjsServiceId = process.env.EMAILJS_SERVICE_ID;
+  const emailjsTemplateId = process.env.EMAILJS_TEMPLATE_ID;
+  const emailjsPublicKey = process.env.EMAILJS_PUBLIC_KEY;
+  const emailjsPrivateKey = process.env.EMAILJS_PRIVATE_KEY;
+
+  if (emailjsServiceId && emailjsTemplateId && emailjsPublicKey) {
+    try {
+      const emailjs = await import("@emailjs/nodejs");
+      await emailjs.default.send(
+        emailjsServiceId,
+        emailjsTemplateId,
+        {
+          to_email: cleanEmail,
+          email: cleanEmail,
+          user_email: cleanEmail,
+          to_name: cleanEmail.split("@")[0],
+          otp_code: otpCode,
+          code: otpCode,
+          passcode: otpCode,
+          message: `Your Akash Technolabs 6-digit verification code is: ${otpCode}. It is valid for 10 minutes.`,
+          institute: "Akash Technolabs",
+        },
+        {
+          publicKey: emailjsPublicKey,
+          privateKey: emailjsPrivateKey,
+        }
+      );
+
+      console.log(`[EmailJS Success]: Akash Technolabs OTP code delivered directly to ${cleanEmail}`);
+      return { success: true, provider: "EMAILJS" };
+    } catch (emailjsErr: unknown) {
+      const msg = emailjsErr instanceof Error ? emailjsErr.message : "EmailJS transmission failed";
+      console.warn("[EmailJS Warning, falling back]:", msg);
+    }
+  }
+
+  // =========================================================================
+  // 2. SMTP / Nodemailer (Delivers to ANY email worldwide)
   // =========================================================================
   const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASS;
@@ -106,7 +145,7 @@ export async function sendOtpEmail(email: string, otpCode: string): Promise<Send
   }
 
   // =========================================================================
-  // 2. RESEND REST API
+  // 3. RESEND REST API
   // =========================================================================
   const resendApiKey = process.env.RESEND_API_KEY;
   const resendFrom = process.env.EMAIL_FROM || "Akash Technolabs <onboarding@resend.dev>";
@@ -241,6 +280,36 @@ export async function sendTransactionalEmail(options: {
   `;
 
   try {
+    const emailjsServiceId = process.env.EMAILJS_SERVICE_ID;
+    const emailjsTemplateId = process.env.EMAILJS_TEMPLATE_ID;
+    const emailjsPublicKey = process.env.EMAILJS_PUBLIC_KEY;
+    const emailjsPrivateKey = process.env.EMAILJS_PRIVATE_KEY;
+
+    if (emailjsServiceId && emailjsTemplateId && emailjsPublicKey) {
+      try {
+        const emailjs = await import("@emailjs/nodejs");
+        await emailjs.default.send(
+          emailjsServiceId,
+          emailjsTemplateId,
+          {
+            to_email: cleanEmail,
+            email: cleanEmail,
+            subject: options.subject,
+            headline: options.headline,
+            message: options.bodyHtml.replace(/<[^>]+>/g, " "),
+            body_html: options.bodyHtml,
+          },
+          {
+            publicKey: emailjsPublicKey,
+            privateKey: emailjsPrivateKey,
+          }
+        );
+        return { success: true, provider: "EMAILJS" };
+      } catch {
+        // Fall back to SMTP or Resend
+      }
+    }
+
     const smtpUser = process.env.SMTP_USER;
     const smtpPass = process.env.SMTP_PASS;
     if (smtpUser && smtpPass) {
