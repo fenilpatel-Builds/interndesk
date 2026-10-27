@@ -234,3 +234,18 @@ Status Key:
 | T25.2 | Code Health | Elimination of 163 ESLint Warnings | COMPLETED | T25.1 | 30+ files across src/app/* | PASSED | Purged all unused variable, import, and router declarations; achieved clean ESLint 0 errors / 0 warnings |
 | T25.3 | Verification | Full Test Suite & Production Build Compilation | COMPLETED | T25.2 | All | PASSED | 66/66 tests passing in Vitest; TypeScript 0 errors; Next.js 16 (Turbopack) 49 routes statically generated in <10s |
 | T25.4 | Release | Release Commit & Push to Remote Repository | COMPLETED | T25.3 | Workspace | PASSED | Synchronized with origin/main |
+
+---
+
+## Phase 26 — Single Institute Edition Master Transformation (Akash Technolabs)
+| ID | Module | Task | Status | Dependencies | Files Changed | Test Status | Notes |
+|---|---|---|---|---|---|---|---|
+| T26.1 | Config | Central Institute Identity & Master Configuration | COMPLETED | T25.4 | src/lib/institute/config.ts | PASSED | Single central identity (Akash Technolabs), 5 departments, 6 academic programs, allowed email domain policies |
+| T26.2 | Governance | Dedicated Auth & Governance Routes (/verify-email, /forgot-password, /reset-password, /pending-approval, /unauthorized) | COMPLETED | T26.1 | src/app/(auth)/* | PASSED | Complete implementation of all 5 required pages with premium UI and password update API |
+| T26.3 | Register | Single Institute Student Registration Overhaul | COMPLETED | T26.1 | src/app/(auth)/register/page.tsx, src/validations/registration.ts | PASSED | Streamlined 4-step registration collecting student ID, department, domain check, and Resend OTP auto-fill assistant |
+| T26.4 | Activities | Academic Activities & Submissions Lifecycle | COMPLETED | T26.1 | src/types/activity.ts, src/lib/institute/activity-store.ts, src/app/admin/activities/page.tsx, src/app/student/activities/page.tsx, src/app/api/activities/* | PASSED | Full activity creation, department targeting, student work submission, faculty review modal, and sanitized CSV export |
+| T26.5 | Emails | Resend Multi-Template Transactional Service Expansion | COMPLETED | T26.1 | src/lib/auth/email-service.ts | PASSED | Added welcome, approval, rejection, activity published, and submission evaluated email templates with Resend dispatch |
+| T26.6 | Database | Single Institute SQL Migration & RLS Security | COMPLETED | T26.4 | supabase/migrations/20261027_000001_single_institute_edition.sql | PASSED | Departments, academic programs, activities, activity submissions, and RLS policies |
+| T26.7 | Testing | Comprehensive Single Institute Test Suite & Regression Shield | COMPLETED | All | tests/single-institute.test.ts, tests/registration.test.ts | PASSED | 100/100 automated tests passing across 10 Vitest test suites |
+| T26.8 | Release | Git Commit & Remote Synchronization | COMPLETED | T26.7 | All modified files | PASSED | Synchronized with origin/main |
+

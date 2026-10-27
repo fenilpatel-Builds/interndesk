@@ -40,11 +40,12 @@ export function AdminSidebar() {
       ],
     },
     {
-      title: "ATTENDANCE & WORK",
+      title: "ACTIVITIES & WORK",
       items: [
+        { label: "Activities & Review", href: "/admin/activities", icon: CheckSquare },
+        { label: "Daily Work Reports", href: "/admin/daily-reports", icon: FileSpreadsheet },
         { label: "Work Sessions", href: "/admin/attendance", icon: Clock },
-        { label: "Daily Reports", href: "/admin/daily-reports", icon: FileSpreadsheet },
-        { label: "Tasks", href: "/admin/tasks", icon: CheckSquare },
+        { label: "Project Tasks", href: "/admin/tasks", icon: CheckSquare },
       ],
     },
     {
@@ -58,7 +59,7 @@ export function AdminSidebar() {
       title: "DOCUMENTS & CREDENTIALS",
       items: [
         { label: "Official Documents", href: "/admin/documents", icon: Award },
-        { label: "Multi-Tenant Workspace", href: "/workspace", icon: LayoutDashboard },
+        { label: "Verify Credentials", href: "/verify/ID-AKT-2026-0701", icon: Award },
       ],
     },
     {

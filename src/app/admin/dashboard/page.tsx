@@ -62,8 +62,13 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <Link href="/admin/activities">
+              <Button size="sm" className="bg-[#d32f2f] hover:bg-[#b71c1c] text-white font-bold rounded-xl shadow-xs">
+                Academic Activities
+              </Button>
+            </Link>
             <Link href="/admin/registrations">
-              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs">
+              <Button size="sm" variant="outline" className="font-bold rounded-xl shadow-xs">
                 Review Registrations
               </Button>
             </Link>

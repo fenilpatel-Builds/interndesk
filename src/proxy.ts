@@ -44,18 +44,18 @@ export async function proxy(request: NextRequest) {
 
   // Unauthenticated users attempting to access protected admin/workspace routes must sign in
   if (!parsedSession && (path.startsWith("/workspace") || path.startsWith("/admin") || path.startsWith("/super-admin"))) {
-    return NextResponse.redirect(new URL("/auth/login", request.url));
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Prevent students from accessing admin /workspace and /admin console
+  // Prevent students from accessing admin console
   if ((path.startsWith("/workspace") || path.startsWith("/admin")) && userRole === "STUDENT") {
-    return NextResponse.redirect(new URL("/student/dashboard", request.url));
+    return NextResponse.redirect(new URL("/unauthorized", request.url));
   }
 
   // Protect /super-admin against non-superadmin access
   if (path.startsWith("/super-admin")) {
     if (userRole !== "SUPER_ADMIN") {
-      return NextResponse.redirect(new URL("/workspace", request.url));
+      return NextResponse.redirect(new URL("/admin/dashboard", request.url));
     }
   }
 

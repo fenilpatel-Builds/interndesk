@@ -33,12 +33,13 @@ export function StudentSidebar() {
       ],
     },
     {
-      title: "WORK",
+      title: "ACTIVITIES & WORK",
       items: [
-        { label: "Attendance & Sessions", href: "/student/attendance", icon: Clock },
-        { label: "Daily Reports", href: "/student/daily-reports", icon: FileSpreadsheet },
-        { label: "Tasks", href: "/student/tasks", icon: CheckSquare },
-        { label: "Calendar", href: "/student/calendar", icon: Calendar },
+        { label: "Assigned Activities", href: "/student/activities", icon: CheckSquare },
+        { label: "Daily Work Reports", href: "/student/daily-reports", icon: FileSpreadsheet },
+        { label: "Attendance & Clock", href: "/student/attendance", icon: Clock },
+        { label: "Project Tasks", href: "/student/tasks", icon: CheckSquare },
+        { label: "Academic Calendar", href: "/student/calendar", icon: Calendar },
       ],
     },
     {

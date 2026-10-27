@@ -5,11 +5,13 @@ import { multiTenantStore } from "../src/lib/multitenant/store";
 describe("Registration Schema Business Rules", () => {
   const validData = {
     fullName: "Aarav Sharma",
-    email: "aarav@college.edu",
+    email: "aarav@akashtechnolabs.com",
+    studentId: "AKT-2026-088",
+    department: "dept-cse",
     mobile: "9876543210",
     dateOfBirth: "2002-05-15",
     address: "123 Campus Road, Tech City",
-    college: "National Institute of Technology",
+    college: "Akash Technolabs",
     university: "State Technical University",
     course: "B.Tech Computer Science",
     semester: "6th Semester",

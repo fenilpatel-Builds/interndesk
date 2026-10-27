@@ -1,558 +1,106 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import React, { Suspense } from "react";
 import Link from "next/link";
-import {
-  Search,
-  Building2,
-  KeyRound,
-  Mail,
-  ShieldCheck,
-  CheckCircle2,
-  ArrowRight,
-  AlertCircle,
-  HelpCircle,
-} from "lucide-react";
+import { ArrowRight, CheckCircle2, GraduationCap, ShieldCheck, UserPlus, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { AnimatedLogo } from "@/components/ui/animated-logo";
-import { validateOrganizationCode } from "@/lib/multitenant/code-generator";
-import { multiTenantStore } from "@/lib/multitenant/store";
-import { Organization, MemberRole, MemberType } from "@/types/multitenant";
-import { parseClientSessionCookie } from "@/lib/auth/client-session";
+import { INSTITUTE_CONFIG } from "@/lib/institute/config";
 
 function JoinPageContent() {
-  const searchParams = useSearchParams();
-  const initialCode = searchParams.get("code") || "";
-
-  const [activeTab, setActiveTab] = useState<"code" | "invite" | "search">("code");
-  const [inputCode, setInputCode] = useState(initialCode);
-  const [inviteToken, setInviteToken] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const [sessionUser, setSessionUser] = useState(() => parseClientSessionCookie());
-  const [applicantName, setApplicantName] = useState(() => sessionUser?.name || "");
-  const [applicantEmail, setApplicantEmail] = useState(() => sessionUser?.email || "");
-  const [applicantNote, setApplicantNote] = useState("");
-  const [submissionStatus, setSubmissionStatus] = useState<"PENDING_APPROVAL" | "ACTIVE">("PENDING_APPROVAL");
-
-  React.useEffect(() => {
-    const s = parseClientSessionCookie();
-    if (s) {
-      setSessionUser(s);
-      setApplicantName((prev) => prev || s.name);
-      setApplicantEmail((prev) => prev || s.email);
-    }
-  }, []);
-
-  const [matchedOrg, setMatchedOrg] = useState<Organization | null>(() => {
-    if (!initialCode) return null;
-    const { isValid, normalized } = validateOrganizationCode(initialCode);
-    return isValid ? multiTenantStore.getOrganizationByCode(normalized) || null : null;
-  });
-  const [validationError, setValidationError] = useState<string | null>(() => {
-    if (!initialCode) return null;
-    const { isValid, normalized, error } = validateOrganizationCode(initialCode);
-    if (!isValid) return error || "Invalid organization code format.";
-    const found = multiTenantStore.getOrganizationByCode(normalized);
-    if (!found) return `No active organization found matching code "${normalized}". Please check with your administrator.`;
-    return null;
-  });
-  const [joinSubmitted, setJoinSubmitted] = useState(false);
-  const [selectedRole, setSelectedRole] = useState("STUDENT");
-
-  // Lookup code
-  const handleVerifyCode = (codeToTest: string) => {
-    setValidationError(null);
-    setMatchedOrg(null);
-    setJoinSubmitted(false);
-
-    if (!codeToTest.trim()) {
-      setValidationError("Please enter an Organization Code.");
-      return;
-    }
-
-    const { isValid, normalized, error } = validateOrganizationCode(codeToTest);
-    if (!isValid) {
-      setValidationError(error || "Invalid organization code format.");
-      return;
-    }
-
-    const found = multiTenantStore.getOrganizationByCode(normalized);
-    if (found) {
-      setMatchedOrg(found);
-    } else {
-      setValidationError(`No active organization found matching code "${normalized}". Please check with your administrator.`);
-    }
-  };
-
-  const handleConfirmJoin = () => {
-    if (!matchedOrg) return;
-    if (!applicantName.trim()) {
-      setValidationError("Please enter your Full Name.");
-      return;
-    }
-    if (!applicantEmail.trim() || !applicantEmail.includes("@")) {
-      setValidationError("Please enter a valid Email Address.");
-      return;
-    }
-
-    const isDirect = matchedOrg.joining_policy === "CODE_ONLY";
-    const status = isDirect ? "ACTIVE" : "PENDING_APPROVAL";
-    setSubmissionStatus(status);
-
-    const prefix = selectedRole === "STUDENT" ? "STU" : selectedRole === "INTERN" ? "INT" : "EMP";
-    const employeeId = isDirect
-      ? `${prefix}-${matchedOrg.name.slice(0, 3).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`
-      : undefined;
-
-    multiTenantStore.addMembership({
-      organization_id: matchedOrg.id,
-      user_id: sessionUser?.id || `usr-${Date.now()}`,
-      employee_id: employeeId,
-      user_full_name: applicantName.trim(),
-      user_email: applicantEmail.trim(),
-      role: selectedRole as MemberRole,
-      member_type: selectedRole as MemberType,
-      status: status,
-      job_title: `${selectedRole} Candidate`,
-      designation: `${selectedRole} Candidate`,
-      manager_name: "Workspace Administrator",
-      skills: ["Software Engineering", "Full Stack"],
-      employment_status: selectedRole === "EMPLOYEE" ? "FULL_TIME" : "INTERN",
-      joined_at: new Date().toISOString(),
-    });
-
-    setJoinSubmitted(true);
-  };
-
-  const handleAcceptInvite = () => {
-    setValidationError(null);
-    if (!inviteToken.trim()) {
-      setValidationError("Please enter an invitation token.");
-      return;
-    }
-    const result = multiTenantStore.validateInvitationToken(inviteToken.trim());
-    if (!result.valid || !result.organization) {
-      setValidationError(result.error || "Invalid invitation token.");
-      return;
-    }
-    setMatchedOrg(result.organization);
-    setSelectedRole(result.role || "INTERN");
-    setInputCode(result.organization.code);
-    setActiveTab("code");
-  };
-
-  const allOrganizations = multiTenantStore.getOrganizations();
-  const filteredOrgs = allOrganizations.filter((o) =>
-    o.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    o.industry_or_category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-between">
-      {/* Top Header */}
-      <header className="w-full border-b border-slate-200/80 bg-white/95 backdrop-blur-md py-4 px-6 sm:px-12 flex items-center justify-between">
-        <AnimatedLogo size="md" />
-        <div className="flex items-center gap-3">
-          <Link href="/login">
-            <Button variant="outline" size="sm" className="text-slate-700 rounded-xl">
-              Sign In
-            </Button>
-          </Link>
-          <Link href="/onboard/organization">
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl">
-              Create New Workspace
-            </Button>
-          </Link>
-        </div>
-      </header>
+    <div className="min-h-screen bg-[#080d1a] flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      <div className="absolute top-1/4 -left-32 w-96 h-96 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Main Container */}
-      <main className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 py-12">
-        <div className="text-center max-w-2xl mx-auto mb-10">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold mb-3">
-            <Building2 className="w-3.5 h-3.5" />
-            <span>Workspace Discovery & Onboarding</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-            Find Your Organization
+      <div className="w-full max-w-xl space-y-6 relative z-10 text-center">
+        <div className="flex justify-center mb-3">
+          <AnimatedLogo size="lg" />
+        </div>
+
+        <div>
+          <span className="text-[11px] font-bold tracking-widest uppercase text-red-400 bg-red-950/60 border border-red-800/60 px-3.5 py-1 rounded-full">
+            {INSTITUTE_CONFIG.name} • Single Institute Edition
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mt-3">
+            Join Student &amp; Intern Cohorts
           </h1>
-          <p className="text-sm sm:text-base text-slate-600 mt-2 font-normal">
-            Connect to your company, university, or institute workspace using your verified organization code or administrator invitation.
+          <p className="text-xs sm:text-sm text-slate-400 mt-2 max-w-md mx-auto">
+            Organization codes are not required. All student registrations and activities connect directly to the central {INSTITUTE_CONFIG.name} academic database.
           </p>
         </div>
 
-        {/* Option Tabs */}
-        <div className="flex justify-center mb-8">
-          <div className="inline-flex p-1 rounded-xl bg-slate-200/80 border border-slate-300/70">
-            <button
-              onClick={() => { setActiveTab("code"); setMatchedOrg(null); setValidationError(null); }}
-              className={`px-5 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all ${
-                activeTab === "code"
-                  ? "bg-white text-blue-700 shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <KeyRound className="w-3.5 h-3.5 inline mr-1.5" />
-              Enter Organization Code
-            </button>
-            <button
-              onClick={() => { setActiveTab("invite"); setMatchedOrg(null); setValidationError(null); }}
-              className={`px-5 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all ${
-                activeTab === "invite"
-                  ? "bg-white text-blue-700 shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Mail className="w-3.5 h-3.5 inline mr-1.5" />
-              Accept Invitation
-            </button>
-            <button
-              onClick={() => { setActiveTab("search"); setMatchedOrg(null); setValidationError(null); }}
-              className={`px-5 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all ${
-                activeTab === "search"
-                  ? "bg-white text-blue-700 shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Search className="w-3.5 h-3.5 inline mr-1.5" />
-              Search Public Organizations
-            </button>
-          </div>
-        </div>
-
-        {/* Tab 1: Enter Organization Code */}
-        {activeTab === "code" && (
-          <div className="space-y-6">
-            <Card className="border-slate-200/90 shadow-sm bg-white rounded-2xl p-6 sm:p-8">
-              <div className="space-y-4">
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                  Unique Organization Code
-                </label>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <input
-                    type="text"
-                    placeholder="e.g. ORG-7K4P9X"
-                    value={inputCode}
-                    onChange={(e) => setInputCode(e.target.value.toUpperCase())}
-                    className="flex-1 px-4 py-3 rounded-xl border border-slate-300 font-mono text-base font-bold uppercase tracking-widest focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                  />
-                  <Button
-                    size="lg"
-                    onClick={() => handleVerifyCode(inputCode)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 rounded-xl"
-                  >
-                    Lookup Workspace
-                  </Button>
+        <Card className="border-slate-800 bg-slate-900/90 backdrop-blur-xl rounded-2xl shadow-2xl text-left overflow-hidden">
+          <CardContent className="p-6 sm:p-8 space-y-6">
+            <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-950/60 border border-red-800/60 text-red-400 flex items-center justify-center shrink-0">
+                  <GraduationCap className="w-5 h-5" />
                 </div>
-
-                {/* Helpful Examples */}
-                <div className="pt-2 flex items-center gap-2 flex-wrap text-xs text-slate-500">
-                  <span className="font-semibold">Quick Demo Codes:</span>
-                  <button
-                    onClick={() => { setInputCode("ORG-7K4P9X"); handleVerifyCode("ORG-7K4P9X"); }}
-                    className="font-mono text-blue-600 hover:underline bg-blue-50 px-2 py-0.5 rounded border border-blue-200 font-bold"
-                  >
-                    ORG-7K4P9X (Apex Technologies)
-                  </button>
-                  <button
-                    onClick={() => { setInputCode("ORG-M8D2QF"); handleVerifyCode("ORG-M8D2QF"); }}
-                    className="font-mono text-indigo-600 hover:underline bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 font-bold"
-                  >
-                    ORG-M8D2QF (Westbridge Uni)
-                  </button>
-                  <button
-                    onClick={() => { setInputCode("ORG-5T9L3B"); handleVerifyCode("ORG-5T9L3B"); }}
-                    className="font-mono text-emerald-600 hover:underline bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-bold"
-                  >
-                    ORG-5T9L3B (Future Skills)
-                  </button>
+                <div>
+                  <h3 className="text-sm font-bold text-white">{INSTITUTE_CONFIG.name}</h3>
+                  <p className="text-xs text-slate-400">{INSTITUTE_CONFIG.tagline}</p>
                 </div>
-
-                {validationError && (
-                  <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-                    <span>{validationError}</span>
-                  </div>
-                )}
               </div>
-            </Card>
 
-            {/* Matched Organization Preview Card (Section 11) */}
-            {matchedOrg && !joinSubmitted && (
-              <Card className="border-blue-200 bg-gradient-to-br from-blue-50/50 via-white to-indigo-50/30 rounded-2xl p-6 sm:p-8 shadow-md animate-fadeIn">
-                <div className="space-y-6">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-5 border-b border-blue-100">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-2xl bg-blue-600 text-white font-black flex items-center justify-center text-xl shadow-md">
-                        {matchedOrg.name.slice(0, 2).toUpperCase()}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h2 className="text-xl font-black text-slate-900">
-                            {matchedOrg.name}
-                          </h2>
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                            Verified Workspace
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-1 font-mono">
-                          Code: <span className="font-bold text-slate-700">{matchedOrg.code}</span> • Type: <span className="font-semibold text-slate-700">{matchedOrg.type}</span>
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* General Description */}
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">About Workspace</h4>
-                    <p className="text-sm text-slate-700 leading-relaxed font-normal">
-                      {matchedOrg.description}
-                    </p>
-                  </div>
-
-                  {/* Joining Policy & Instructions */}
-                  <div className="p-4 rounded-xl bg-white border border-slate-200 space-y-2">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                      <HelpCircle className="w-3.5 h-3.5 text-blue-600" />
-                      Workspace Enrollment Policy
-                    </h4>
-                    <p className="text-xs text-slate-600 leading-relaxed font-normal">
-                      {matchedOrg.joining_policy === "REQUEST_APPROVAL" &&
-                        "This workspace requires administrator review. Submitting your join request will notify the organization administrator for access approval."}
-                      {matchedOrg.joining_policy === "CODE_ONLY" &&
-                        "This organization permits direct enrollment via validated code. You can proceed directly into the member workspace."}
-                      {matchedOrg.joining_policy === "INVITATION_ONLY" &&
-                        "This workspace requires an administrator invitation token. Please check your inbox or request an invite."}
-                    </p>
-                  </div>
-
-                  {/* Applicant Details */}
-                  <div className="space-y-4 pt-2 border-t border-blue-100">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                      Your Contact & Identification Details
-                    </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-[11px] font-bold text-slate-600 block mb-1">Full Legal Name *</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. John Doe"
-                          value={applicantName}
-                          onChange={(e) => setApplicantName(e.target.value)}
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[11px] font-bold text-slate-600 block mb-1">Email Address *</label>
-                        <input
-                          type="email"
-                          placeholder="e.g. john@university.edu"
-                          value={applicantEmail}
-                          onChange={(e) => setApplicantEmail(e.target.value)}
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-600 block mb-1">Personal Statement / Verification Note (Optional)</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. 3rd-year CS student applying for Summer 2026 Practicum batch"
-                        value={applicantNote}
-                        onChange={(e) => setApplicantNote(e.target.value)}
-                        className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Role Selection */}
-                  <div className="space-y-2">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                      Select Your Member Role
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {["STUDENT", "INTERN", "EMPLOYEE", "TRAINEE"].map((role) => (
-                        <button
-                          key={role}
-                          onClick={() => setSelectedRole(role)}
-                          className={`p-3 rounded-xl border text-xs font-bold text-center transition-all ${
-                            selectedRole === role
-                              ? "border-blue-600 bg-blue-50 text-blue-700 shadow-xs"
-                              : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                          }`}
-                        >
-                          {role}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Action CTA */}
-                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-end gap-3">
-                    <Button
-                      size="lg"
-                      onClick={handleConfirmJoin}
-                      className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 rounded-xl shadow-md"
-                    >
-                      {matchedOrg.joining_policy === "CODE_ONLY" ? "Confirm & Join Workspace" : "Confirm & Request Access"}
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  </div>
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800/80 text-[11px] text-slate-300">
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Central Student Roster</span>
                 </div>
-              </Card>
-            )}
-
-            {/* Success Confirmation Screen */}
-            {joinSubmitted && matchedOrg && (
-              <Card className="border-emerald-200 bg-white rounded-2xl p-8 text-center space-y-5 shadow-lg animate-fadeIn">
-                <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="w-8 h-8" />
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Zero Registration Fees</span>
                 </div>
-                <h2 className="text-2xl font-black text-slate-900">
-                  {submissionStatus === "ACTIVE" ? "Workspace Access Granted!" : "Join Request Submitted Successfully!"}
-                </h2>
-                <p className="text-sm text-slate-600 max-w-lg mx-auto font-normal">
-                  {submissionStatus === "ACTIVE" ? (
-                    <>
-                      You have been directly enrolled into <span className="font-bold text-slate-800">{matchedOrg.name}</span> as an active{" "}
-                      <span className="font-bold text-slate-800">{selectedRole}</span>.
-                    </>
-                  ) : (
-                    <>
-                      Your application to join <span className="font-bold text-slate-800">{matchedOrg.name}</span> as a{" "}
-                      <span className="font-bold text-slate-800">{selectedRole}</span> has been securely recorded. An administrator will review and authorize your workspace credentials.
-                    </>
-                  )}
-                </p>
-
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 max-w-md mx-auto space-y-1.5 text-left font-mono">
-                  <p>Applicant: <span className="font-bold text-slate-900">{applicantName}</span></p>
-                  <p>Email: <span className="font-bold text-slate-900">{applicantEmail}</span></p>
-                  <p>Workspace: <span className="font-bold text-slate-900">{matchedOrg.name}</span></p>
-                  <p>Code: <span className="font-bold text-slate-900">{matchedOrg.code}</span></p>
-                  <p>Status: <span className={`font-bold ${submissionStatus === "ACTIVE" ? "text-emerald-600" : "text-amber-600"}`}>
-                    {submissionStatus === "ACTIVE" ? "ACTIVE_MEMBER" : "PENDING_APPROVAL"}
-                  </span></p>
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Verified Email OTP Auth</span>
                 </div>
-
-                <div className="pt-3 flex justify-center gap-3 flex-wrap">
-                  {submissionStatus === "ACTIVE" && selectedRole === "STUDENT" ? (
-                    <Link href="/student/dashboard">
-                      <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 rounded-xl">
-                        Open Student Portal
-                      </Button>
-                    </Link>
-                  ) : submissionStatus === "ACTIVE" ? (
-                    <Link href="/workspace">
-                      <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 rounded-xl">
-                        Enter Workspace
-                      </Button>
-                    </Link>
-                  ) : (
-                    <>
-                      <Link href="/login">
-                        <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 rounded-xl">
-                          Return to Sign In
-                        </Button>
-                      </Link>
-                      <Link href="/">
-                        <Button variant="outline" size="lg" className="rounded-xl font-bold">
-                          Home
-                        </Button>
-                      </Link>
-                    </>
-                  )}
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Official Offer Letters</span>
                 </div>
-              </Card>
-            )}
-          </div>
-        )}
+              </div>
+            </div>
 
-        {/* Tab 2: Accept Invitation */}
-        {activeTab === "invite" && (
-          <Card className="border-slate-200/90 shadow-sm bg-white rounded-2xl p-6 sm:p-8 space-y-5">
-            <h3 className="text-base font-bold text-slate-900">
-              Redeem Workspace Invitation
-            </h3>
-            <p className="text-xs text-slate-600 font-normal">
-              Enter the secure alphanumeric invitation token received in your official email inbox.
-            </p>
             <div className="space-y-3">
-              <input
-                type="text"
-                placeholder="e.g. INV-APX-VALID-2026"
-                value={inviteToken}
-                onChange={(e) => setInviteToken(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-slate-300 font-mono text-sm focus:ring-2 focus:ring-blue-600 focus:outline-none"
-              />
-              <Button
-                onClick={handleAcceptInvite}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 rounded-xl"
-              >
-                Accept Invitation
-              </Button>
-            </div>
-          </Card>
-        )}
-
-        {/* Tab 3: Search Public Organizations */}
-        {activeTab === "search" && (
-          <div className="space-y-4">
-            <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Search organizations by name or category..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-white shadow-xs focus:ring-2 focus:ring-blue-600 focus:outline-none text-sm"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredOrgs.map((org) => (
-                <Card key={org.id} className="border-slate-200 bg-white p-5 rounded-xl hover:shadow-md transition-shadow">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-900">{org.name}</h4>
-                      <p className="text-xs text-slate-500">{org.industry_or_category}</p>
-                    </div>
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
-                      {org.code}
-                    </span>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Available Academic Departments</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                {INSTITUTE_CONFIG.departments.map((dept) => (
+                  <div key={dept.id} className="p-2.5 rounded-lg bg-slate-950/50 border border-slate-800/60 text-slate-300">
+                    <span className="font-semibold text-white block">{dept.name}</span>
+                    <span className="text-[10px] text-slate-500">{dept.headOfDepartment}</span>
                   </div>
-                  <p className="text-xs text-slate-600 mt-2 line-clamp-2 font-normal">{org.description}</p>
-                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                    <span className="text-[11px] font-semibold text-slate-500">{org.type}</span>
-                    <button
-                      onClick={() => { setInputCode(org.code); setActiveTab("code"); handleVerifyCode(org.code); }}
-                      className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1"
-                    >
-                      Select Workspace <ArrowRight className="w-3 h-3" />
-                    </button>
-                  </div>
-                </Card>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
-      </main>
 
-      {/* Footer Note */}
-      <footer className="py-6 border-t border-slate-200 text-center text-xs text-slate-500">
-        InternDesk Enterprise Multi-Tenant Discovery • Zero Registration Fees
-      </footer>
+            <div className="pt-2 flex flex-col sm:flex-row gap-3">
+              <Link href="/register" className="flex-1">
+                <Button size="lg" className="w-full bg-[#d32f2f] hover:bg-[#b71c1c] text-white font-bold rounded-xl shadow-lg shadow-red-950/50">
+                  <UserPlus className="w-4 h-4 mr-1.5" />
+                  Register as Student
+                  <ArrowRight className="w-4 h-4 ml-1.5" />
+                </Button>
+              </Link>
+              <Link href="/login" className="flex-1">
+                <Button variant="outline" size="lg" className="w-full rounded-xl border-slate-700 text-slate-300 hover:bg-slate-800">
+                  <LogIn className="w-4 h-4 mr-1.5" />
+                  Sign In to Portal
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
 
 export default function JoinPage() {
   return (
-    <Suspense fallback={<div className="p-12 text-center text-slate-500 font-mono">Loading discovery portal...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-[#080d1a]" />}>
       <JoinPageContent />
     </Suspense>
   );

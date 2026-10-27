@@ -75,10 +75,16 @@ export default function StudentDashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Link href="/student/activities">
+              <Button size="sm" className="bg-[#d32f2f] hover:bg-[#b71c1c] text-white font-semibold shadow-xs">
+                <CheckCircle2 className="w-4 h-4 mr-1.5" />
+                Assigned Activities
+              </Button>
+            </Link>
             <Link href="/student/daily-reports">
-              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs">
+              <Button size="sm" variant="outline" className="font-semibold shadow-xs">
                 <FileSpreadsheet className="w-4 h-4 mr-1.5" />
-                Submit Daily Report
+                Daily Report
               </Button>
             </Link>
           </div>

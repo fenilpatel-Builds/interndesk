@@ -42,4 +42,5 @@ yarn-error.log*
 next-env.d.ts
 
 # local ephemeral caches
-src/lib/data/active-otps.json
+src/lib/data/*.json
+

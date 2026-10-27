@@ -34,6 +34,8 @@ export async function POST(request: Request) {
       ...rawData,
       fullName: sanitizeText(rawData.fullName),
       email: rawData.email.toLowerCase().trim(),
+      studentId: sanitizeText(rawData.studentId),
+      department: sanitizeText(rawData.department),
       mobile: sanitizeText(rawData.mobile),
       college: sanitizeText(rawData.college),
       university: sanitizeText(rawData.university),
@@ -145,6 +147,8 @@ export async function POST(request: Request) {
         new_status: "PENDING_ADMIN_APPROVAL",
         metadata: {
           application_number: appNumber,
+          student_id: data.studentId,
+          department: data.department,
           fee: "FREE_REGISTRATION",
           technology: data.technology,
           college: data.college,
