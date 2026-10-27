@@ -1,100 +1,103 @@
 import React from "react";
 import {
-  Building2,
-  KeyRound,
+  GraduationCap,
   Clock,
   FileSpreadsheet,
   BookOpen,
   CheckSquare,
   Award,
   ShieldCheck,
+  Bell,
+  Code2,
+  Users,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 export function Features() {
   const features = [
     {
-      icon: <Building2 className="w-6 h-6 text-blue-600" />,
-      title: "Multi-Tenant Workspaces",
+      icon: <GraduationCap className="w-6 h-6 text-[#E52329]" />,
+      title: "Academic Activity Management",
       description:
-        "Every company, college, or training institute receives a logically isolated workspace with dedicated members, programs, and settings.",
+        "Publish, track, and grade institute coursework, capstone projects, and coding assignments targeted by academic department and semester.",
     },
     {
-      icon: <KeyRound className="w-6 h-6 text-indigo-600" />,
-      title: "Organization Code Discovery",
+      icon: <Clock className="w-6 h-6 text-[#0F4C81]" />,
+      title: "1-Click Shift Attendance",
       description:
-        "Secure, system-generated codes (e.g. ORG-7K4P9X) enable fast workspace lookup with verified organization preview before joining.",
+        "Friction-free clock-in and clock-out with real-time timers, break categories (Lunch, Tea, Personal), and verified digital timestamp logs.",
     },
     {
-      icon: <Clock className="w-6 h-6 text-sky-600" />,
-      title: "Attendance & Work Sessions",
+      icon: <CheckSquare className="w-6 h-6 text-emerald-600" />,
+      title: "Project Submissions & Reviews",
       description:
-        "Real-time clock-in timer, categorized breaks (lunch, personal, short break), and server-side duration calculations without discrepancies.",
+        "Submit work with GitHub repository links, live demos, and documentation. Faculty can evaluate, score, and provide feedback.",
     },
     {
-      icon: <FileSpreadsheet className="w-6 h-6 text-emerald-600" />,
-      title: "Daily Work Reports",
+      icon: <FileSpreadsheet className="w-6 h-6 text-amber-600" />,
+      title: "Daily Work & Progress Reports",
       description:
-        "Log hourly tasks, blockers, and next steps. Complete workflow supporting Draft, Submitted, Under Review, and Approved states.",
+        "Structured logging of daily tasks, challenges, and milestones with Draft, Submitted, Under Review, and Approved states.",
     },
     {
-      icon: <BookOpen className="w-6 h-6 text-violet-600" />,
-      title: "Curated Learning Center",
+      icon: <Code2 className="w-6 h-6 text-purple-600" />,
+      title: "Industry Learning Modules",
       description:
-        "Organization-specific learning tracks, study guides, code examples, and structured modules with individual completion tracking.",
-    },
-    {
-      icon: <CheckSquare className="w-6 h-6 text-amber-600" />,
-      title: "Assessments & MCQ Runner",
-      description:
-        "Timed examinations with single/multiple choice, server-side grading, pass/fail threshold enforcement, and detailed answer reviews.",
+        "Curated practical training in Python, AI/ML, Full-Stack Next.js, and Cloud DevOps designed for real-world software engineering.",
     },
     {
       icon: <Award className="w-6 h-6 text-rose-600" />,
-      title: "Verifiable Documents",
+      title: "Tamper-Proof Certifications",
       description:
-        "Issue Offer Letters, Internship Letters, and Completion Certificates with tamper-proof unique IDs verifiable on public endpoints.",
+        "Automatic generation of verifiable Offer Letters and Certificates of Completion with unique verification IDs and public ledger checks.",
+    },
+    {
+      icon: <Bell className="w-6 h-6 text-sky-600" />,
+      title: "Transactional Email Alerts",
+      description:
+        "Instant transactional notifications via Resend API for assignment publishing, evaluation results, approval statuses, and OTPs.",
     },
     {
       icon: <ShieldCheck className="w-6 h-6 text-teal-600" />,
-      title: "Enterprise RBAC & Security",
+      title: "Centralized Role-Based Governance",
       description:
-        "Granular permission matrix across 10 roles: Super Admin, Org Admin, HR, Manager, Mentor, Employee, Intern, Student, and Auditor.",
+        "Secure institute-level RBAC (Super Admin, Faculty, Student) protecting data integrity across departments and cohorts.",
     },
   ];
 
   return (
-    <section id="features" className="py-20 bg-slate-50 border-t border-slate-200/80">
+    <section id="features" className="py-20 bg-slate-50/60 border-t border-slate-200/80">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <span className="text-xs uppercase font-extrabold tracking-wider text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
-            Enterprise Feature Suite
+        <div className="text-center max-w-3xl mx-auto mb-14">
+          <span className="text-xs uppercase font-extrabold tracking-wider text-[#0F4C81] bg-blue-50 px-3.5 py-1.5 rounded-full border border-blue-200">
+            Akash Technolabs Core Capabilities
           </span>
           <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mt-3">
-            Everything Your Organization Needs to Train, Manage & Grow
+            Built for Academic &amp; Industry Excellence
           </h2>
-          <p className="text-base sm:text-lg text-slate-600 mt-4 font-normal">
-            Designed for multinational corporations, universities, and training academies. A unified portal built for real operational efficiency.
+          <p className="text-base sm:text-lg text-slate-600 mt-3 font-normal">
+            Everything students and faculty need to manage learning, assignments, attendance, evaluations, and certifications in one unified platform.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {features.map((feature, idx) => (
+          {features.map((feat, idx) => (
             <Card
               key={idx}
-              className="group border-slate-200/90 shadow-2xs hover:shadow-xl hover:shadow-blue-600/10 hover:border-blue-300 transition-all duration-300 hover:-translate-y-1.5 bg-white rounded-2xl overflow-hidden relative"
+              className="border-slate-200 bg-white hover:shadow-lg hover:border-slate-300 transition-all duration-200 rounded-2xl"
             >
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <CardContent className="p-6 flex flex-col h-full">
-                <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-5 group-hover:scale-110 group-hover:bg-blue-50/80 group-hover:border-blue-200 transition-all duration-300 shadow-2xs">
-                  {feature.icon}
+              <CardContent className="p-6 flex flex-col justify-between h-full">
+                <div>
+                  <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-4">
+                    {feat.icon}
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900 mb-2">
+                    {feat.title}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
+                    {feat.description}
+                  </p>
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors">
-                  {feature.title}
-                </h3>
-                <p className="text-sm text-slate-600 leading-relaxed mt-auto font-normal">
-                  {feature.description}
-                </p>
               </CardContent>
             </Card>
           ))}

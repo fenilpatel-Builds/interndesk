@@ -7,15 +7,12 @@ import {
   Calendar,
   CheckCircle2,
   Zap,
-  Camera,
 } from "lucide-react";
 import { WorkSessionWidget } from "@/components/student/work-session-widget";
 import { useWorkTimer } from "@/hooks/use-work-timer";
-import { SelfieViewerModal } from "@/components/attendance/selfie-viewer-modal";
 
 export default function StudentAttendancePage() {
   const [activeFilter, setActiveFilter] = useState<"TODAY" | "WEEK" | "MONTH" | "CUSTOM">("WEEK");
-  const [isSelfieViewerOpen, setIsSelfieViewerOpen] = useState(false);
 
   const {
     status,
@@ -242,19 +239,7 @@ export default function StudentAttendancePage() {
                   <tr key={idx} className="hover:bg-slate-50/70 transition-colors">
                     <td className="py-3.5 px-5 font-bold text-slate-900">{row.date}</td>
                     <td className="py-3.5 px-4 font-mono text-slate-700">
-                      <div className="flex items-center gap-1.5">
-                        <span>{row.clockIn}</span>
-                        {idx === 0 && clockInVerification && (
-                          <button
-                            onClick={() => setIsSelfieViewerOpen(true)}
-                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold hover:bg-emerald-100 transition-colors cursor-pointer"
-                            title="Click to view verified punch selfie"
-                          >
-                            <Camera className="w-2.5 h-2.5" />
-                            <span>Photo</span>
-                          </button>
-                        )}
-                      </div>
+                      <span>{row.clockIn}</span>
                     </td>
                     <td className="py-3.5 px-4 text-slate-600">{row.breaks}</td>
                     <td className="py-3.5 px-4 font-mono text-slate-700">{row.clockOut}</td>
@@ -278,17 +263,6 @@ export default function StudentAttendancePage() {
           </div>
         </Card>
       </main>
-
-      {/* Selfie Viewer Modal */}
-      {isSelfieViewerOpen && clockInVerification && (
-        <SelfieViewerModal
-          isOpen={isSelfieViewerOpen}
-          onClose={() => setIsSelfieViewerOpen(false)}
-          verification={clockInVerification}
-          modeLabel="Clock In Punch"
-          internName={studentName}
-        />
-      )}
     </div>
   );
 }

@@ -12,14 +12,11 @@ import {
   Utensils,
   Smile,
   Droplets,
-  Camera,
   ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useWorkTimer, PunchVerificationData } from "@/hooks/use-work-timer";
-import { SelfiePunchModal } from "@/components/attendance/selfie-punch-modal";
-import { SelfieViewerModal } from "@/components/attendance/selfie-viewer-modal";
+import { useWorkTimer } from "@/hooks/use-work-timer";
 
 interface WorkSessionWidgetProps {
   compact?: boolean;
@@ -39,8 +36,6 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
     progressPercent,
     remainingFormatted,
     breakType,
-    clockInVerification,
-    clockOutVerification,
     clockIn,
     takeBreak,
     resumeWork,
@@ -50,29 +45,6 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
 
   const [showBreakMenu, setShowBreakMenu] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [enableSelfieVerification, setEnableSelfieVerification] = useState(true);
-  const [selfieModalMode, setSelfieModalMode] = useState<"CLOCK_IN" | "CLOCK_OUT" | null>(null);
-  const [studentName, setStudentName] = useState("Student Intern");
-
-  React.useEffect(() => {
-    try {
-      const match = document.cookie.match(/(?:^|;\s*)interndesk_user=([^;]+)/);
-      if (match) {
-        const parts = decodeURIComponent(match[1]).split(".");
-        if (parts.length >= 2) {
-          const payload = JSON.parse(atob(parts[0]));
-          if (payload?.name) setStudentName(payload.name);
-        }
-      }
-    } catch {
-      // Ignored
-    }
-  }, []);
-
-  const [viewingVerification, setViewingVerification] = useState<{
-    data: PunchVerificationData;
-    label: string;
-  } | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -98,224 +70,201 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
 
   return (
     <Card
-      className={`border border-slate-200/90 shadow-sm rounded-2xl bg-white overflow-hidden transition-all duration-300 ${className}`}
+      className={`relative overflow-hidden border border-slate-200/90 shadow-xs bg-white rounded-2xl transition-all ${className}`}
     >
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold px-4 py-2.5 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
-            <span>{toastMessage}</span>
-          </div>
-          <button
-            onClick={() => setToastMessage(null)}
-            className="text-white/80 hover:text-white text-xs font-bold"
-          >
-            ✕
-          </button>
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{toastMessage}</span>
         </div>
       )}
 
-      <div className="p-5 sm:p-6 space-y-6">
-        {/* Top Status Header Bar */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-              <Clock className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-800 tracking-tight block">
-                  Current Work Session
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                  {todayDateFormatted} • 24H: {live24hClock}
-                </span>
-              </div>
-              <span className="text-[11px] text-slate-400 font-medium">
-                {status === "WORKING"
-                  ? `Active Shift • Since ${clockInTime}`
-                  : status === "ON_BREAK"
-                  ? `Paused for ${breakType.toLowerCase()} break`
-                  : status === "COMPLETED"
-                  ? "Shift finished today"
-                  : "Shift ready to begin • Click Clock In below"}
+      {/* Decorative top accent gradient */}
+      <div
+        className={`h-1.5 w-full transition-colors duration-500 ${
+          status === "WORKING"
+            ? "bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-600"
+            : status === "ON_BREAK"
+            ? "bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500"
+            : status === "COMPLETED"
+            ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-emerald-500"
+            : "bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200"
+        }`}
+      />
+
+      <div className="p-6 space-y-6">
+        {/* Header Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black uppercase tracking-wider text-slate-500">
+                Akash Technolabs Shift Tracker
               </span>
+              <span className="text-slate-300">•</span>
+              <span className="text-xs font-semibold text-slate-500">{todayDateFormatted}</span>
             </div>
+            <h3 className="text-lg font-black text-slate-900 tracking-tight mt-0.5 flex items-center gap-2">
+              Daily Attendance Session
+              {status === "WORKING" && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100/80 text-emerald-800 border border-emerald-300/60 shadow-2xs">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                  </span>
+                  ACTIVE SHIFT
+                </span>
+              )}
+              {status === "ON_BREAK" && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300/60 shadow-2xs">
+                  <Coffee className="w-3 h-3 text-amber-600 animate-pulse" />
+                  ON BREAK ({breakType})
+                </span>
+              )}
+              {status === "COMPLETED" && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-300/60 shadow-2xs">
+                  <CheckCircle2 className="w-3 h-3 text-blue-600" />
+                  SHIFT FINISHED
+                </span>
+              )}
+              {status === "IDLE" && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                  NOT STARTED
+                </span>
+              )}
+            </h3>
           </div>
 
-          {/* Live Status Pill & Biometric Verification Badge */}
-          <div className="flex items-center gap-2">
-            {clockInVerification && (
-              <button
-                type="button"
-                onClick={() => setViewingVerification({ data: clockInVerification, label: "Clock In Biometric Punch" })}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 shadow-2xs transition-colors cursor-pointer"
-                title="Click to view verified biometric selfie snapshot"
-              >
-                <Camera className="w-3 h-3 text-emerald-600" />
-                <span>📸 Selfie Verified</span>
-              </button>
-            )}
-
-            {status === "WORKING" ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/90 shadow-2xs">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                </span>
-                LIVE WORKING
-              </span>
-            ) : status === "ON_BREAK" ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200/90 shadow-2xs">
-                <Coffee className="w-3.5 h-3.5 animate-bounce text-amber-600" />
-                ON BREAK ({breakFormatted})
-              </span>
-            ) : status === "COMPLETED" ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs">
-                <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
-                COMPLETED
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                <span className="w-2 h-2 rounded-full bg-slate-400" />
-                NOT STARTED
-              </span>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono font-bold text-slate-700 flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-blue-600" />
+              <span>24H: {live24hClock}</span>
+            </div>
+            {clockInTime && (
+              <div className="px-3 py-1 rounded-xl bg-blue-50 border border-blue-200 text-xs font-semibold text-blue-800">
+                Punched In: <span className="font-mono font-bold">{clockInTime}</span>
+              </div>
             )}
           </div>
         </div>
 
-        {/* Dynamic Counter Hero & Radial Progress Gauge */}
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-slate-50/70 p-4 sm:p-5 rounded-2xl border border-slate-200/80">
-          {/* Digital Flip Counter Cards */}
-          <div className="flex-1 flex flex-col items-center md:items-start justify-center space-y-2.5 min-w-0">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
-              Elapsed Productive Time
-            </span>
-
-            {/* 3 Digital Monospace Flip Blocks */}
-            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-              {/* Hours Box */}
-              <div className="flex flex-col items-center">
-                <div className="w-14 sm:w-16 h-14 sm:h-16 rounded-xl bg-white border border-slate-200/90 shadow-2xs flex items-center justify-center text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight transition-transform duration-200 hover:scale-105">
-                  {hoursStr}
-                </div>
-                <span className="text-[9px] uppercase font-bold text-slate-400 mt-1">
-                  Hours
-                </span>
-              </div>
-
-              {/* Animated Blinking Colon */}
-              <div className="text-2xl sm:text-3xl font-black text-blue-600 pb-3.5 animate-pulse select-none">
-                :
-              </div>
-
-              {/* Minutes Box */}
-              <div className="flex flex-col items-center">
-                <div className="w-14 sm:w-16 h-14 sm:h-16 rounded-xl bg-white border border-slate-200/90 shadow-2xs flex items-center justify-center text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight transition-transform duration-200 hover:scale-105">
-                  {minutesStr}
-                </div>
-                <span className="text-[9px] uppercase font-bold text-slate-400 mt-1">
-                  Minutes
-                </span>
-              </div>
-
-              {/* Animated Blinking Colon */}
-              <div className="text-2xl sm:text-3xl font-black text-blue-600 pb-3.5 animate-pulse select-none">
-                :
-              </div>
-
-              {/* Seconds Box with Glowing Border Accent */}
-              <div className="flex flex-col items-center">
-                <div className="w-14 sm:w-16 h-14 sm:h-16 rounded-xl bg-blue-600 text-white shadow-md shadow-blue-500/20 flex items-center justify-center text-2xl sm:text-3xl font-black font-mono tracking-tight transition-transform duration-200 hover:scale-105 ring-4 ring-blue-100">
-                  {secondsStr}
-                </div>
-                <span className="text-[9px] uppercase font-bold text-blue-600 mt-1 font-semibold">
-                  Seconds
-                </span>
-              </div>
-            </div>
-
-            <p className="text-[11px] text-slate-500 font-medium pt-0.5">
-              {remainingFormatted} to hit your 8h target
-            </p>
-          </div>
-
-          {/* Radial SVG Circular Progress Gauge */}
-          <div className="shrink-0 flex flex-col items-center justify-center border-t md:border-t-0 md:border-l border-slate-200/90 pt-4 md:pt-0 md:pl-6 w-full md:w-auto">
-            <div className="relative w-24 h-24 flex items-center justify-center shrink-0">
-              <svg className="w-full h-full -rotate-90" viewBox="0 0 90 90">
-                {/* Track */}
+        {/* Central Radial Progress & Digital Ticker */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center bg-slate-50/70 p-6 rounded-2xl border border-slate-200/80">
+          {/* Radial Ring */}
+          <div className="md:col-span-4 flex flex-col items-center justify-center">
+            <div className="relative w-28 h-28 flex items-center justify-center">
+              <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                {/* Background Ring Track */}
                 <circle
-                  cx="45"
-                  cy="45"
+                  cx="50"
+                  cy="50"
                   r={radius}
-                  className="stroke-slate-200"
-                  strokeWidth="8"
                   fill="transparent"
+                  stroke="#e2e8f0"
+                  strokeWidth="8"
                 />
-                {/* Animated Gradient Stroke */}
+                {/* Active Animated Ring */}
                 <circle
-                  cx="45"
-                  cy="45"
+                  cx="50"
+                  cy="50"
                   r={radius}
-                  stroke="url(#blueGradient)"
+                  fill="transparent"
+                  stroke={
+                    status === "WORKING"
+                      ? "#10b981"
+                      : status === "ON_BREAK"
+                      ? "#f59e0b"
+                      : status === "COMPLETED"
+                      ? "#2563eb"
+                      : "#94a3b8"
+                  }
                   strokeWidth="8"
                   strokeDasharray={circumference}
                   strokeDashoffset={strokeDashoffset}
                   strokeLinecap="round"
-                  fill="transparent"
                   className="transition-all duration-700 ease-out"
                 />
-                <defs>
-                  <linearGradient id="blueGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#2563eb" />
-                    <stop offset="100%" stopColor="#4f46e5" />
-                  </linearGradient>
-                </defs>
               </svg>
 
-              {/* Center Metrics */}
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
                 <span className="text-xl font-black text-slate-900 tracking-tight leading-none">
                   {progressPercent}%
                 </span>
-                <span className="text-[8px] font-bold text-slate-400 uppercase mt-1 tracking-wider whitespace-nowrap">
-                  Of 8h Target
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">
+                  8H GOAL
                 </span>
               </div>
             </div>
           </div>
+
+          {/* Large Digital Clock Ticker & Shift Meta */}
+          <div className="md:col-span-8 space-y-3 text-center md:text-left">
+            <div>
+              <span className="text-[11px] font-extrabold uppercase tracking-widest text-slate-400">
+                Productive Work Time Logged
+              </span>
+              <div className="flex items-baseline justify-center md:justify-start gap-1.5 font-mono font-black text-4xl sm:text-5xl text-slate-900 tracking-tight mt-0.5">
+                <span className="bg-white px-2.5 py-1 rounded-xl border border-slate-200 shadow-2xs">
+                  {hoursStr}
+                </span>
+                <span className="text-slate-400 animate-pulse">:</span>
+                <span className="bg-white px-2.5 py-1 rounded-xl border border-slate-200 shadow-2xs">
+                  {minutesStr}
+                </span>
+                <span className="text-slate-400 animate-pulse">:</span>
+                <span className="bg-white px-2.5 py-1 rounded-xl border border-slate-200 shadow-2xs text-blue-600">
+                  {secondsStr}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 pt-1 text-xs text-slate-600 font-medium">
+              <span className="flex items-center gap-1.5">
+                <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
+                <span>{remainingFormatted}</span>
+              </span>
+              <span className="text-slate-300">•</span>
+              <span className="flex items-center gap-1.5">
+                <Coffee className="w-3.5 h-3.5 text-amber-600" />
+                <span>Total Breaks: <strong className="font-mono">{breakFormatted}</strong></span>
+              </span>
+              <span className="text-slate-300">•</span>
+              <span className="flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="text-emerald-700 font-bold">1-Click Instant Punch</span>
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* Live Hourly Activity Visualizer (Mini-Heatmap) */}
+        {/* Hourly Productivity Progress Bar */}
         {!compact && (
-          <div className="space-y-2 pt-1">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-slate-700 flex items-center gap-1.5">
-                <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
-                Hourly Activity Distribution
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-600">
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                Shift Timeline Overview
               </span>
-              <span className="text-[11px] font-semibold text-emerald-600">
-                98.4% Efficiency
+              <span className="font-mono text-slate-500 font-semibold">
+                Daily Requirement: 8 Hours
               </span>
             </div>
 
-            <div className="grid grid-cols-8 gap-2 pt-1">
-              {hourlySlots.map((slot) => (
-                <div key={slot.hour} className="flex flex-col items-center gap-1">
-                  <div className="w-full h-8 bg-slate-100 rounded-md overflow-hidden flex flex-col justify-end p-0.5">
+            <div className="grid grid-cols-8 gap-1.5">
+              {hourlySlots.map((slot, i) => (
+                <div key={i} className="flex flex-col items-center gap-1">
+                  <div className="w-full h-2.5 rounded-full bg-slate-100 overflow-hidden">
                     <div
-                      className={`w-full rounded-sm transition-all duration-500 ${
+                      className={`h-full rounded-full transition-all duration-500 ${
                         slot.status === "DONE"
-                          ? "bg-blue-600"
+                          ? "bg-emerald-500"
                           : slot.status === "BREAK"
                           ? "bg-amber-400"
                           : slot.status === "CURRENT"
-                          ? "bg-emerald-500 animate-pulse"
+                          ? "bg-blue-600 animate-pulse"
                           : "bg-transparent"
                       }`}
-                      style={{ height: `${slot.fill}%` }}
+                      style={{ width: `${slot.fill}%` }}
                     />
                   </div>
                   <span className="text-[10px] font-semibold text-slate-400">
@@ -327,52 +276,6 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
           </div>
         )}
 
-        {/* Biometric Verification Mode Switch & Micro Info */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 pt-1 border-t border-slate-100 text-xs text-slate-500">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setEnableSelfieVerification(!enableSelfieVerification)}
-              className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
-                enableSelfieVerification
-                  ? "bg-blue-50 text-blue-700 border-blue-200 shadow-2xs"
-                  : "bg-slate-100 text-slate-500 border-slate-200"
-              }`}
-            >
-              <Camera className="w-3.5 h-3.5" />
-              <span>{enableSelfieVerification ? "Biometric Selfie Punch Active" : "Selfie Punch Disabled"}</span>
-            </button>
-            <span className="text-[10px] text-slate-400 hidden sm:inline">
-              Audit-grade snapshot with GPS campus coordinates
-            </span>
-          </div>
-
-          {(clockInVerification || clockOutVerification) && (
-            <div className="flex items-center gap-2">
-              {clockInVerification && (
-                <button
-                  type="button"
-                  onClick={() => setViewingVerification({ data: clockInVerification, label: "Clock In Biometric Punch" })}
-                  className="text-[10px] font-bold text-blue-600 hover:text-blue-800 underline flex items-center gap-1 cursor-pointer"
-                >
-                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                  View Clock-In Proof
-                </button>
-              )}
-              {clockOutVerification && (
-                <button
-                  type="button"
-                  onClick={() => setViewingVerification({ data: clockOutVerification, label: "Clock Out Shift Exit Punch" })}
-                  className="text-[10px] font-bold text-blue-600 hover:text-blue-800 underline flex items-center gap-1 cursor-pointer"
-                >
-                  <ShieldCheck className="w-3 h-3 text-blue-600" />
-                  View Clock-Out Proof
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
         {/* Dynamic Action Buttons */}
         <div className="space-y-3 pt-1">
           {status === "IDLE" ? (
@@ -381,21 +284,15 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
                 size="lg"
                 className="w-full bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md shadow-blue-500/25 py-6 transition-all duration-200 hover:scale-[1.01] cursor-pointer"
                 onClick={() => {
-                  if (enableSelfieVerification) {
-                    setSelfieModalMode("CLOCK_IN");
-                  } else {
-                    clockIn();
-                    showToast("Work session started! Live timer is actively recording your hours.");
-                  }
+                  clockIn();
+                  showToast("Work session started! Live timer is actively recording your hours.");
                 }}
               >
                 <Play className="w-5 h-5 mr-2 fill-current" />
                 Clock In &amp; Start Work Session
               </Button>
               <p className="text-center text-[11px] text-slate-400 font-medium">
-                {enableSelfieVerification
-                  ? "Biometric camera snapshot will verify attendance before starting your shift."
-                  : "Click above to start your shift. Real-time timer logs productive hours."}
+                Click above to start your shift. Real-time timer logs productive hours with verified digital timestamps.
               </p>
             </div>
           ) : status === "WORKING" ? (
@@ -411,14 +308,10 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
                 </Button>
 
                 <Button
-                  className="w-full bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-xs py-5 transition-all cursor-pointer"
+                  className="w-full bg-[#E52329] hover:bg-[#C41C22] text-white font-bold rounded-xl shadow-xs py-5 transition-all cursor-pointer"
                   onClick={() => {
-                    if (enableSelfieVerification) {
-                      setSelfieModalMode("CLOCK_OUT");
-                    } else {
-                      clockOut();
-                      showToast("Clocked out successfully! Total productive hours saved to database.");
-                    }
+                    clockOut();
+                    showToast("Clocked out successfully! Total productive hours saved to database.");
                   }}
                 >
                   <Square className="w-4 h-4 mr-2 fill-current" />
@@ -426,7 +319,7 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
                 </Button>
               </div>
 
-              {/* Break Options Drawer / Menu conforming strictly to Section 19: Lunch, Water, Personal, Other */}
+              {/* Break Options Drawer / Menu */}
               {showBreakMenu && (
                 <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200 space-y-3 animate-in fade-in slide-in-from-top-2">
                   <div className="flex items-center justify-between">
@@ -438,82 +331,91 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
                       onClick={() => setShowBreakMenu(false)}
                       className="text-amber-700 hover:text-amber-900 text-xs font-bold cursor-pointer"
                     >
-                      ✕
+                      ✕ Close
                     </button>
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <button
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-amber-300 bg-white hover:bg-amber-100 text-amber-950 font-bold text-xs rounded-lg cursor-pointer"
                       onClick={() => {
                         takeBreak("LUNCH");
                         setShowBreakMenu(false);
-                        showToast("Lunch break started. Session paused.");
+                        showToast("On Lunch Break. Shift timer paused.");
                       }}
-                      className="p-3 rounded-xl bg-white border border-amber-200 text-center hover:bg-amber-100/60 hover:border-amber-300 transition-all shadow-2xs cursor-pointer"
                     >
-                      <Utensils className="w-4 h-4 mx-auto text-amber-600 mb-1" />
-                      <span className="block text-xs font-bold text-amber-900">Lunch</span>
-                      <span className="block text-[10px] text-amber-700 font-medium">45 mins</span>
-                    </button>
+                      <Utensils className="w-3.5 h-3.5 mr-1.5 text-amber-600" />
+                      Lunch
+                    </Button>
 
-                    <button
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-amber-300 bg-white hover:bg-amber-100 text-amber-950 font-bold text-xs rounded-lg cursor-pointer"
                       onClick={() => {
                         takeBreak("COFFEE");
                         setShowBreakMenu(false);
-                        showToast("Coffee break started. Enjoy!");
+                        showToast("On Coffee/Tea Break. Shift timer paused.");
                       }}
-                      className="p-3 rounded-xl bg-white border border-amber-200 text-center hover:bg-amber-100/60 hover:border-amber-300 transition-all shadow-2xs cursor-pointer"
                     >
-                      <Coffee className="w-4 h-4 mx-auto text-amber-600 mb-1" />
-                      <span className="block text-xs font-bold text-amber-900">Coffee / Tea</span>
-                      <span className="block text-[10px] text-amber-700 font-medium">15 mins</span>
-                    </button>
+                      <Coffee className="w-3.5 h-3.5 mr-1.5 text-amber-600" />
+                      Coffee / Tea
+                    </Button>
 
-                    <button
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-amber-300 bg-white hover:bg-amber-100 text-amber-950 font-bold text-xs rounded-lg cursor-pointer"
                       onClick={() => {
                         takeBreak("WATER");
                         setShowBreakMenu(false);
-                        showToast("Hydration break started.");
+                        showToast("On Hydration/Water Break. Shift timer paused.");
                       }}
-                      className="p-3 rounded-xl bg-white border border-amber-200 text-center hover:bg-amber-100/60 hover:border-amber-300 transition-all shadow-2xs cursor-pointer"
                     >
-                      <Droplets className="w-4 h-4 mx-auto text-blue-600 mb-1" />
-                      <span className="block text-xs font-bold text-amber-900">Water</span>
-                      <span className="block text-[10px] text-amber-700 font-medium">5 mins</span>
-                    </button>
+                      <Droplets className="w-3.5 h-3.5 mr-1.5 text-blue-500" />
+                      Water
+                    </Button>
 
-                    <button
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-amber-300 bg-white hover:bg-amber-100 text-amber-950 font-bold text-xs rounded-lg cursor-pointer"
                       onClick={() => {
                         takeBreak("PERSONAL");
                         setShowBreakMenu(false);
-                        showToast("Short rest pause started.");
+                        showToast("On Personal Break. Shift timer paused.");
                       }}
-                      className="p-3 rounded-xl bg-white border border-amber-200 text-center hover:bg-amber-100/60 hover:border-amber-300 transition-all shadow-2xs cursor-pointer"
                     >
-                      <Smile className="w-4 h-4 mx-auto text-amber-600 mb-1" />
-                      <span className="block text-xs font-bold text-amber-900">Personal</span>
-                      <span className="block text-[10px] text-amber-700 font-medium">10 mins</span>
-                    </button>
+                      <Smile className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
+                      Personal
+                    </Button>
                   </div>
                 </div>
               )}
             </div>
           ) : status === "ON_BREAK" ? (
             <div className="space-y-3">
-              <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold flex items-center justify-between">
+              <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Coffee className="w-4 h-4 text-amber-600 animate-bounce" />
-                  <span>Work Timer Paused • On {breakType} Break ({breakFormatted})</span>
+                  <span>
+                    Currently on <strong>{breakType}</strong> break ({breakFormatted}). Timer is paused.
+                  </span>
                 </div>
-                <span className="text-[10px] text-amber-700 font-semibold uppercase">Accurate hour logging active</span>
+                <span className="text-[11px] font-mono font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">
+                  PAUSED
+                </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Button
+                  size="lg"
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md shadow-emerald-500/20 py-5 transition-all cursor-pointer"
                   onClick={() => {
                     resumeWork();
-                    showToast("Resumed working! Active session timer resumed.");
+                    showToast("Work session resumed! Timer is active again.");
                   }}
                 >
                   <Play className="w-4 h-4 mr-2 fill-current" />
@@ -524,12 +426,8 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
                   variant="outline"
                   className="w-full border-slate-300 hover:border-red-300 text-slate-700 hover:text-red-700 font-bold rounded-xl hover:bg-red-50/50 py-5 transition-all cursor-pointer"
                   onClick={() => {
-                    if (enableSelfieVerification) {
-                      setSelfieModalMode("CLOCK_OUT");
-                    } else {
-                      clockOut();
-                      showToast("Clocked out from break. Today's shift logged.");
-                    }
+                    clockOut();
+                    showToast("Clocked out from break. Today's shift logged.");
                   }}
                 >
                   <Square className="w-4 h-4 mr-2 text-slate-500" />
@@ -543,7 +441,7 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
               <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>Today&apos;s shift successfully completed and audited!</span>
+                  <span>Today&apos;s shift successfully completed and logged!</span>
                 </div>
                 <span className="text-[11px] font-mono font-semibold text-emerald-700 bg-emerald-100/80 px-2.5 py-0.5 rounded-md">
                   {hoursStr}h {minutesStr}m logged
@@ -555,12 +453,8 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
                   size="lg"
                   className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md shadow-blue-500/20 py-5 transition-all cursor-pointer"
                   onClick={() => {
-                    if (enableSelfieVerification) {
-                      setSelfieModalMode("CLOCK_IN");
-                    } else {
-                      clockIn();
-                      showToast("New shift started! Timer is now actively logging.");
-                    }
+                    clockIn();
+                    showToast("New shift started! Timer is now actively logging.");
                   }}
                 >
                   <Play className="w-4 h-4 mr-2 fill-current" />
@@ -583,47 +477,6 @@ export function WorkSessionWidget({ compact = false, className = "" }: WorkSessi
           )}
         </div>
       </div>
-
-      {/* Selfie Punch Verification Modal */}
-      {selfieModalMode && (
-        <SelfiePunchModal
-          isOpen={!!selfieModalMode}
-          mode={selfieModalMode}
-          internName={studentName}
-          onClose={() => setSelfieModalMode(null)}
-          onConfirm={(verificationData) => {
-            if (selfieModalMode === "CLOCK_IN") {
-              clockIn(verificationData);
-              showToast("Work session started! Biometric photo punch cryptographically verified.");
-            } else {
-              clockOut(verificationData);
-              showToast("Shift completed! Exit photo punch cryptographically verified and recorded.");
-            }
-            setSelfieModalMode(null);
-          }}
-          onSkip={() => {
-            if (selfieModalMode === "CLOCK_IN") {
-              clockIn();
-              showToast("Work session started without photo verification.");
-            } else {
-              clockOut();
-              showToast("Shift ended without exit photo verification.");
-            }
-            setSelfieModalMode(null);
-          }}
-        />
-      )}
-
-      {/* Selfie Punch Viewer Modal */}
-      {viewingVerification && (
-        <SelfieViewerModal
-          isOpen={!!viewingVerification}
-          onClose={() => setViewingVerification(null)}
-          verification={viewingVerification.data}
-          modeLabel={viewingVerification.label}
-          internName={studentName}
-        />
-      )}
     </Card>
   );
 }

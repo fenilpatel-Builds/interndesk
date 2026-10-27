@@ -16,6 +16,8 @@ export interface AuthResponse {
   redirectTo?: string;
   error?: string;
   otpPreview?: string;
+  sandboxOtp?: string;
+  role?: MemberRole | string;
   provider?: string;
 }
 
@@ -52,6 +54,7 @@ export async function sendEmailOtp(email: string): Promise<AuthResponse> {
       success: true,
       message: `A 6-digit verification code has been dispatched to ${cleanEmail} via ${providerName}. Please check your inbox!`,
       otpPreview: otpCode,
+      sandboxOtp: otpCode,
       provider: emailRes.provider || "RESEND",
     };
   } catch (err: unknown) {
@@ -184,6 +187,7 @@ export async function verifyEmailOtp(
         success: true,
         message: `Welcome, ${localAccount.name}! Directing to Super Admin Console...`,
         redirectTo: "/super-admin",
+        role: localAccount.role,
       };
     }
 
@@ -192,6 +196,7 @@ export async function verifyEmailOtp(
         success: true,
         message: `Welcome back, Administrator ${localAccount.name}! Launching Akash Technolabs Admin Dashboard...`,
         redirectTo: "/admin/dashboard",
+        role: localAccount.role,
       };
     }
 
@@ -199,6 +204,7 @@ export async function verifyEmailOtp(
       success: true,
       message: `Welcome back, ${localAccount.name}! Launching Akash Technolabs Student Portal...`,
       redirectTo: "/student/dashboard",
+      role: localAccount.role,
     };
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : "Verification failed.";
@@ -252,6 +258,7 @@ export async function loginWithPassword(email: string, password: string): Promis
           success: true,
           message: `Authenticated as ${localAccount.name}. Launching Super Admin Console...`,
           redirectTo: "/super-admin",
+          role: localAccount.role,
         };
       }
 
@@ -260,6 +267,7 @@ export async function loginWithPassword(email: string, password: string): Promis
           success: true,
           message: `Authenticated as Administrator ${localAccount.name}. Launching Akash Technolabs Admin Dashboard...`,
           redirectTo: "/admin/dashboard",
+          role: localAccount.role,
         };
       }
 
@@ -268,6 +276,7 @@ export async function loginWithPassword(email: string, password: string): Promis
           success: true,
           message: `Authenticated as ${localAccount.name}. Launching Student Dashboard...`,
           redirectTo: "/student/dashboard",
+          role: localAccount.role,
         };
       }
 
@@ -275,6 +284,7 @@ export async function loginWithPassword(email: string, password: string): Promis
         success: true,
         message: `Authenticated as ${localAccount.name}. Launching Akash Technolabs Workspace...`,
         redirectTo: "/workspace",
+        role: localAccount.role,
       };
     }
 

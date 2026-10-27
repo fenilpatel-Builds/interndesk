@@ -1418,8 +1418,8 @@ export function DocumentStudioModal({
                       <strong className="text-slate-900">Remote / Hybrid Verified</strong>
                     </div>
                     <div>
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Biometric Punch:</span>
-                      <strong className="text-emerald-600">Audit-Grade Webcam GPS</strong>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Attendance Punch:</span>
+                      <strong className="text-emerald-600">Verified Digital Timestamp</strong>
                     </div>
                     <div>
                       <span className="text-[10px] uppercase font-bold text-slate-400 block">Verification:</span>

@@ -1,16 +1,17 @@
 import React from "react";
 import Link from "next/link";
-import { Shield, Mail, Phone, MapPin, Globe } from "lucide-react";
+import { Shield, Mail, Phone, MapPin, Globe, CheckCircle2, Zap, Lightbulb, Headphones } from "lucide-react";
 
 export function Footer() {
   return (
-    <footer className="bg-[#080d1a] text-slate-400 py-12 border-t border-slate-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pb-12 border-b border-slate-800">
+    <footer className="bg-[#080d1a] text-slate-400 border-t border-slate-900 select-none">
+      {/* Upper Footer Links */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pb-10 border-b border-slate-800/80">
           {/* Brand Info */}
           <div className="space-y-4 md:col-span-2">
             <div className="flex items-center gap-3">
-              <div className="p-1 rounded-xl bg-white border border-slate-700 shadow-sm">
+              <div className="p-1.5 rounded-xl bg-white border border-slate-700 shadow-sm">
                 <img
                   src="/images/akash-at-watermark-hd.png"
                   alt="Akash Technolabs"
@@ -19,42 +20,42 @@ export function Footer() {
               </div>
               <div>
                 <span className="text-lg font-black text-white tracking-tight">
-                  Akash<span className="text-[#ef4444]">®</span> Technolabs
+                  Akash<span className="text-[#E52329]">®</span> Technolabs
                 </span>
                 <span className="block text-[10px] uppercase font-bold tracking-wider text-slate-400">
-                  Student &amp; Intern Management Portal
+                  Institute Activity Management System
                 </span>
               </div>
             </div>
             <p className="text-sm text-slate-400 max-w-sm leading-relaxed">
-              Gujarat&apos;s leading IT training and software solutions institute specializing in AI/ML, Python, Cloud computing, and Full Stack enterprise development.
+              Gujarat&apos;s premier educational &amp; IT training institution managing student project activities, attendance, daily progress reports, and certified practicum credentials.
             </p>
           </div>
 
           {/* Platform Quick Links */}
           <div className="space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-white">
-              Platform Links
+              Platform Portals
             </h4>
             <ul className="space-y-2 text-sm">
               <li>
                 <Link href="/login" className="hover:text-red-400 transition-colors">
-                  Admin &amp; Student Sign In
+                  Student Sign In
                 </Link>
               </li>
               <li>
                 <Link href="/register" className="hover:text-red-400 transition-colors">
-                  Internship Enrollment
+                  Student Registration (Free)
                 </Link>
               </li>
               <li>
-                <Link href="/student/documents" className="hover:text-red-400 transition-colors">
-                  Offer Letters &amp; Certificates
+                <Link href="/student/activities" className="hover:text-red-400 transition-colors">
+                  Academic Activities Hub
                 </Link>
               </li>
               <li>
                 <Link href="/verify/ID-AKT-2026-0701" className="hover:text-red-400 transition-colors">
-                  Public Ledger Verification
+                  Public Certificate Verification
                 </Link>
               </li>
             </ul>
@@ -63,9 +64,9 @@ export function Footer() {
           {/* Contact & Location */}
           <div className="space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-white">
-              Akash Technolabs Contact
+              Headquarters
             </h4>
-            <ul className="space-y-2.5 text-xs text-slate-400">
+            <ul className="space-y-2 text-xs text-slate-400">
               <li className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
                 <span>202, Aarya Arcade, Above Passport Seva Kendra, Mithakhali Six Road, Navrangpura, Ahmedabad-380009.</span>
@@ -85,12 +86,53 @@ export function Footer() {
             </ul>
           </div>
         </div>
+      </div>
 
-        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
-          <p>© 2026 Akash Technolabs. All rights reserved.</p>
-          <div className="flex items-center gap-6">
-            <span>AI/ML • Python • Cloud • Full Stack</span>
-            <span>Accredited IT Practicum Center</span>
+      {/* Signature Bottom Ribbon matching Image 1 & Image 2 exactly */}
+      <div className="bg-[#050914] border-t border-slate-800/90 py-4 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
+          {/* Logo + Tagline */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 font-black text-sm text-white">
+              <span className="text-[#E52329]">Akash</span>
+              <span>Technolabs</span>
+            </div>
+            <span className="text-slate-600 hidden sm:inline">|</span>
+            <span className="text-slate-400 font-medium hidden sm:inline">
+              Building a smarter future through technology
+            </span>
+          </div>
+
+          {/* 4 Trust Badges */}
+          <div className="flex items-center gap-5 text-slate-400 text-[11px] font-semibold">
+            <span className="flex items-center gap-1.5 hover:text-white transition-colors">
+              <Shield className="w-3.5 h-3.5 text-blue-400" />
+              Secure
+            </span>
+            <span className="flex items-center gap-1.5 hover:text-white transition-colors">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              Reliable
+            </span>
+            <span className="flex items-center gap-1.5 hover:text-white transition-colors">
+              <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
+              Innovative
+            </span>
+            <span className="flex items-center gap-1.5 hover:text-white transition-colors">
+              <Headphones className="w-3.5 h-3.5 text-red-400" />
+              Support
+            </span>
+          </div>
+
+          {/* Website domain */}
+          <div>
+            <a
+              href="https://akashtechnolabs.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-slate-300 hover:text-white transition-colors"
+            >
+              www.akashtechnolabs.com
+            </a>
           </div>
         </div>
       </div>
