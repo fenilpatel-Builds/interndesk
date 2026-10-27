@@ -86,13 +86,13 @@ export function StudentTopbar({ title = "Dashboard", studentName }: StudentTopba
         {/* Date Capsule */}
         <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-600">
           <Calendar className="w-3.5 h-3.5 text-blue-600" />
-          <span>{currentDate || "Tue, Oct 27, 2026"}</span>
+          <span suppressHydrationWarning>{currentDate || "Tue, Oct 27, 2026"}</span>
         </div>
 
         {/* Live Time Capsule */}
         <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono font-bold text-slate-700">
           <Clock className="w-3.5 h-3.5 text-[#E52329]" />
-          <span>{currentTime || "11:20 AM"}</span>
+          <span suppressHydrationWarning>{currentTime || "11:20 AM"}</span>
         </div>
 
         {/* Notification Bell */}

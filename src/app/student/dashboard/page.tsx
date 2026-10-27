@@ -26,23 +26,24 @@ import { parseClientSessionCookie } from "@/lib/auth/client-session";
 
 export default function StudentDashboardPage() {
   const [userName, setUserName] = useState("Priya Sharma");
+  const [greeting, setGreeting] = useState("Good Morning");
 
   useEffect(() => {
     const session = parseClientSessionCookie();
     if (session?.name) {
       setUserName(session.name);
     }
+    const hour = new Date().getHours();
+    if (hour < 12) {
+      setGreeting("Good Morning");
+    } else if (hour < 17) {
+      setGreeting("Good Afternoon");
+    } else {
+      setGreeting("Good Evening");
+    }
   }, []);
 
   const firstName = userName.split(" ")[0] || "Priya";
-
-  const currentHour = typeof window !== "undefined" ? new Date().getHours() : 10;
-  const timeGreeting =
-    currentHour < 12
-      ? "Good Morning"
-      : currentHour < 17
-      ? "Good Afternoon"
-      : "Good Evening";
 
   const upcomingDeadlines = [
     {
@@ -106,8 +107,8 @@ export default function StudentDashboardPage() {
         {/* Header Greeting matching Image 1 Top-Right */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-              {timeGreeting}, {firstName}! 👋
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight" suppressHydrationWarning>
+              {greeting}, {firstName}! 👋
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
               Keep going! You&apos;re doing great. Here&apos;s what&apos;s happening today.

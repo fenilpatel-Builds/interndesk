@@ -20,7 +20,7 @@ export function Footer() {
               </div>
               <div>
                 <span className="text-lg font-black text-white tracking-tight">
-                  Akash<span className="text-[#E52329]">®</span> Technolabs
+                  Akash Technolabs
                 </span>
                 <span className="block text-[10px] uppercase font-bold tracking-wider text-slate-400">
                   Institute Activity Management System

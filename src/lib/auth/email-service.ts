@@ -50,7 +50,7 @@ export async function sendOtpEmail(email: string, otpCode: string): Promise<Send
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo-text">Akash<span class="logo-red">®</span> Technolabs</div>
+            <div class="logo-text">Akash Technolabs</div>
             <div class="sub-brand">Institute Activity Management System</div>
           </div>
           <div class="body-content">

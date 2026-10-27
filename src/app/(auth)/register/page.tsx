@@ -282,8 +282,7 @@ export default function RegisterPage() {
               <div className="flex flex-col">
                 <div className="flex items-center leading-tight">
                   <span className="text-base font-black text-white tracking-tight">Akash</span>
-                  <sup className="text-xs font-bold text-[#E52329] ml-0.5">®</sup>
-                  <span className="text-base font-black text-white ml-1 tracking-tight">Technolabs</span>
+                  <span className="text-base font-black text-white ml-1.5 tracking-tight">Technolabs</span>
                 </div>
                 <span className="text-[9px] uppercase font-bold text-sky-400 tracking-wider">
                   INSTITUTE ACTIVITY MANAGEMENT SYSTEM
