@@ -43,9 +43,9 @@ export function StudentTopbar({ title, studentName }: StudentTopbarProps) {
     <header className="h-16 bg-white border-b border-slate-200/90 px-6 flex items-center justify-between shrink-0">
       <div className="flex items-center gap-3">
         <h1 className="text-lg font-bold text-slate-900 tracking-tight">{title}</h1>
-        <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold">
-          <ShieldCheck className="w-3.5 h-3.5" />
-          <span>Verified Cohort</span>
+        <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-50 text-red-700 border border-red-200 text-xs font-semibold">
+          <ShieldCheck className="w-3.5 h-3.5 text-red-600" />
+          <span>Akash Technolabs Intern</span>
         </div>
 
         {/* Live Ticking Shift Indicator in Header */}

@@ -74,13 +74,20 @@ export function StudentSidebar() {
   return (
     <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col shrink-0 border-r border-slate-800 select-none">
       {/* Brand Header */}
-      <div className="h-16 flex items-center px-6 gap-3 border-b border-slate-800 bg-slate-950">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white font-bold shadow-sm">
-          <GraduationCap className="w-5 h-5" />
+      <div className="h-16 flex items-center px-4 gap-2.5 border-b border-slate-800 bg-slate-950">
+        <div className="w-9 h-9 rounded-xl bg-white p-1 flex items-center justify-center shrink-0 shadow-sm border border-slate-700">
+          <img
+            src="/images/akash-at-watermark-hd.png"
+            alt="Akash Technolabs"
+            className="w-7 h-7 object-contain"
+          />
         </div>
-        <div className="flex flex-col">
-          <span className="text-base font-bold text-white tracking-tight">InternDesk</span>
-          <span className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider">
+        <div className="flex flex-col min-w-0">
+          <div className="flex items-center leading-tight">
+            <span className="text-sm font-black text-[#ef4444] tracking-tight">Akash®</span>
+            <span className="text-sm font-black text-white ml-1 tracking-tight truncate">Technolabs</span>
+          </div>
+          <span className="text-[9px] uppercase font-bold text-emerald-400 tracking-wider">
             STUDENT PORTAL
           </span>
         </div>

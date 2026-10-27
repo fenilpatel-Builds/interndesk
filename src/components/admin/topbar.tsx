@@ -31,9 +31,9 @@ export function AdminTopbar({ title }: { title: string }) {
     <header className="h-16 bg-white border-b border-slate-200/90 px-6 flex items-center justify-between shrink-0">
       <div className="flex items-center gap-4">
         <h1 className="text-lg font-bold text-slate-900 tracking-tight">{title}</h1>
-        <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold">
-          <ShieldCheck className="w-3.5 h-3.5" />
-          <span>System Healthy</span>
+        <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-50 text-red-700 border border-red-200 text-xs font-semibold">
+          <ShieldCheck className="w-3.5 h-3.5 text-red-600" />
+          <span>Akash Technolabs Admin</span>
         </div>
       </div>
 

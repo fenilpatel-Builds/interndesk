@@ -98,9 +98,9 @@ export async function resolveAuthenticatedTenantContext(
   if (!orgId) {
     try {
       const cookieStore = await cookies();
-      orgId = cookieStore.get("interndesk_active_org")?.value || "org-apex-01";
+      orgId = cookieStore.get("interndesk_active_org")?.value || "org-akash-01";
     } catch {
-      orgId = "org-apex-01";
+      orgId = "org-akash-01";
     }
   }
 

@@ -16,11 +16,11 @@ const serifFont = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "InternDesk — Your Internship Journey, Simplified.",
+  title: "Akash Technolabs — Student & Intern Management Portal",
   description:
-    "Register, learn, work, track your progress, complete assessments, and get your internship documents — all in one place.",
+    "Official internship workspace, attendance tracking, daily reports, task practicum, and verified offer letters for Akash Technolabs.",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/images/akash-at-watermark-hd.png",
   },
 };
 

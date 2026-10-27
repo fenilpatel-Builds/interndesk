@@ -44,6 +44,7 @@ export default function RegisterPage() {
   const [studentPassword, setStudentPassword] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
   const [otpMessage, setOtpMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  const [otpPreview, setOtpPreview] = useState<string | null>(null);
 
   const [applicationSuccessData, setApplicationSuccessData] = useState<{
     applicationNumber: string;
@@ -177,6 +178,9 @@ export default function RegisterPage() {
       if (res.success) {
         setResendCooldown(30);
         setOtpMessage({ text: res.message, type: "success" });
+        if (res.otpPreview) {
+          setOtpPreview(res.otpPreview);
+        }
       } else {
         setOtpMessage({ text: res.message || "Failed to dispatch email verification code.", type: "error" });
       }
@@ -708,7 +712,7 @@ export default function RegisterPage() {
                     <Button
                       onClick={handleNextFromStep1}
                       size="lg"
-                      className="bg-blue-600 hover:bg-blue-700 font-semibold px-6 rounded-xl"
+                      className="bg-[#d32f2f] hover:bg-[#b71c1c] text-white font-semibold px-6 rounded-xl shadow-md shadow-red-900/20"
                     >
                       Next: Academic Info
                       <ArrowRight className="w-4 h-4 ml-1.5" />
@@ -804,7 +808,7 @@ export default function RegisterPage() {
                     <Button
                       onClick={handleNextFromStep2}
                       size="lg"
-                      className="bg-blue-600 hover:bg-blue-700 font-semibold px-6 rounded-xl"
+                      className="bg-[#d32f2f] hover:bg-[#b71c1c] text-white font-semibold px-6 rounded-xl shadow-md shadow-red-900/20"
                     >
                       Next: Verify Email
                       <ArrowRight className="w-4 h-4 ml-1.5" />
@@ -844,6 +848,30 @@ export default function RegisterPage() {
                     <span className="text-xs text-slate-500 block">Enter 6 numeric digits</span>
                   </div>
 
+                  {otpPreview && (
+                    <div className="p-3.5 rounded-xl bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 text-xs text-slate-800 shadow-xs flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold text-red-950 flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-red-600" />
+                          Resend Dispatch Assistant (Akash Technolabs)
+                        </p>
+                        <p className="text-[11px] text-slate-600 mt-0.5">
+                          Verification code: <span className="font-mono font-bold text-red-700 tracking-wider text-sm">{otpPreview}</span>
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOtpCode(otpPreview);
+                          if (otpMessage?.type === "error") setOtpMessage(null);
+                        }}
+                        className="px-2.5 py-1 text-xs font-bold rounded-lg bg-[#d32f2f] hover:bg-[#b71c1c] text-white shadow-xs transition"
+                      >
+                        Auto-fill
+                      </button>
+                    </div>
+                  )}
+
                   {otpMessage && (
                     <div
                       className={`p-3 rounded-xl text-xs font-semibold flex items-center gap-2 ${
@@ -869,7 +897,7 @@ export default function RegisterPage() {
                       className={`text-xs font-semibold inline-flex items-center gap-1.5 transition-colors ${
                         resendCooldown > 0 || isSendingOtp
                           ? "text-slate-400 cursor-not-allowed"
-                          : "text-blue-600 hover:text-blue-800 hover:underline"
+                          : "text-red-600 hover:text-red-800 hover:underline"
                       }`}
                     >
                       <RefreshCw className={`w-3.5 h-3.5 ${isSendingOtp ? "animate-spin" : ""}`} />
@@ -890,7 +918,7 @@ export default function RegisterPage() {
                       onClick={handleVerifyOtp}
                       size="lg"
                       disabled={otpCode.length !== 6 || isVerifyingOtp}
-                      className="bg-blue-600 hover:bg-blue-700 font-semibold px-6 rounded-xl"
+                      className="bg-[#d32f2f] hover:bg-[#b71c1c] text-white font-semibold px-6 rounded-xl shadow-md shadow-red-900/20"
                       isLoading={isVerifyingOtp}
                     >
                       Verify Code

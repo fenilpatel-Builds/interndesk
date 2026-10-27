@@ -61,7 +61,7 @@ export async function proxy(request: NextRequest) {
 
   // Ensure active org cookie default
   if (!request.cookies.get("interndesk_active_org")?.value) {
-    response.cookies.set("interndesk_active_org", "org-apex-01", {
+    response.cookies.set("interndesk_active_org", "org-akash-01", {
       path: "/",
       sameSite: "lax",
     });

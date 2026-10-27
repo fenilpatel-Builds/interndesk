@@ -8,6 +8,7 @@ interface AnimatedLogoProps {
   size?: "sm" | "md" | "lg";
   showTagline?: boolean;
   href?: string;
+  variant?: "light" | "dark" | "auto";
 }
 
 export function AnimatedLogo({
@@ -15,80 +16,43 @@ export function AnimatedLogo({
   size = "md",
   showTagline = true,
   href = "/",
+  variant = "auto",
 }: AnimatedLogoProps) {
   const sizeMap = {
-    sm: { icon: "w-8 h-8", text: "text-lg", sub: "text-[9px]" },
-    md: { icon: "w-10 h-10", text: "text-xl", sub: "text-[10px]" },
-    lg: { icon: "w-12 h-12", text: "text-2xl", sub: "text-xs" },
+    sm: { icon: "h-7 w-auto", text: "text-base", sub: "text-[9px]" },
+    md: { icon: "h-9 w-auto", text: "text-lg", sub: "text-[10px]" },
+    lg: { icon: "h-11 w-auto", text: "text-xl", sub: "text-xs" },
   };
 
   const currentSize = sizeMap[size];
 
   const content = (
-    <div className={`inline-flex items-center gap-3 select-none group ${className}`}>
-      {/* Animated Desk Emblem */}
-      <div
-        className={`relative ${currentSize.icon} rounded-xl bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-800 p-0.5 shadow-md shadow-blue-500/20 transition-transform duration-300 group-hover:scale-105`}
-      >
-        <div className="w-full h-full bg-slate-950/20 backdrop-blur-xs rounded-[10px] flex items-center justify-center relative overflow-hidden">
-          {/* Subtle Ambient Radial Glow */}
-          <div className="absolute inset-0 bg-radial from-blue-400/30 to-transparent opacity-75 animate-pulse" />
-
-          {/* SVG Animated Desk / Workspace Symbol with Nodes */}
-          <svg
-            viewBox="0 0 40 40"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className="w-6 h-6 relative z-10 text-white"
-          >
-            {/* Top Workspace Bar */}
-            <path
-              d="M8 14H32"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              className="drop-shadow-sm transition-all"
-            />
-            {/* Supporting Legs & Connected Nodes */}
-            <path
-              d="M12 14V26M28 14V26"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              opacity="0.85"
-            />
-            {/* Cross Strut / Growth Path */}
-            <path
-              d="M12 21H28"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeDasharray="2 2"
-              opacity="0.7"
-            />
-            {/* Floating Innovation Node Points (Learn • Work • Grow) */}
-            <circle cx="8" cy="14" r="2" fill="#60A5FA" />
-            <circle cx="32" cy="14" r="2" fill="#60A5FA" />
-            <circle cx="20" cy="10" r="2.2" fill="#38BDF8" className="animate-ping" style={{ animationDuration: "3s" }} />
-            <circle cx="20" cy="10" r="2" fill="#FFFFFF" />
-            <circle cx="12" cy="26" r="1.8" fill="#818CF8" />
-            <circle cx="28" cy="26" r="1.8" fill="#818CF8" />
-          </svg>
-        </div>
+    <div className={`inline-flex items-center gap-2.5 select-none group ${className}`}>
+      {/* Official Akash Technolabs Emblem with Subtle Ambient Glow */}
+      <div className="relative shrink-0 flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
+        <div className="absolute -inset-1 bg-gradient-to-r from-red-600/30 to-blue-700/30 rounded-xl blur-xs opacity-60 group-hover:opacity-100 transition-opacity" />
+        <img
+          src="/images/akash-at-watermark-hd.png"
+          alt="Akash Technolabs"
+          className={`${currentSize.icon} relative z-10 object-contain drop-shadow-xs`}
+        />
       </div>
 
-      {/* Brand Wordmark & Tagline */}
+      {/* Brand Wordmark & Official Tagline */}
       <div className="flex flex-col text-left">
-        <span
-          className={`font-black tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors ${currentSize.text}`}
-        >
-          Intern<span className="text-blue-600">Desk</span>
-        </span>
+        <div className="flex items-center leading-none">
+          <span className={`font-black tracking-tight text-[#d32f2f] ${currentSize.text}`}>
+            Akash<span className="text-[10px] align-super font-bold ml-0.5">®</span>
+          </span>
+          <span className={`font-black tracking-tight text-[#1e3264] ml-1.5 ${currentSize.text}`}>
+            Technolabs
+          </span>
+        </div>
         {showTagline && (
           <span
-            className={`font-bold uppercase tracking-wider text-slate-500 transition-colors group-hover:text-slate-700 ${currentSize.sub}`}
+            className={`font-bold uppercase tracking-wider text-slate-500 mt-1 leading-none ${currentSize.sub}`}
           >
-            Learn • Work • Grow
+            Student &amp; Intern Workspace
           </span>
         )}
       </div>

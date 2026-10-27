@@ -10,11 +10,10 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks = [
-    { label: "Platform", href: "/#platform" },
-    { label: "Solutions", href: "/#solutions" },
-    { label: "Features", href: "/#features" },
-    { label: "Security", href: "/#security" },
-    { label: "Verify Credential", href: "/verify/IND-APX-2026-0042" },
+    { label: "Overview", href: "/#platform" },
+    { label: "Programs", href: "/student/programs" },
+    { label: "Tasks Practicum", href: "/#features" },
+    { label: "Verify Offer Letter", href: "/verify/ID-AKT-2026-0701" },
   ];
 
   return (
@@ -30,7 +29,7 @@ export function Navbar() {
               <Link
                 key={link.label}
                 href={link.href}
-                className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors"
+                className="text-sm font-semibold text-slate-600 hover:text-[#d32f2f] transition-colors"
               >
                 {link.label}
               </Link>
@@ -39,21 +38,11 @@ export function Navbar() {
 
           {/* Action CTAs */}
           <div className="hidden md:flex items-center gap-2.5">
-            <Link href="/join">
-              <Button
-                variant="outline"
-                size="sm"
-                className="font-semibold text-slate-700 border-slate-300 hover:bg-slate-50 px-3.5 rounded-xl flex items-center gap-1.5"
-              >
-                <Search className="w-3.5 h-3.5 text-slate-500" />
-                Find Org
-              </Button>
-            </Link>
             <Link href="/login">
               <Button
                 variant="outline"
                 size="sm"
-                className="font-semibold text-slate-700 border-slate-300 hover:bg-slate-50 px-3.5 rounded-xl"
+                className="font-semibold text-slate-700 border-slate-300 hover:border-red-400 hover:text-red-700 hover:bg-red-50/50 px-4 rounded-xl cursor-pointer"
               >
                 Sign In
               </Button>
@@ -61,19 +50,10 @@ export function Navbar() {
             <Link href="/register">
               <Button
                 size="sm"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 rounded-xl shadow-xs flex items-center gap-1.5"
+                className="bg-[#d32f2f] hover:bg-[#b91c1c] text-white font-bold px-4 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer"
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Free Register</span>
-              </Button>
-            </Link>
-            <Link href="/onboard/organization">
-              <Button
-                size="sm"
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-500/10 px-4 rounded-xl flex items-center gap-1.5"
-              >
-                <Building2 className="w-4 h-4" />
-                Create Workspace
+                <span>Intern Enrollment</span>
               </Button>
             </Link>
           </div>

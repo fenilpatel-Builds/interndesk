@@ -170,7 +170,7 @@ export default function StudentDocumentsPage() {
     }
   }, []);
 
-  const activeOrgId = currentUser?.organizationId || "org-apex-01";
+  const activeOrgId = currentUser?.organizationId || "org-akash-01";
   const storeDocs = multiTenantStore.getIssuedDocuments(activeOrgId);
   const userDocs = storeDocs.filter((d) => {
     if (!currentUser) return true;
