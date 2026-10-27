@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -22,6 +22,7 @@ import {
   Shield,
   Lightbulb,
   Headphones,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatedLogo } from "@/components/ui/animated-logo";
@@ -30,7 +31,7 @@ import { loginWithPassword, sendEmailOtp, verifyEmailOtp } from "@/lib/auth/acti
 export default function LoginPage() {
   const router = useRouter();
 
-  // Role tab state: Student, Faculty, Admin matching Image 1
+  // Role tab state: Student, Faculty, Admin
   const [selectedRole, setSelectedRole] = useState<"Student" | "Faculty" | "Admin">("Student");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -42,11 +43,22 @@ export default function LoginPage() {
   // Email OTP Login Mode
   const [authMode, setAuthMode] = useState<"PASSWORD" | "OTP">("PASSWORD");
   const [otpSent, setOtpSent] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
+  const [otpDigits, setOtpDigits] = useState<string[]>(["", "", "", "", "", ""]);
+  const [forwardedTo, setForwardedTo] = useState<string | null>(null);
   const [otpSuccessMessage, setOtpSuccessMessage] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   // Watch Demo Modal
   const [demoModalOpen, setDemoModalOpen] = useState(false);
+
+  // Refs for 6-box OTP digits
+  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => setResendCooldown((p) => p - 1), 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   // Role selection
   const handleRoleSelect = (role: "Student" | "Faculty" | "Admin") => {
@@ -89,7 +101,17 @@ export default function LoginPage() {
       const res = await sendEmailOtp(email.trim().toLowerCase());
       if (res.success) {
         setOtpSent(true);
-        setOtpSuccessMessage(res.message || `Verification OTP sent to ${email}`);
+        if (res.forwardedTo) {
+          setForwardedTo(res.forwardedTo);
+        } else {
+          setForwardedTo(null);
+        }
+        setOtpSuccessMessage(res.message || `Verification OTP dispatched to ${email}`);
+        setResendCooldown(30);
+        setOtpDigits(["", "", "", "", "", ""]);
+        setTimeout(() => {
+          otpInputRefs.current[0]?.focus();
+        }, 100);
       } else {
         setErrorMessage(res.error || res.message || "Failed to dispatch email verification code.");
       }
@@ -100,17 +122,57 @@ export default function LoginPage() {
     }
   };
 
+  // OTP 6-box inputs handling
+  const handleOtpDigitChange = (index: number, value: string) => {
+    const cleanVal = value.replace(/\D/g, "");
+    if (!cleanVal) {
+      const newDigits = [...otpDigits];
+      newDigits[index] = "";
+      setOtpDigits(newDigits);
+      return;
+    }
+
+    if (cleanVal.length > 1) {
+      const digitsArr = cleanVal.slice(0, 6).split("");
+      const newDigits = [...otpDigits];
+      digitsArr.forEach((d, i) => {
+        if (index + i < 6) {
+          newDigits[index + i] = d;
+        }
+      });
+      setOtpDigits(newDigits);
+      const nextIdx = Math.min(index + digitsArr.length, 5);
+      otpInputRefs.current[nextIdx]?.focus();
+      return;
+    }
+
+    const newDigits = [...otpDigits];
+    newDigits[index] = cleanVal;
+    setOtpDigits(newDigits);
+
+    if (index < 5 && cleanVal) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && !otpDigits[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!otpCode || otpCode.length < 6) {
-      setErrorMessage("Please enter the 6-digit OTP code.");
+    const fullOtp = otpDigits.join("");
+    if (fullOtp.length !== 6) {
+      setErrorMessage("Please enter all 6 digits of the OTP code.");
       return;
     }
     setLoading(true);
     setErrorMessage(null);
 
     try {
-      const res = await verifyEmailOtp(email.trim().toLowerCase(), otpCode.trim());
+      const res = await verifyEmailOtp(email.trim().toLowerCase(), fullOtp);
       if (res.success) {
         if (res.role === "SUPER_ADMIN" || res.role === "ADMIN" || res.role === "FACULTY") {
           router.push("/admin/dashboard");
@@ -129,10 +191,10 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-gradient-to-b from-slate-50 via-white to-blue-50/40 select-none">
-      {/* Top Header matching Image 1 */}
+      {/* Top Header */}
       <header className="sticky top-0 z-40 w-full border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-18">
+          <div className="flex items-center justify-between h-14 sm:h-16">
             <AnimatedLogo size="md" showTagline={false} />
 
             <nav className="hidden md:flex items-center gap-8">
@@ -154,7 +216,7 @@ export default function LoginPage() {
               <Link href="/register">
                 <Button
                   size="sm"
-                  className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold px-5 py-2 rounded-xl shadow-xs transition-transform hover:scale-[1.02] cursor-pointer"
+                  className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold px-4 py-1.5 sm:px-5 sm:py-2 rounded-xl shadow-xs transition-transform hover:scale-[1.02] cursor-pointer text-xs sm:text-sm"
                 >
                   Get Started
                 </Button>
@@ -164,118 +226,118 @@ export default function LoginPage() {
         </div>
       </header>
 
-      {/* Main Container matching Image 1 Top Left */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+      {/* Main Container - Compact Spacing with card moved UP (No excess blank space) */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-3 lg:py-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-start">
           {/* Left Column: Hero Copy, 4 Pills, CTAs & Vector Illustration */}
-          <div className="lg:col-span-7 space-y-6">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200/80 text-xs font-black tracking-widest text-sky-600 uppercase shadow-2xs">
+          <div className="lg:col-span-7 space-y-3 sm:space-y-4 pt-1 sm:pt-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200/80 text-[11px] font-black tracking-widest text-sky-600 uppercase shadow-2xs">
               <span>LEARN • GROW • ACHIEVE</span>
             </div>
 
-            <h1 className="text-3xl sm:text-5xl lg:text-[3.25rem] font-black text-slate-900 tracking-tight leading-[1.15]">
+            <h1 className="text-2xl sm:text-4xl lg:text-[2.6rem] font-black text-slate-900 tracking-tight leading-[1.15]">
               Institute Activity <br />
               <span className="text-[#E52329]">Management System</span>
             </h1>
 
-            <p className="text-base sm:text-lg text-slate-600 leading-relaxed max-w-xl font-normal">
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-xl font-normal">
               Empowering students, faculty and administrators with a smart, secure and seamless platform for activities, submissions, learning and progress.
             </p>
 
-            {/* 4 Feature Value Pills matching Image 1 */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
-              <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex flex-col items-center text-center">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mb-1.5">
-                  <Lock className="w-4 h-4" />
+            {/* 4 Feature Value Pills */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-0.5">
+              <div className="p-2 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex flex-col items-center text-center">
+                <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mb-1">
+                  <Lock className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-[11px] font-bold text-slate-800 leading-tight">
-                  Secure Authentication
+                <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 leading-tight">
+                  Secure Auth
                 </span>
               </div>
 
-              <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex flex-col items-center text-center">
-                <div className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center mb-1.5">
-                  <Bell className="w-4 h-4" />
+              <div className="p-2 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex flex-col items-center text-center">
+                <div className="w-7 h-7 rounded-lg bg-red-50 text-red-600 flex items-center justify-center mb-1">
+                  <Bell className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-[11px] font-bold text-slate-800 leading-tight">
-                  Real-time Notifications
+                <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 leading-tight">
+                  Real-time Alerts
                 </span>
               </div>
 
-              <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex flex-col items-center text-center">
-                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center mb-1.5">
-                  <FileCheck2 className="w-4 h-4" />
+              <div className="p-2 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex flex-col items-center text-center">
+                <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center mb-1">
+                  <FileCheck2 className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-[11px] font-bold text-slate-800 leading-tight">
-                  Easy Submissions
+                <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 leading-tight">
+                  Submissions
                 </span>
               </div>
 
-              <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex flex-col items-center text-center">
-                <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center mb-1.5">
-                  <TrendingUp className="w-4 h-4" />
+              <div className="p-2 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex flex-col items-center text-center">
+                <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center mb-1">
+                  <TrendingUp className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-[11px] font-bold text-slate-800 leading-tight">
-                  Progress Tracking
+                <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 leading-tight">
+                  Analytics
                 </span>
               </div>
             </div>
 
             {/* Action Buttons Row */}
-            <div className="flex flex-col sm:flex-row items-center gap-3.5 pt-2">
+            <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-1">
               <Link href="/register" className="w-full sm:w-auto">
                 <Button
-                  size="lg"
-                  className="w-full sm:w-auto bg-[#E52329] hover:bg-[#C41C22] text-white font-bold px-7 py-6 rounded-xl shadow-md shadow-red-500/20 text-sm flex items-center justify-center gap-2 transition-transform hover:scale-[1.02] cursor-pointer"
+                  size="sm"
+                  className="w-full sm:w-auto bg-[#E52329] hover:bg-[#C41C22] text-white font-bold px-5 py-2.5 rounded-xl shadow-md shadow-red-500/20 text-xs sm:text-sm flex items-center justify-center gap-2 transition-transform hover:scale-[1.02] cursor-pointer"
                 >
                   <span>Get Started Free</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </Button>
               </Link>
               <button
                 type="button"
                 onClick={() => setDemoModalOpen(true)}
-                className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm flex items-center justify-center gap-2 shadow-2xs transition-all cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2 rounded-xl border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-2xs transition-all cursor-pointer"
               >
-                <div className="w-6 h-6 rounded-full bg-red-100 text-[#E52329] flex items-center justify-center">
-                  <Play className="w-3 h-3 fill-current ml-0.5" />
+                <div className="w-5 h-5 rounded-full bg-red-100 text-[#E52329] flex items-center justify-center">
+                  <Play className="w-2.5 h-2.5 fill-current ml-0.5" />
                 </div>
                 <span>Watch Demo</span>
               </button>
             </div>
 
             {/* Student Illustration */}
-            <div className="relative pt-4 flex justify-center lg:justify-start">
-              <div className="relative max-w-md w-full">
+            <div className="relative pt-1 flex justify-center lg:justify-start">
+              <div className="relative max-w-[260px] sm:max-w-xs w-full">
                 <img
                   src="/images/student-hero-illustration.png"
                   alt="Akash Technolabs Student Management"
-                  className="w-full h-auto object-contain drop-shadow-lg"
+                  className="w-full h-auto object-contain drop-shadow-md"
                 />
               </div>
             </div>
           </div>
 
-          {/* Right Column: Exact "Welcome Back!" Login Card matching Image 1 */}
+          {/* Right Column: Exact "Welcome Back!" Login Card - Moved Up & Compacted */}
           <div className="lg:col-span-5">
-            <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xl shadow-slate-200/60 p-6 sm:p-8 relative">
-              <div className="text-center mb-6">
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+            <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-lg shadow-slate-200/50 p-4 sm:p-6 relative">
+              <div className="text-center mb-3 sm:mb-4">
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                   Welcome Back!
                 </h2>
-                <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
                   Sign in to your account to continue
                 </p>
               </div>
 
               {/* Role Switcher Tabs (Student, Faculty, Admin) */}
-              <div className="flex p-1 bg-slate-100 rounded-xl mb-6">
+              <div className="flex p-1 bg-slate-100 rounded-xl mb-3.5">
                 {(["Student", "Faculty", "Admin"] as const).map((role) => (
                   <button
                     key={role}
                     type="button"
                     onClick={() => handleRoleSelect(role)}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                       selectedRole === role
                         ? "bg-white text-slate-900 shadow-xs"
                         : "text-slate-600 hover:text-slate-900"
@@ -288,13 +350,13 @@ export default function LoginPage() {
 
               {/* Feedback messages */}
               {errorMessage && (
-                <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs font-semibold text-red-700 flex items-center gap-2">
+                <div className="mb-3 p-2.5 rounded-xl bg-red-50 border border-red-200 text-xs font-semibold text-red-700 flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
                   <span>{errorMessage}</span>
                 </div>
               )}
               {otpSuccessMessage && (
-                <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-700 flex items-center gap-2">
+                <div className="mb-3 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-700 flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
                   <span>{otpSuccessMessage}</span>
                 </div>
@@ -302,7 +364,7 @@ export default function LoginPage() {
 
               {/* Password Login Form */}
               {authMode === "PASSWORD" ? (
-                <form onSubmit={handlePasswordLogin} className="space-y-4">
+                <form onSubmit={handlePasswordLogin} className="space-y-3">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
                       Institute Email
@@ -314,10 +376,10 @@ export default function LoginPage() {
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="you@akashtechnolabs.com"
                         required
-                        autoComplete="off"
-                        className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-900 bg-white placeholder-slate-400"
+                        autoComplete="email"
+                        className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white placeholder-slate-400"
                       />
-                      <Mail className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <Mail className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
                   </div>
 
@@ -328,7 +390,7 @@ export default function LoginPage() {
                       </label>
                       <Link
                         href="/forgot-password"
-                        className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+                        className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 hover:underline"
                       >
                         Forgot password?
                       </Link>
@@ -340,27 +402,28 @@ export default function LoginPage() {
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Enter your password"
                         required
-                        autoComplete="new-password"
-                        className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-900 bg-white placeholder-slate-400"
+                        autoComplete="current-password"
+                        className="w-full pl-3 pr-10 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white placeholder-slate-400"
                       />
                       <button
                         type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                        tabIndex={-1}
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        onMouseDown={(e) => e.preventDefault()}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer z-10"
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-1">
+                  <div className="flex items-center justify-between pt-0.5">
                     <label className="flex items-center gap-2 text-xs text-slate-600 font-medium cursor-pointer">
                       <input
                         type="checkbox"
                         checked={rememberMe}
                         onChange={(e) => setRememberMe(e.target.checked)}
-                        className="w-4 h-4 text-[#E52329] rounded border-slate-300 focus:ring-red-500"
+                        className="w-4 h-4 text-[#E52329] rounded border-slate-300 focus:ring-red-500 cursor-pointer"
                       />
                       <span>Remember me</span>
                     </label>
@@ -380,14 +443,14 @@ export default function LoginPage() {
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-[#E52329] hover:bg-[#C41C22] text-white font-bold py-3 rounded-xl shadow-md shadow-red-500/20 text-sm transition-all cursor-pointer"
+                    className="w-full bg-[#E52329] hover:bg-[#C41C22] text-white font-bold py-2.5 sm:py-3 rounded-xl shadow-md shadow-red-500/20 text-xs sm:text-sm transition-all cursor-pointer"
                   >
                     {loading ? "Signing in..." : "Sign In"}
                   </Button>
                 </form>
               ) : (
                 /* OTP Login Form */
-                <div className="space-y-4">
+                <div className="space-y-3.5">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
                       Institute Email
@@ -398,58 +461,86 @@ export default function LoginPage() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="you@akashtechnolabs.com"
-                        autoComplete="off"
-                        className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
+                        autoComplete="email"
+                        className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white"
                       />
-                      <Mail className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <Mail className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
                   </div>
+
+                  {/* Informational Sandbox Banner if Resend Free Tier restriction applies */}
+                  {forwardedTo && (
+                    <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200/90 text-xs text-amber-900 flex items-start gap-2">
+                      <Info className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                      <div className="text-[11px] space-y-0.5">
+                        <p className="font-bold">Resend Sandbox Mode:</p>
+                        <p>
+                          OTP dispatched to verified account: <strong className="font-mono">{forwardedTo}</strong>.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   {!otpSent ? (
                     <Button
                       type="button"
                       onClick={handleRequestOtp}
                       disabled={loading}
-                      className="w-full bg-[#0F4C81] hover:bg-[#0B355A] text-white font-bold py-3 rounded-xl text-sm cursor-pointer"
+                      className="w-full bg-[#1E3264] hover:bg-[#152347] text-white font-bold py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm cursor-pointer shadow-md transition-all"
                     >
                       {loading ? "Sending OTP..." : "Send Verification OTP to Email"}
                     </Button>
                   ) : (
                     <form onSubmit={handleVerifyOtp} className="space-y-3">
                       <div>
-                        <div className="mb-1">
-                          <label className="text-xs font-bold text-slate-700">
-                            6-Digit Security OTP (Check your Email Inbox)
-                          </label>
+                        <label className="block text-xs font-bold text-slate-700 mb-2 text-center">
+                          Enter 6-Digit OTP from Email
+                        </label>
+                        <div className="flex items-center justify-center gap-1.5 sm:gap-2">
+                          {otpDigits.map((digit, idx) => (
+                            <input
+                              key={idx}
+                              ref={(el) => {
+                                otpInputRefs.current[idx] = el;
+                              }}
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              maxLength={6}
+                              value={digit}
+                              onChange={(e) => handleOtpDigitChange(idx, e.target.value)}
+                              onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                              className={`w-9 h-11 sm:w-10 sm:h-12 text-center text-lg font-mono font-black rounded-xl border transition-all ${
+                                digit
+                                  ? "border-blue-600 bg-blue-50/40 text-blue-900 shadow-xs"
+                                  : "border-slate-300 bg-white text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                              }`}
+                            />
+                          ))}
                         </div>
-                        <input
-                          type="text"
-                          maxLength={6}
-                          value={otpCode}
-                          onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                          placeholder="Enter 6-digit OTP"
-                          required
-                          autoFocus
-                          className="w-full tracking-widest text-center text-lg font-mono font-bold py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 text-slate-900"
-                        />
                       </div>
 
                       <Button
                         type="submit"
-                        disabled={loading}
-                        className="w-full bg-[#E52329] hover:bg-[#C41C22] text-white font-bold py-3 rounded-xl text-sm cursor-pointer"
+                        disabled={loading || otpDigits.join("").length !== 6}
+                        className="w-full bg-[#E52329] hover:bg-[#C41C22] text-white font-bold py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm cursor-pointer shadow-md shadow-red-500/20 disabled:opacity-50"
                       >
                         {loading ? "Verifying..." : "Verify & Sign In"}
                       </Button>
 
-                      <div className="text-center">
+                      <div className="flex items-center justify-between text-xs text-slate-500 px-1">
+                        <span className="text-[11px]">Valid 10 mins</span>
                         <button
                           type="button"
                           onClick={handleRequestOtp}
-                          disabled={loading}
-                          className="text-xs font-semibold text-blue-600 hover:underline cursor-pointer"
+                          disabled={resendCooldown > 0 || loading}
+                          className={`font-semibold cursor-pointer ${
+                            resendCooldown > 0
+                              ? "text-slate-400"
+                              : "text-blue-600 hover:underline"
+                          }`}
                         >
-                          Resend Verification Code
+                          {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend OTP"}
                         </button>
                       </div>
                     </form>
@@ -471,12 +562,12 @@ export default function LoginPage() {
               )}
 
               {/* Divider: or continue with */}
-              <div className="relative my-5">
+              <div className="relative my-3">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-slate-200" />
                 </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="bg-white px-3 text-slate-400 font-medium">
+                <div className="relative flex justify-center text-[11px]">
+                  <span className="bg-white px-2.5 text-slate-400 font-medium">
                     or continue with
                   </span>
                 </div>
@@ -488,7 +579,7 @@ export default function LoginPage() {
                 onClick={() => {
                   setErrorMessage("Please use your registered email address with OTP or password to authenticate.");
                 }}
-                className="w-full py-2.5 px-4 rounded-xl border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center justify-center gap-2.5 transition-colors cursor-pointer"
+                className="w-full py-2 px-3 rounded-xl border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24">
                   <path
@@ -512,7 +603,7 @@ export default function LoginPage() {
               </button>
 
               {/* Card Footer: Don't have an account? Register now */}
-              <div className="text-center mt-5 pt-3 border-t border-slate-100 text-xs text-slate-500 font-medium">
+              <div className="text-center mt-3 pt-2 border-t border-slate-100 text-xs text-slate-500 font-medium">
                 Don&apos;t have an account?{" "}
                 <Link
                   href="/register"
@@ -526,21 +617,22 @@ export default function LoginPage() {
         </div>
       </main>
 
-      {/* Signature Bottom Ribbon matching Image 1 */}
-      <footer className="bg-[#050914] border-t border-slate-800/90 py-4 px-4 sm:px-6 lg:px-8 select-none">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
-          <div className="flex items-center gap-3">
+      {/* Signature Bottom Ribbon */}
+      <footer className="bg-[#050914] border-t border-slate-800/90 py-3 px-4 sm:px-6 lg:px-8 select-none">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5">
             <div className="flex items-center gap-1.5 font-black text-sm text-white">
               <span className="text-[#E52329]">Akash</span>
-              <span>Technolabs</span>
+              <span className="text-white">Technolabs</span>
+              <span className="text-[10px] text-slate-400 align-super">®</span>
             </div>
             <span className="text-slate-600 hidden sm:inline">|</span>
-            <span className="text-slate-400 font-medium hidden sm:inline">
+            <span className="text-slate-400 font-medium hidden sm:inline text-[11px]">
               Building a smarter future through technology
             </span>
           </div>
 
-          <div className="flex items-center gap-5 text-slate-400 text-[11px] font-semibold">
+          <div className="flex items-center gap-4 text-slate-400 text-[11px] font-semibold">
             <span className="flex items-center gap-1.5 hover:text-white transition-colors">
               <Shield className="w-3.5 h-3.5 text-blue-400" />
               Secure
@@ -564,7 +656,7 @@ export default function LoginPage() {
               href="https://akashtechnolabs.com/"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-mono text-slate-300 hover:text-white transition-colors"
+              className="font-mono text-slate-300 hover:text-white transition-colors text-[11px]"
             >
               www.akashtechnolabs.com
             </a>
@@ -610,7 +702,7 @@ export default function LoginPage() {
                   onClick={() => setDemoModalOpen(false)}
                   className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold rounded-xl text-xs"
                 >
-                  Close &amp; Sign In
+                  Close &amp; Continue
                 </Button>
               </div>
             </div>

@@ -104,8 +104,14 @@ export async function sendOtpEmail(email: string, otpCode: string): Promise<Send
 
     // If Resend free tier restricts to verified owner email (huntking002@gmail.com)
     const isSandboxRestriction =
+      response.status === 403 ||
       errorMessage.toLowerCase().includes("testing emails to your own email address") ||
-      errorMessage.toLowerCase().includes("huntking002@gmail.com");
+      errorMessage.toLowerCase().includes("huntking002@gmail.com") ||
+      errorMessage.toLowerCase().includes("verify a domain");
+
+    if (process.env.NODE_ENV !== "production") {
+      console.info(`[Akash Technolabs Dev OTP Helper] Target: ${cleanEmail} | OTP: ${otpCode}`);
+    }
 
     if (isSandboxRestriction) {
       const sandboxOwner = "huntking002@gmail.com";

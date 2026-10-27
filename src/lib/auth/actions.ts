@@ -19,6 +19,7 @@ export interface AuthResponse {
   sandboxOtp?: string;
   role?: MemberRole | string;
   provider?: string;
+  forwardedTo?: string;
 }
 
 /**
@@ -44,10 +45,14 @@ export async function sendEmailOtp(email: string): Promise<AuthResponse> {
       };
     }
 
+    const isForwarded = Boolean(emailRes.forwardedTo);
     return {
       success: true,
-      message: `A 6-digit verification code has been dispatched to your email address (${cleanEmail}). Please check your inbox!`,
+      message: isForwarded
+        ? `Verification code delivered to your verified Resend account: ${emailRes.forwardedTo} (Resend Sandbox). Please check that inbox!`
+        : `A 6-digit verification code has been dispatched to your email address (${cleanEmail}). Please check your inbox!`,
       provider: "Resend",
+      forwardedTo: emailRes.forwardedTo,
     };
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : "Failed to dispatch verification code.";

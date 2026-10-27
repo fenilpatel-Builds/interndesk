@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -18,19 +18,29 @@ import {
   EyeOff,
   Sparkles,
   User,
-  Building,
   GraduationCap,
   Calendar,
-  IdCard,
   X,
   Shield,
   Lightbulb,
   Headphones,
+  PenTool,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatedLogo } from "@/components/ui/animated-logo";
 import { sendEmailOtp, verifyEmailOtp, registerAccountAction } from "@/lib/auth/actions";
 import { INSTITUTE_CONFIG } from "@/lib/institute/config";
+
+const PRESET_COURSES = [
+  "B.Tech (CSE / IT) — 4 Years",
+  "B.Tech Computer Science & Engineering",
+  "Bachelor of Computer Applications (BCA)",
+  "Master of Computer Applications (MCA)",
+  "Diploma in Computer Engineering",
+  "M.Tech Software Engineering",
+  "__CUSTOM__",
+];
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -38,17 +48,20 @@ export default function RegisterPage() {
   // Role tab state matching Login Page
   const [selectedRole, setSelectedRole] = useState<"Student" | "Faculty" | "Admin">("Student");
 
-  // Registration Form Fields
+  // Registration Form Fields (Department & Student ID removed per request)
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [studentId, setStudentId] = useState("");
-  const [department, setDepartment] = useState("Information Technology");
-  const [course, setCourse] = useState("B.Tech (CSE / IT)");
+  const [course, setCourse] = useState("B.Tech (CSE / IT) — 4 Years");
+  const [customCourse, setCustomCourse] = useState("");
+  const [isCustomCourse, setIsCustomCourse] = useState(false);
   const [semester, setSemester] = useState("Year 3 - Semester 5/6");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [agreeTerms, setAgreeTerms] = useState(true);
+
+  // Independent toggle states for password visibility
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Status & Validation
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -57,16 +70,20 @@ export default function RegisterPage() {
 
   // Email OTP Modal State
   const [otpModalOpen, setOtpModalOpen] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
+  const [otpDigits, setOtpDigits] = useState<string[]>(["", "", "", "", "", ""]);
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [forwardedTo, setForwardedTo] = useState<string | null>(null);
 
   // Watch Demo Modal
   const [demoModalOpen, setDemoModalOpen] = useState(false);
 
   // Dynamic step highlight based on filled sections
   const [activeStepHighlight, setActiveStepHighlight] = useState<1 | 2 | 3>(1);
+
+  // Refs for 6-digit OTP inputs
+  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -77,17 +94,30 @@ export default function RegisterPage() {
   useEffect(() => {
     if (password && confirmPassword) {
       setActiveStepHighlight(3);
-    } else if (department && course) {
+    } else if (course) {
       setActiveStepHighlight(2);
     } else {
       setActiveStepHighlight(1);
     }
-  }, [fullName, email, studentId, department, course, password, confirmPassword]);
+  }, [fullName, email, course, customCourse, isCustomCourse, password, confirmPassword]);
 
   const handleRoleSelect = (role: "Student" | "Faculty" | "Admin") => {
     setSelectedRole(role);
     setErrors({});
   };
+
+  const handleCourseSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    if (val === "__CUSTOM__") {
+      setIsCustomCourse(true);
+      setCustomCourse("");
+    } else {
+      setIsCustomCourse(false);
+      setCourse(val);
+    }
+  };
+
+  const effectiveCourse = isCustomCourse ? customCourse.trim() : course;
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,17 +129,9 @@ export default function RegisterPage() {
     if (!email.trim() || !email.includes("@")) {
       newErrors.email = "Please enter a valid institute email address.";
     }
-    if (!studentId.trim()) {
-      newErrors.studentId = selectedRole === "Student" 
-        ? "Student ID / Enrollment number is required." 
-        : "Employee ID is required.";
-    }
-    if (!department) {
-      newErrors.department = "Please select your department.";
-    }
     if (selectedRole === "Student") {
-      if (!course) {
-        newErrors.course = "Please select your course or program.";
+      if (!effectiveCourse) {
+        newErrors.course = "Please enter or select your course / program.";
       }
       if (!semester) {
         newErrors.semester = "Please select your academic year or semester.";
@@ -141,21 +163,74 @@ export default function RegisterPage() {
         setIsSubmitting(false);
         return;
       }
+      if (otpRes.forwardedTo) {
+        setForwardedTo(otpRes.forwardedTo);
+      } else {
+        setForwardedTo(null);
+      }
       setResendCooldown(30);
+      setOtpDigits(["", "", "", "", "", ""]);
+      setOtpError(null);
 
       // Open OTP verification modal
       setOtpModalOpen(true);
       setIsSubmitting(false);
+
+      // Auto-focus first input
+      setTimeout(() => {
+        otpInputRefs.current[0]?.focus();
+      }, 100);
     } catch {
-      // If network fails to send email, fallback to direct registration
+      // Fallback
       finalizeRegistration();
+    }
+  };
+
+  // OTP 6-box inputs handling
+  const handleOtpDigitChange = (index: number, value: string) => {
+    const cleanVal = value.replace(/\D/g, "");
+    if (!cleanVal) {
+      const newDigits = [...otpDigits];
+      newDigits[index] = "";
+      setOtpDigits(newDigits);
+      return;
+    }
+
+    if (cleanVal.length > 1) {
+      // Pasted multiple digits
+      const digitsArr = cleanVal.slice(0, 6).split("");
+      const newDigits = [...otpDigits];
+      digitsArr.forEach((d, i) => {
+        if (index + i < 6) {
+          newDigits[index + i] = d;
+        }
+      });
+      setOtpDigits(newDigits);
+      const nextIdx = Math.min(index + digitsArr.length, 5);
+      otpInputRefs.current[nextIdx]?.focus();
+      return;
+    }
+
+    const newDigits = [...otpDigits];
+    newDigits[index] = cleanVal;
+    setOtpDigits(newDigits);
+
+    if (index < 5 && cleanVal) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && !otpDigits[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
     }
   };
 
   const handleVerifyOtpAndActivate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!otpCode || otpCode.trim().length < 6) {
-      setOtpError("Please enter the 6-digit OTP code dispatched to your email.");
+    const fullOtp = otpDigits.join("");
+    if (fullOtp.length !== 6) {
+      setOtpError("Please enter all 6 digits of the OTP code.");
       return;
     }
 
@@ -163,7 +238,7 @@ export default function RegisterPage() {
     setOtpError(null);
 
     try {
-      const verifyRes = await verifyEmailOtp(email.trim().toLowerCase(), otpCode.trim());
+      const verifyRes = await verifyEmailOtp(email.trim().toLowerCase(), fullOtp);
       if (verifyRes.success) {
         await finalizeRegistration();
       } else {
@@ -180,6 +255,8 @@ export default function RegisterPage() {
     try {
       const accountType = selectedRole === "Student" ? "STUDENT" : "INSTITUTE";
       const role = selectedRole === "Student" ? "STUDENT" : "ORG_ADMIN";
+      const defaultDepartment = "Information Technology & Computer Engineering";
+      const generatedStudentId = `AT${new Date().getFullYear()}${Math.floor(1000 + Math.random() * 9000)}`;
 
       // Create user auth account
       const authResult = await registerAccountAction({
@@ -190,7 +267,7 @@ export default function RegisterPage() {
         role,
         college: INSTITUTE_CONFIG.name,
         university: "Gujarat Technological University",
-        technology: department,
+        technology: defaultDepartment,
       });
 
       if (!authResult.success) {
@@ -207,14 +284,14 @@ export default function RegisterPage() {
         body: JSON.stringify({
           fullName: fullName.trim(),
           email: email.trim().toLowerCase(),
-          studentId: studentId.trim(),
+          studentId: generatedStudentId,
           mobile: "9978621654",
-          department,
-          course: selectedRole === "Student" ? course : "Faculty Academic Track",
+          department: defaultDepartment,
+          course: selectedRole === "Student" ? effectiveCourse : "Faculty Academic Track",
           semester: selectedRole === "Student" ? semester : "Faculty Staff",
           college: INSTITUTE_CONFIG.name,
           university: "Gujarat Technological University",
-          technology: department,
+          technology: defaultDepartment,
           duration: "6 Months",
           startDate: new Date().toISOString().split("T")[0],
           category: selectedRole === "Student" ? "Student Activity & Capstone" : "Faculty Coordinator",
@@ -246,6 +323,7 @@ export default function RegisterPage() {
       const res = await sendEmailOtp(email.trim().toLowerCase());
       if (res.success) {
         setResendCooldown(30);
+        if (res.forwardedTo) setForwardedTo(res.forwardedTo);
       } else {
         setOtpError(res.message || "Failed to resend code.");
       }
@@ -261,7 +339,7 @@ export default function RegisterPage() {
       {/* Top Header matching Login Page */}
       <header className="sticky top-0 z-40 w-full border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-18">
+          <div className="flex items-center justify-between h-14 sm:h-16">
             <AnimatedLogo size="md" showTagline={false} />
 
             <nav className="hidden md:flex items-center gap-8">
@@ -283,7 +361,7 @@ export default function RegisterPage() {
               <Link href="/login">
                 <Button
                   size="sm"
-                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-5 py-2 rounded-xl shadow-xs transition-transform hover:scale-[1.02] cursor-pointer"
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-1.5 sm:px-5 sm:py-2 rounded-xl shadow-xs transition-transform hover:scale-[1.02] cursor-pointer text-xs sm:text-sm"
                 >
                   Sign In
                 </Button>
@@ -293,120 +371,120 @@ export default function RegisterPage() {
         </div>
       </header>
 
-      {/* Main Container matching Login Page Structure */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start lg:items-center">
-          {/* Left Column: Hero Copy, 4 Pills, CTAs & Vector Illustration matching Login Page */}
-          <div className="lg:col-span-5 xl:col-span-5 space-y-6">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200/80 text-xs font-black tracking-widest text-sky-600 uppercase shadow-2xs">
+      {/* Main Container - Compact Spacing with card moved UP (No excess blank space) */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-3 lg:py-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-start">
+          {/* Left Column: Hero Copy, 4 Pills, CTAs & Vector Illustration */}
+          <div className="lg:col-span-5 xl:col-span-5 space-y-3 sm:space-y-4 pt-1 sm:pt-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200/80 text-[11px] font-black tracking-widest text-sky-600 uppercase shadow-2xs">
               <span>LEARN • GROW • ACHIEVE</span>
             </div>
 
-            <h1 className="text-3xl sm:text-5xl lg:text-[3.25rem] font-black text-slate-900 tracking-tight leading-[1.15]">
+            <h1 className="text-2xl sm:text-4xl lg:text-[2.6rem] font-black text-slate-900 tracking-tight leading-[1.15]">
               Institute Activity <br />
               <span className="text-[#E52329]">Management System</span>
             </h1>
 
-            <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-normal">
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal max-w-lg">
               Empowering students, faculty and administrators with a smart, secure and seamless platform for activities, submissions, learning and progress.
             </p>
 
-            {/* 4 Feature Value Pills matching Login Page */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
-              <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex flex-col items-center text-center">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mb-1.5">
-                  <Lock className="w-4 h-4" />
+            {/* 4 Feature Value Pills */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-0.5">
+              <div className="p-2 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex flex-col items-center text-center">
+                <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mb-1">
+                  <Lock className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-[11px] font-bold text-slate-800 leading-tight">
-                  Secure Authentication
+                <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 leading-tight">
+                  Secure Auth
                 </span>
               </div>
 
-              <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex flex-col items-center text-center">
-                <div className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center mb-1.5">
-                  <Bell className="w-4 h-4" />
+              <div className="p-2 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex flex-col items-center text-center">
+                <div className="w-7 h-7 rounded-lg bg-red-50 text-red-600 flex items-center justify-center mb-1">
+                  <Bell className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-[11px] font-bold text-slate-800 leading-tight">
-                  Real-time Notifications
+                <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 leading-tight">
+                  Real-time Alerts
                 </span>
               </div>
 
-              <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex flex-col items-center text-center">
-                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center mb-1.5">
-                  <FileCheck2 className="w-4 h-4" />
+              <div className="p-2 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex flex-col items-center text-center">
+                <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center mb-1">
+                  <FileCheck2 className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-[11px] font-bold text-slate-800 leading-tight">
-                  Easy Submissions
+                <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 leading-tight">
+                  Submissions
                 </span>
               </div>
 
-              <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex flex-col items-center text-center">
-                <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center mb-1.5">
-                  <TrendingUp className="w-4 h-4" />
+              <div className="p-2 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex flex-col items-center text-center">
+                <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center mb-1">
+                  <TrendingUp className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-[11px] font-bold text-slate-800 leading-tight">
-                  Progress Tracking
+                <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 leading-tight">
+                  Analytics
                 </span>
               </div>
             </div>
 
             {/* Action Buttons Row */}
-            <div className="flex flex-col sm:flex-row items-center gap-3.5 pt-2">
+            <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-1">
               <Link href="/login" className="w-full sm:w-auto">
                 <Button
-                  size="lg"
-                  className="w-full sm:w-auto bg-[#E52329] hover:bg-[#C41C22] text-white font-bold px-7 py-6 rounded-xl shadow-md shadow-red-500/20 text-sm flex items-center justify-center gap-2 transition-transform hover:scale-[1.02] cursor-pointer"
+                  size="sm"
+                  className="w-full sm:w-auto bg-[#E52329] hover:bg-[#C41C22] text-white font-bold px-5 py-2.5 rounded-xl shadow-md shadow-red-500/20 text-xs sm:text-sm flex items-center justify-center gap-2 transition-transform hover:scale-[1.02] cursor-pointer"
                 >
                   <span>Already Registered? Sign In</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </Button>
               </Link>
               <button
                 type="button"
                 onClick={() => setDemoModalOpen(true)}
-                className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm flex items-center justify-center gap-2 shadow-2xs transition-all cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2 rounded-xl border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-2xs transition-all cursor-pointer"
               >
-                <div className="w-6 h-6 rounded-full bg-red-100 text-[#E52329] flex items-center justify-center">
-                  <Play className="w-3 h-3 fill-current ml-0.5" />
+                <div className="w-5 h-5 rounded-full bg-red-100 text-[#E52329] flex items-center justify-center">
+                  <Play className="w-2.5 h-2.5 fill-current ml-0.5" />
                 </div>
                 <span>Watch Demo</span>
               </button>
             </div>
 
-            {/* Student Illustration matching Login Page */}
-            <div className="relative pt-4 flex justify-center lg:justify-start">
-              <div className="relative max-w-md w-full">
+            {/* Student Illustration */}
+            <div className="relative pt-1 flex justify-center lg:justify-start">
+              <div className="relative max-w-[260px] sm:max-w-xs w-full">
                 <img
                   src="/images/student-hero-illustration.png"
                   alt="Akash Technolabs Student Management"
-                  className="w-full h-auto object-contain drop-shadow-lg"
+                  className="w-full h-auto object-contain drop-shadow-md"
                 />
               </div>
             </div>
           </div>
 
-          {/* Right Column: Complete Registration Card matching Login Page Aesthetic */}
+          {/* Right Column: Registration Card - Moved Up & Compacted */}
           <div className="lg:col-span-7 xl:col-span-7">
-            <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xl shadow-slate-200/60 p-6 sm:p-8 relative">
-              <div className="text-center mb-6">
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+            <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-lg shadow-slate-200/50 p-4 sm:p-6 relative">
+              <div className="text-center mb-3 sm:mb-4">
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                   {selectedRole === "Student"
                     ? "Student Registration"
                     : `${selectedRole} Registration`}
                 </h2>
-                <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
                   Create your verified profile to access the activity portal
                 </p>
               </div>
 
-              {/* Role Switcher Tabs (Student, Faculty, Admin) matching Login Page */}
-              <div className="flex p-1 bg-slate-100 rounded-xl mb-6">
+              {/* Role Switcher Tabs (Student, Faculty, Admin) */}
+              <div className="flex p-1 bg-slate-100 rounded-xl mb-3.5">
                 {(["Student", "Faculty", "Admin"] as const).map((role) => (
                   <button
                     key={role}
                     type="button"
                     onClick={() => handleRoleSelect(role)}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                       selectedRole === role
                         ? "bg-white text-slate-900 shadow-xs"
                         : "text-slate-600 hover:text-slate-900"
@@ -418,10 +496,10 @@ export default function RegisterPage() {
               </div>
 
               {/* Stepper Progress Bar: ① Personal  ② Academic  ③ Security */}
-              <div className="flex items-center justify-between relative mb-6 px-2">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between relative mb-3.5 px-2">
+                <div className="flex items-center gap-1.5">
                   <div
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black transition-colors ${
+                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black transition-colors ${
                       activeStepHighlight >= 1
                         ? "bg-blue-600 text-white shadow-xs"
                         : "bg-slate-200 text-slate-600"
@@ -430,7 +508,7 @@ export default function RegisterPage() {
                     1
                   </div>
                   <span
-                    className={`text-xs font-bold ${
+                    className={`text-[11px] font-bold ${
                       activeStepHighlight >= 1 ? "text-blue-700" : "text-slate-500"
                     }`}
                   >
@@ -438,11 +516,11 @@ export default function RegisterPage() {
                   </span>
                 </div>
 
-                <div className="flex-1 h-0.5 bg-slate-200 mx-3" />
+                <div className="flex-1 h-0.5 bg-slate-200 mx-2" />
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <div
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black transition-colors ${
+                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black transition-colors ${
                       activeStepHighlight >= 2
                         ? "bg-blue-600 text-white shadow-xs"
                         : "bg-slate-200 text-slate-600"
@@ -451,7 +529,7 @@ export default function RegisterPage() {
                     2
                   </div>
                   <span
-                    className={`text-xs font-bold ${
+                    className={`text-[11px] font-bold ${
                       activeStepHighlight >= 2 ? "text-blue-700" : "text-slate-500"
                     }`}
                   >
@@ -459,11 +537,11 @@ export default function RegisterPage() {
                   </span>
                 </div>
 
-                <div className="flex-1 h-0.5 bg-slate-200 mx-3" />
+                <div className="flex-1 h-0.5 bg-slate-200 mx-2" />
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <div
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black transition-colors ${
+                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black transition-colors ${
                       activeStepHighlight >= 3
                         ? "bg-blue-600 text-white shadow-xs"
                         : "bg-slate-200 text-slate-600"
@@ -472,7 +550,7 @@ export default function RegisterPage() {
                     3
                   </div>
                   <span
-                    className={`text-xs font-bold ${
+                    className={`text-[11px] font-bold ${
                       activeStepHighlight >= 3 ? "text-blue-700" : "text-slate-500"
                     }`}
                   >
@@ -483,22 +561,22 @@ export default function RegisterPage() {
 
               {/* Feedback messages */}
               {successToast && (
-                <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800 flex items-center gap-2">
+                <div className="mb-3 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800 flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span>{successToast}</span>
                 </div>
               )}
               {errors.submit && (
-                <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs font-bold text-red-700 flex items-center gap-2">
+                <div className="mb-3 p-2.5 rounded-xl bg-red-50 border border-red-200 text-xs font-bold text-red-700 flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
                   <span>{errors.submit}</span>
                 </div>
               )}
 
               {/* Registration Form */}
-              <form onSubmit={handleRegisterSubmit} className="space-y-4">
+              <form onSubmit={handleRegisterSubmit} className="space-y-3">
                 {/* Row 1: Full Name & Institute Email */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
                       Full Legal Name <span className="text-red-500">*</span>
@@ -510,10 +588,10 @@ export default function RegisterPage() {
                         onChange={(e) => setFullName(e.target.value)}
                         placeholder="Enter your full name"
                         required
-                        autoComplete="off"
-                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white placeholder-slate-400"
+                        autoComplete="name"
+                        className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white placeholder-slate-400"
                       />
-                      <User className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <User className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
                     {errors.fullName && (
                       <p className="text-[11px] text-red-500 font-semibold mt-0.5">{errors.fullName}</p>
@@ -531,10 +609,10 @@ export default function RegisterPage() {
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="you@akashtechnolabs.com"
                         required
-                        autoComplete="off"
-                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white placeholder-slate-400"
+                        autoComplete="email"
+                        className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white placeholder-slate-400"
                       />
-                      <Mail className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <Mail className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
                     {errors.email && (
                       <p className="text-[11px] text-red-500 font-semibold mt-0.5">{errors.email}</p>
@@ -542,74 +620,58 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
-                {/* Row 2: Student ID & Department */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      {selectedRole === "Student" ? "Student ID / Enrollment" : "Employee / Staff ID"}{" "}
-                      <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={studentId}
-                        onChange={(e) => setStudentId(e.target.value)}
-                        placeholder={selectedRole === "Student" ? "e.g. AT2024001" : "e.g. EMP202401"}
-                        required
-                        autoComplete="off"
-                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm font-mono rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white placeholder-slate-400"
-                      />
-                      <IdCard className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    </div>
-                    {errors.studentId && (
-                      <p className="text-[11px] text-red-500 font-semibold mt-0.5">{errors.studentId}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Department <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={department}
-                        onChange={(e) => setDepartment(e.target.value)}
-                        required
-                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
-                      >
-                        <option value="Information Technology">Information Technology (IT)</option>
-                        <option value="Computer Science & Engineering">Computer Science & Engineering (CSE)</option>
-                        <option value="AI & Machine Learning">AI & Machine Learning (AIML)</option>
-                        <option value="Cloud & DevOps">Cloud & DevOps (Cloud)</option>
-                        <option value="Data Science & Analytics">Data Science & Analytics</option>
-                      </select>
-                    </div>
-                    {errors.department && (
-                      <p className="text-[11px] text-red-500 font-semibold mt-0.5">{errors.department}</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Row 3: Course & Semester (For Students) */}
+                {/* Row 2: Course / Program with "Write Your Own" custom capability */}
                 {selectedRole === "Student" && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Course / Program <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={course}
-                        onChange={(e) => setCourse(e.target.value)}
-                        required
-                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
-                      >
-                        <option value="B.Tech (CSE / IT)">B.Tech (CSE / IT) — 4 Years</option>
-                        <option value="B.Tech Computer Science">B.Tech Computer Science</option>
-                        <option value="Diploma in Computer Engineering">Diploma in Computer Engineering</option>
-                        <option value="M.Tech Software Engineering">M.Tech Software Engineering</option>
-                        <option value="Master of Computer Applications (MCA)">Master of Computer Applications (MCA)</option>
-                        <option value="Bachelor of Computer Applications (BCA)">Bachelor of Computer Applications (BCA)</option>
-                      </select>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-bold text-slate-700">
+                          Course / Program <span className="text-red-500">*</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsCustomCourse(!isCustomCourse);
+                            if (!isCustomCourse) setCustomCourse("");
+                          }}
+                          className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
+                        >
+                          <PenTool className="w-3 h-3" />
+                          <span>{isCustomCourse ? "Select from list" : "Write your own"}</span>
+                        </button>
+                      </div>
+
+                      {isCustomCourse ? (
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={customCourse}
+                            onChange={(e) => setCustomCourse(e.target.value)}
+                            placeholder="Type your Course / Degree (e.g. B.Sc IT)"
+                            required
+                            autoFocus
+                            className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-blue-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white placeholder-slate-400"
+                          />
+                          <GraduationCap className="w-4 h-4 text-blue-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <select
+                            value={course}
+                            onChange={handleCourseSelectChange}
+                            required
+                            className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
+                          >
+                            <option value="B.Tech (CSE / IT) — 4 Years">B.Tech (CSE / IT) — 4 Years</option>
+                            <option value="B.Tech Computer Science & Engineering">B.Tech Computer Science & Engineering</option>
+                            <option value="Bachelor of Computer Applications (BCA)">Bachelor of Computer Applications (BCA)</option>
+                            <option value="Master of Computer Applications (MCA)">Master of Computer Applications (MCA)</option>
+                            <option value="Diploma in Computer Engineering">Diploma in Computer Engineering</option>
+                            <option value="M.Tech Software Engineering">M.Tech Software Engineering</option>
+                            <option value="__CUSTOM__">✍️ Other (Write your own course...)</option>
+                          </select>
+                        </div>
+                      )}
                       {errors.course && (
                         <p className="text-[11px] text-red-500 font-semibold mt-0.5">{errors.course}</p>
                       )}
@@ -619,17 +681,19 @@ export default function RegisterPage() {
                       <label className="block text-xs font-bold text-slate-700 mb-1">
                         Academic Year / Semester <span className="text-red-500">*</span>
                       </label>
-                      <select
-                        value={semester}
-                        onChange={(e) => setSemester(e.target.value)}
-                        required
-                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
-                      >
-                        <option value="Year 1 - Semester 1/2">Year 1 - Semester 1 & 2</option>
-                        <option value="Year 2 - Semester 3/4">Year 2 - Semester 3 & 4</option>
-                        <option value="Year 3 - Semester 5/6">Year 3 - Semester 5 & 6</option>
-                        <option value="Year 4 - Semester 7/8">Year 4 - Semester 7 & 8 (Final Capstone)</option>
-                      </select>
+                      <div className="relative">
+                        <select
+                          value={semester}
+                          onChange={(e) => setSemester(e.target.value)}
+                          required
+                          className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900"
+                        >
+                          <option value="Year 1 - Semester 1/2">Year 1 - Semester 1 & 2</option>
+                          <option value="Year 2 - Semester 3/4">Year 2 - Semester 3 & 4</option>
+                          <option value="Year 3 - Semester 5/6">Year 3 - Semester 5 & 6</option>
+                          <option value="Year 4 - Semester 7/8">Year 4 - Semester 7 & 8 (Final Capstone)</option>
+                        </select>
+                      </div>
                       {errors.semester && (
                         <p className="text-[11px] text-red-500 font-semibold mt-0.5">{errors.semester}</p>
                       )}
@@ -637,8 +701,8 @@ export default function RegisterPage() {
                   </div>
                 )}
 
-                {/* Row 4: Password & Confirm Password */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* Row 3: Password & Confirm Password with WORKING SHOW/HIDE TOGGLES */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
                       Password <span className="text-red-500">*</span>
@@ -651,15 +715,16 @@ export default function RegisterPage() {
                         placeholder="Create strong password"
                         required
                         autoComplete="new-password"
-                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white placeholder-slate-400"
+                        className="w-full pl-3 pr-10 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white placeholder-slate-400"
                       />
                       <button
                         type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                        tabIndex={-1}
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        onMouseDown={(e) => e.preventDefault()}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer z-10"
                       >
-                        {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                     {errors.password && (
@@ -671,15 +736,26 @@ export default function RegisterPage() {
                     <label className="block text-xs font-bold text-slate-700 mb-1">
                       Confirm Password <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Re-enter password"
-                      required
-                      autoComplete="new-password"
-                      className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white placeholder-slate-400"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Re-enter password"
+                        required
+                        autoComplete="new-password"
+                        className="w-full pl-3 pr-10 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white placeholder-slate-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword((prev) => !prev)}
+                        onMouseDown={(e) => e.preventDefault()}
+                        aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer z-10"
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                     {errors.confirmPassword && (
                       <p className="text-[11px] text-red-500 font-semibold mt-0.5">{errors.confirmPassword}</p>
                     )}
@@ -687,13 +763,13 @@ export default function RegisterPage() {
                 </div>
 
                 {/* Terms and Conditions Checkbox */}
-                <div className="pt-1">
-                  <label className="flex items-center gap-2.5 text-xs text-slate-600 font-medium cursor-pointer">
+                <div className="pt-0.5">
+                  <label className="flex items-center gap-2 text-xs text-slate-600 font-medium cursor-pointer">
                     <input
                       type="checkbox"
                       checked={agreeTerms}
                       onChange={(e) => setAgreeTerms(e.target.checked)}
-                      className="w-4 h-4 text-[#E52329] rounded border-slate-300 focus:ring-red-500"
+                      className="w-4 h-4 text-[#E52329] rounded border-slate-300 focus:ring-red-500 cursor-pointer"
                     />
                     <span>
                       I agree to the{" "}
@@ -705,35 +781,35 @@ export default function RegisterPage() {
                   )}
                 </div>
 
-                {/* Register Button matching Login Page Red Button */}
+                {/* Register Button */}
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-[#E52329] hover:bg-[#C41C22] text-white font-bold py-3.5 rounded-xl shadow-md shadow-red-500/20 text-sm transition-all cursor-pointer"
+                  className="w-full bg-[#E52329] hover:bg-[#C41C22] text-white font-bold py-2.5 sm:py-3 rounded-xl shadow-md shadow-red-500/20 text-xs sm:text-sm transition-all cursor-pointer"
                 >
                   {isSubmitting ? "Processing Registration..." : "Create Account & Verify Email"}
                 </Button>
               </form>
 
               {/* Divider: or continue with */}
-              <div className="relative my-5">
+              <div className="relative my-3">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-slate-200" />
                 </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="bg-white px-3 text-slate-400 font-medium">
+                <div className="relative flex justify-center text-[11px]">
+                  <span className="bg-white px-2.5 text-slate-400 font-medium">
                     or continue with
                   </span>
                 </div>
               </div>
 
-              {/* Google Sign In Button matching Login Page */}
+              {/* Google Sign In Button */}
               <button
                 type="button"
                 onClick={() => {
                   setErrors({ submit: "Please complete registration with your institute email address to link your academic record." });
                 }}
-                className="w-full py-2.5 px-4 rounded-xl border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center justify-center gap-2.5 transition-colors cursor-pointer"
+                className="w-full py-2 px-3 rounded-xl border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24">
                   <path
@@ -756,8 +832,8 @@ export default function RegisterPage() {
                 <span>Continue with Google</span>
               </button>
 
-              {/* Card Footer: Already have an account? Sign In */}
-              <div className="text-center mt-5 pt-3 border-t border-slate-100 text-xs text-slate-500 font-medium">
+              {/* Card Footer */}
+              <div className="text-center mt-3 pt-2 border-t border-slate-100 text-xs text-slate-500 font-medium">
                 Already have an account?{" "}
                 <Link
                   href="/login"
@@ -771,21 +847,22 @@ export default function RegisterPage() {
         </div>
       </main>
 
-      {/* Signature Bottom Ribbon matching Login Page */}
-      <footer className="bg-[#050914] border-t border-slate-800/90 py-4 px-4 sm:px-6 lg:px-8 select-none">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
-          <div className="flex items-center gap-3">
+      {/* Signature Bottom Ribbon */}
+      <footer className="bg-[#050914] border-t border-slate-800/90 py-3 px-4 sm:px-6 lg:px-8 select-none">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5">
             <div className="flex items-center gap-1.5 font-black text-sm text-white">
               <span className="text-[#E52329]">Akash</span>
-              <span>Technolabs</span>
+              <span className="text-white">Technolabs</span>
+              <span className="text-[10px] text-slate-400 align-super">®</span>
             </div>
             <span className="text-slate-600 hidden sm:inline">|</span>
-            <span className="text-slate-400 font-medium hidden sm:inline">
+            <span className="text-slate-400 font-medium hidden sm:inline text-[11px]">
               Building a smarter future through technology
             </span>
           </div>
 
-          <div className="flex items-center gap-5 text-slate-400 text-[11px] font-semibold">
+          <div className="flex items-center gap-4 text-slate-400 text-[11px] font-semibold">
             <span className="flex items-center gap-1.5 hover:text-white transition-colors">
               <Shield className="w-3.5 h-3.5 text-blue-400" />
               Secure
@@ -809,7 +886,7 @@ export default function RegisterPage() {
               href="https://akashtechnolabs.com/"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-mono text-slate-300 hover:text-white transition-colors"
+              className="font-mono text-slate-300 hover:text-white transition-colors text-[11px]"
             >
               www.akashtechnolabs.com
             </a>
@@ -817,34 +894,65 @@ export default function RegisterPage() {
         </div>
       </footer>
 
-      {/* Real Email OTP Verification Modal */}
+      {/* Detailed & Polished Real Email OTP Verification Modal */}
       {otpModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <Mail className="w-4 h-4" />
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-red-50 text-[#E52329] flex items-center justify-center border border-red-100">
+                  <Mail className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-base font-black text-slate-900">Email Verification</h4>
-                  <p className="text-[11px] text-slate-500">Security OTP dispatched to your inbox</p>
+                  <h4 className="text-base font-black text-slate-900 tracking-tight flex items-center gap-1.5">
+                    <span>Email Verification</span>
+                    <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold">
+                      LIVE OTP
+                    </span>
+                  </h4>
+                  <p className="text-[11px] text-slate-500">Akash Technolabs Identity Verification</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setOtpModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 cursor-pointer"
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleVerifyOtpAndActivate} className="mt-5 space-y-4">
-              <p className="text-xs text-slate-600 leading-relaxed">
-                We have transmitted a 6-digit verification code to{" "}
-                <strong className="text-slate-900">{email}</strong> via Resend. Enter it below to activate your account.
-              </p>
+            <form onSubmit={handleVerifyOtpAndActivate} className="mt-4 space-y-4">
+              {/* Instructions & Recipient */}
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 space-y-1">
+                <p>
+                  A 6-digit verification security code was generated for{" "}
+                  <strong className="text-slate-900 font-bold">{email}</strong>.
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  Please check your inbox and enter the code below to activate your account.
+                </p>
+              </div>
+
+              {/* Informational Sandbox Banner if Resend Free Tier restriction applies */}
+              {forwardedTo && (
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200/90 text-xs text-amber-900 flex items-start gap-2.5">
+                  <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="space-y-1 text-[11px]">
+                    <p className="font-bold text-amber-950">
+                      📬 Resend Sandbox Test Mode Notice:
+                    </p>
+                    <p className="leading-relaxed">
+                      Because Resend is in free onboarding mode, the email was securely delivered to your registered Resend account inbox:{" "}
+                      <strong className="font-mono text-amber-950 underline">{forwardedTo}</strong>.
+                    </p>
+                    <p className="text-[10px] text-amber-800">
+                      Please check the inbox or spam folder of <strong>{forwardedTo}</strong> to view your 6-digit code!
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {otpError && (
                 <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-xs font-semibold text-red-700 flex items-center gap-2">
@@ -853,40 +961,62 @@ export default function RegisterPage() {
                 </div>
               )}
 
+              {/* 6 Individual Interactive Digit Input Boxes */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  6-Digit Verification Code (from your Email)
+                <label className="block text-xs font-bold text-slate-700 mb-2 text-center">
+                  Enter 6-Digit Verification Code
                 </label>
-                <input
-                  type="text"
-                  maxLength={6}
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                  placeholder="Enter 6-digit OTP"
-                  required
-                  autoFocus
-                  className="w-full tracking-widest text-center text-xl font-mono font-black py-2.5 rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white"
-                />
+                <div className="flex items-center justify-center gap-2 sm:gap-2.5">
+                  {otpDigits.map((digit, idx) => (
+                    <input
+                      key={idx}
+                      ref={(el) => {
+                        otpInputRefs.current[idx] = el;
+                      }}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={6}
+                      value={digit}
+                      onChange={(e) => handleOtpDigitChange(idx, e.target.value)}
+                      onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                      className={`w-11 h-12 text-center text-xl font-mono font-black rounded-xl border transition-all ${
+                        digit
+                          ? "border-blue-600 bg-blue-50/40 text-blue-900 shadow-xs"
+                          : "border-slate-300 bg-white text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                      }`}
+                    />
+                  ))}
+                </div>
               </div>
 
+              {/* Action Buttons */}
               <Button
                 type="submit"
-                disabled={otpLoading}
-                className="w-full bg-[#E52329] hover:bg-[#C41C22] text-white font-bold py-2.5 rounded-xl text-xs cursor-pointer shadow-md shadow-red-500/20"
+                disabled={otpLoading || otpDigits.join("").length !== 6}
+                className="w-full bg-[#E52329] hover:bg-[#C41C22] text-white font-bold py-3 rounded-xl text-xs sm:text-sm cursor-pointer shadow-md shadow-red-500/20 transition-all disabled:opacity-50"
               >
-                {otpLoading ? "Verifying..." : "Verify & Activate Account"}
+                {otpLoading ? "Verifying Code..." : "Verify & Activate Account"}
               </Button>
 
-              <div className="text-center pt-2 text-xs">
+              {/* Resend and Timer */}
+              <div className="flex items-center justify-between pt-1 text-xs px-1 text-slate-500">
+                <span className="flex items-center gap-1.5 text-[11px]">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  Valid for 10 minutes
+                </span>
+
                 <button
                   type="button"
                   onClick={handleResendOtp}
                   disabled={resendCooldown > 0 || otpLoading}
                   className={`font-semibold cursor-pointer ${
-                    resendCooldown > 0 ? "text-slate-400" : "text-blue-600 hover:underline"
+                    resendCooldown > 0
+                      ? "text-slate-400 cursor-not-allowed"
+                      : "text-blue-600 hover:text-blue-700 hover:underline"
                   }`}
                 >
-                  {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Resend Code"}
+                  {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend Code"}
                 </button>
               </div>
             </form>
@@ -894,7 +1024,7 @@ export default function RegisterPage() {
         </div>
       )}
 
-      {/* Watch Demo Modal matching Login Page */}
+      {/* Watch Demo Modal */}
       {demoModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 relative space-y-4">

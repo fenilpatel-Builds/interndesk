@@ -61,15 +61,17 @@ export function AnimatedLogo({
               <span className={`font-black tracking-tight text-white ml-1.5 ${currentSize.text}`}>
                 Technolabs
               </span>
+              <span className="text-[10px] font-bold text-slate-400 align-super ml-0.5">®</span>
             </>
           ) : (
             <>
               <span className={`font-black tracking-tight text-[#E52329] ${currentSize.text}`}>
                 Akash
               </span>
-              <span className={`font-black tracking-tight text-[#0B192C] ml-1.5 ${currentSize.text}`}>
+              <span className={`font-black tracking-tight text-[#1E3264] ml-1.5 ${currentSize.text}`}>
                 Technolabs
               </span>
+              <span className="text-[10px] font-bold text-slate-400 align-super ml-0.5">®</span>
             </>
           )}
         </div>

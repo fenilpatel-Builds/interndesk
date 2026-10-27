@@ -46,5 +46,17 @@
     "organizationName": "Akash Technolabs",
     "organizationType": "CORPORATE",
     "createdAt": "2026-10-26T05:45:49.390Z"
+  },
+  {
+    "id": "usr-1793103685484-528",
+    "email": "fenil8160@gmail.com",
+    "passwordHash": "ffc90b9693b9fb84a11ecff45b1ae4637e97f036ae0d3bfdef1ca60a17a73c8c",
+    "salt": "8ae3416409b607d1e972e1218f5b3ca7",
+    "name": "Fenil Patel",
+    "role": "STUDENT",
+    "organizationId": "org-akash-01",
+    "organizationName": "Akash Technolabs",
+    "organizationType": "CORPORATE",
+    "createdAt": "2026-10-27T12:21:25.584Z"
   }
 ]
