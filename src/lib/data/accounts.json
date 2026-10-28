@@ -58,5 +58,17 @@
     "organizationName": "Akash Technolabs",
     "organizationType": "CORPORATE",
     "createdAt": "2026-10-27T12:21:25.584Z"
+  },
+  {
+    "id": "usr-1793106423924-750",
+    "email": "akshatnayak0910@gmail.com",
+    "passwordHash": "4361aad0b6993a442fb78f0ae05cb6df3a04c9563b8c4f9b5ba9a9fc76751ad0",
+    "salt": "050d0a4b69683498c7aba78757a947a0",
+    "name": "Akshat Nayak",
+    "role": "STUDENT",
+    "organizationId": "org-akash-01",
+    "organizationName": "Akash Technolabs",
+    "organizationType": "CORPORATE",
+    "createdAt": "2026-10-27T13:07:04.067Z"
   }
 ]
