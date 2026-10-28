@@ -288,3 +288,15 @@ body {
   }
 }
 
+/* Prevent dev overlay badges from blocking lower branding */
+div[data-nextjs-dev-tools-button],
+nextjs-portal {
+  opacity: 0.2;
+  transition: opacity 0.2s ease;
+}
+
+div[data-nextjs-dev-tools-button]:hover,
+nextjs-portal:hover {
+  opacity: 1;
+}
+

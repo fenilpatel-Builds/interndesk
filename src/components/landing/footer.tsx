@@ -83,13 +83,15 @@ export function Footer() {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
           {/* Logo + Tagline */}
           <div className="flex items-center gap-3">
-            <div className="bg-white px-2.5 py-1 rounded-lg border border-white/20 flex items-center">
-              <img
-                src="/images/akash-technolabs-logo-transparent.png"
-                alt="Akash Technolabs"
-                className="h-5 w-auto object-contain"
-              />
-            </div>
+            <Link href="/" className="hover:opacity-95 transition-opacity">
+              <div className="bg-white px-3 py-1.5 rounded-xl border border-white/20 flex items-center shadow-2xs">
+                <img
+                  src="/images/akash-technolabs-logo-transparent.png"
+                  alt="Akash Technolabs"
+                  className="h-6 w-auto object-contain"
+                />
+              </div>
+            </Link>
             <span className="text-slate-600 hidden sm:inline">|</span>
             <span className="text-slate-400 font-medium hidden sm:inline">
               Building a smarter future through technology

@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   experimental: {
     agentUpgrade: "security",
   },
+  devIndicators: false,
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

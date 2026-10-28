@@ -192,7 +192,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col justify-between bg-gradient-to-b from-slate-50 via-white to-blue-50/40 select-none">
       {/* Top Header */}
-      <header className="sticky top-0 z-40 w-full border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
+      <header className="sticky top-0 z-40 w-full border-b border-slate-200/90 bg-white shadow-2xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 sm:h-16">
             <AnimatedLogo size="md" showTagline={false} />
@@ -307,8 +307,8 @@ export default function LoginPage() {
             </div>
 
             {/* Student Illustration */}
-            <div className="relative pt-1 flex justify-center lg:justify-start">
-              <div className="relative max-w-[260px] sm:max-w-xs w-full">
+            <div className="relative pt-1 pb-2 flex justify-center lg:justify-start">
+              <div className="relative max-w-[220px] sm:max-w-[250px] w-full">
                 <img
                   src="/images/student-hero-illustration.png"
                   alt="Akash Technolabs Student Management"
@@ -618,16 +618,20 @@ export default function LoginPage() {
       </main>
 
       {/* Signature Bottom Ribbon */}
-      <footer className="bg-[#050914] border-t border-slate-800/90 py-3 px-4 sm:px-6 lg:px-8 select-none">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center gap-1.5 font-black text-sm text-white">
-              <span className="text-[#E52329]">Akash</span>
-              <span className="text-white">Technolabs</span>
-              <span className="text-[10px] text-slate-400 align-super">®</span>
-            </div>
+      <footer className="bg-[#050914] border-t border-slate-800/90 py-3.5 px-4 sm:px-6 lg:px-8 select-none">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
+          <div className="flex items-center gap-3">
+            <Link href="/" className="hover:opacity-95 transition-opacity">
+              <div className="bg-white px-3 py-1.5 rounded-xl border border-white/20 flex items-center shadow-2xs">
+                <img
+                  src="/images/akash-technolabs-logo-transparent.png"
+                  alt="Akash Technolabs"
+                  className="h-6 w-auto object-contain"
+                />
+              </div>
+            </Link>
             <span className="text-slate-600 hidden sm:inline">|</span>
-            <span className="text-slate-400 font-medium hidden sm:inline text-[11px]">
+            <span className="text-slate-400 font-medium hidden sm:inline text-xs">
               Building a smarter future through technology
             </span>
           </div>
