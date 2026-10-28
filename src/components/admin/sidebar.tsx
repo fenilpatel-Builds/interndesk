@@ -82,23 +82,16 @@ export function AdminSidebar() {
   return (
     <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col shrink-0 border-r border-slate-800 select-none">
       {/* Brand Header */}
-      <div className="h-16 flex items-center px-4 gap-2.5 border-b border-slate-800 bg-slate-950">
-        <div className="w-9 h-9 rounded-xl bg-white p-1 flex items-center justify-center shrink-0 shadow-sm border border-slate-700">
-          <img
-            src="/images/akash-at-watermark-hd.png"
-            alt="Akash Technolabs"
-            className="w-7 h-7 object-contain"
-          />
-        </div>
-        <div className="flex flex-col min-w-0">
-          <div className="flex items-center leading-tight">
-            <span className="text-sm font-black text-white tracking-tight">Akash</span>
-            <span className="text-sm font-black text-white ml-1.5 tracking-tight truncate">Technolabs</span>
+      <div className="h-18 flex items-center px-4 border-b border-slate-800 bg-slate-950">
+        <Link href="/admin/dashboard" className="w-full">
+          <div className="bg-white px-3 py-2 rounded-xl shadow-xs border border-white/20 flex items-center justify-center hover:opacity-95 transition-opacity">
+            <img
+              src="/images/akash-technolabs-logo-transparent.png"
+              alt="Akash Technolabs"
+              className="h-8 w-auto object-contain"
+            />
           </div>
-          <span className="text-[9px] uppercase font-bold text-sky-400 tracking-wider">
-            INSTITUTE ACTIVITY MANAGEMENT SYSTEM
-          </span>
-        </div>
+        </Link>
       </div>
 
       {/* Nav List */}

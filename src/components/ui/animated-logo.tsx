@@ -5,92 +5,53 @@ import Link from "next/link";
 
 interface AnimatedLogoProps {
   className?: string;
-  size?: "sm" | "md" | "lg";
-  showTagline?: boolean;
-  taglineText?: string;
+  size?: "sm" | "md" | "lg" | "xl";
   href?: string;
   variant?: "light" | "dark" | "auto";
+  showTagline?: boolean;
+  taglineText?: string;
 }
 
 export function AnimatedLogo({
   className = "",
   size = "md",
-  showTagline = true,
-  taglineText = "INSTITUTE ACTIVITY MANAGEMENT SYSTEM",
   href = "/",
   variant = "light",
 }: AnimatedLogoProps) {
   const sizeMap = {
-    sm: { icon: "h-6 w-auto", box: "w-8 h-8 p-1", text: "text-base", sub: "text-[8px]" },
-    md: { icon: "h-7 w-auto", box: "w-9 h-9 p-1.5", text: "text-lg", sub: "text-[9px]" },
-    lg: { icon: "h-9 w-auto", box: "w-11 h-11 p-2", text: "text-2xl", sub: "text-[10px]" },
+    sm: "h-6 md:h-7 w-auto",
+    md: "h-8 md:h-9 w-auto",
+    lg: "h-10 md:h-11 w-auto",
+    xl: "h-12 md:h-14 w-auto",
   };
 
-  const currentSize = sizeMap[size];
+  const currentSize = sizeMap[size] || sizeMap.md;
   const isDark = variant === "dark";
 
   const content = (
-    <div className={`inline-flex items-center gap-2.5 select-none group ${className}`}>
-      {/* Icon: Image 1 (direct emblem) or Image 2 (white squircle container) */}
+    <div className={`inline-flex items-center select-none group ${className}`}>
       {isDark ? (
-        <div className={`${currentSize.box} rounded-xl bg-white flex items-center justify-center shrink-0 shadow-sm border border-slate-700/60 transition-transform duration-200 group-hover:scale-105`}>
+        <div className="bg-white px-2.5 py-1.5 rounded-xl shadow-xs border border-white/20 flex items-center justify-center transition-transform duration-200 group-hover:scale-102">
           <img
-            src="/images/akash-at-watermark-hd.png"
+            src="/images/akash-technolabs-logo-transparent.png"
             alt="Akash Technolabs"
-            className={`${currentSize.icon} object-contain`}
+            className={`${currentSize} object-contain`}
           />
         </div>
       ) : (
-        <div className="relative shrink-0 flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
+        <div className="relative shrink-0 flex items-center transition-transform duration-200 group-hover:scale-102">
           <img
-            src="/images/akash-at-watermark-hd.png"
+            src="/images/akash-technolabs-logo-transparent.png"
             alt="Akash Technolabs"
-            className={`${currentSize.icon} object-contain`}
+            className={`${currentSize} object-contain`}
           />
         </div>
       )}
-
-      {/* Brand Wordmark matching user's Image 1 & Image 2 */}
-      <div className="flex flex-col text-left justify-center">
-        <div className="flex items-center leading-none">
-          {isDark ? (
-            <>
-              <span className={`font-black tracking-tight text-white ${currentSize.text}`}>
-                Akash
-              </span>
-              <span className={`font-black tracking-tight text-white ml-1.5 ${currentSize.text}`}>
-                Technolabs
-              </span>
-              <span className="text-[10px] font-bold text-slate-400 align-super ml-0.5">®</span>
-            </>
-          ) : (
-            <>
-              <span className={`font-black tracking-tight text-[#E52329] ${currentSize.text}`}>
-                Akash
-              </span>
-              <span className={`font-black tracking-tight text-[#1E3264] ml-1.5 ${currentSize.text}`}>
-                Technolabs
-              </span>
-              <span className="text-[10px] font-bold text-slate-400 align-super ml-0.5">®</span>
-            </>
-          )}
-        </div>
-
-        {showTagline && (
-          <span
-            className={`font-bold uppercase tracking-wider mt-1 leading-none ${currentSize.sub} ${
-              isDark ? "text-sky-400" : "text-slate-500"
-            }`}
-          >
-            {taglineText}
-          </span>
-        )}
-      </div>
     </div>
   );
 
   if (href) {
-    return <Link href={href}>{content}</Link>;
+    return <Link href={href} className="inline-block">{content}</Link>;
   }
 
   return content;

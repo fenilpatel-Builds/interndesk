@@ -10,22 +10,12 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pb-10 border-b border-slate-800/80">
           {/* Brand Info */}
           <div className="space-y-4 md:col-span-2">
-            <div className="flex items-center gap-3">
-              <div className="p-1.5 rounded-xl bg-white border border-slate-700 shadow-sm">
-                <img
-                  src="/images/akash-at-watermark-hd.png"
-                  alt="Akash Technolabs"
-                  className="w-8 h-8 object-contain"
-                />
-              </div>
-              <div>
-                <span className="text-lg font-black text-white tracking-tight">
-                  Akash Technolabs
-                </span>
-                <span className="block text-[10px] uppercase font-bold tracking-wider text-slate-400">
-                  Institute Activity Management System
-                </span>
-              </div>
+            <div className="inline-block bg-white px-3 py-2 rounded-xl shadow-xs border border-white/20">
+              <img
+                src="/images/akash-technolabs-logo-transparent.png"
+                alt="Akash Technolabs"
+                className="h-9 w-auto object-contain"
+              />
             </div>
             <p className="text-sm text-slate-400 max-w-sm leading-relaxed">
               Gujarat&apos;s premier educational &amp; IT training institution managing student project activities, attendance, daily progress reports, and certified practicum credentials.
@@ -93,9 +83,12 @@ export function Footer() {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
           {/* Logo + Tagline */}
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 font-black text-sm text-white">
-              <span className="text-[#E52329]">Akash</span>
-              <span>Technolabs</span>
+            <div className="bg-white px-2.5 py-1 rounded-lg border border-white/20 flex items-center">
+              <img
+                src="/images/akash-technolabs-logo-transparent.png"
+                alt="Akash Technolabs"
+                className="h-5 w-auto object-contain"
+              />
             </div>
             <span className="text-slate-600 hidden sm:inline">|</span>
             <span className="text-slate-400 font-medium hidden sm:inline">
