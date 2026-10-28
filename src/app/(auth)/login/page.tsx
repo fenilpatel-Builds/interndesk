@@ -307,12 +307,12 @@ export default function LoginPage() {
             </div>
 
             {/* Student Illustration */}
-            <div className="relative pt-1 pb-2 flex justify-center lg:justify-start">
-              <div className="relative max-w-[220px] sm:max-w-[250px] w-full">
+            <div className="relative pt-1 flex justify-center lg:justify-start">
+              <div className="relative max-w-[230px] sm:max-w-[260px] w-full">
                 <img
                   src="/images/student-hero-illustration.png"
                   alt="Akash Technolabs Student Management"
-                  className="w-full h-auto object-contain drop-shadow-md"
+                  className="w-full h-auto object-contain select-none pointer-events-none"
                 />
               </div>
             </div>

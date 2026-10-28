@@ -217,7 +217,7 @@ export function Hero() {
                 <img
                   src="/images/student-hero-illustration.png"
                   alt="Akash Technolabs Student Management"
-                  className="w-full h-auto object-contain drop-shadow-lg"
+                  className="w-full h-auto object-contain select-none pointer-events-none"
                 />
               </div>
             </div>
