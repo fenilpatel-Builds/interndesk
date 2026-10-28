@@ -19,9 +19,7 @@ interface StudentTopbarProps {
 }
 
 export function StudentTopbar({ title = "Dashboard", studentName }: StudentTopbarProps) {
-  const [resolvedName, setResolvedName] = useState(
-    studentName && studentName !== "Fenil Patel" ? studentName : "Priya Sharma"
-  );
+  const [resolvedName, setResolvedName] = useState(studentName || "Student Intern");
   const [currentTime, setCurrentTime] = useState("");
   const [currentDate, setCurrentDate] = useState("");
   const [searchQuery, setSearchQuery] = useState("");

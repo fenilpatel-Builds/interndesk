@@ -22,10 +22,10 @@ import { INSTITUTE_CONFIG } from "@/lib/institute/config";
 export default function StudentSettingsPage() {
   const [activeTab, setActiveTab] = useState<"Profile" | "Security" | "Notifications" | "Appearance">("Profile");
 
-  const [fullName, setFullName] = useState("Priya Sharma");
-  const [email, setEmail] = useState("priya.sharma@akashtechnolabs.com");
-  const [studentId, setStudentId] = useState("AT2024001");
-  const [department, setDepartment] = useState("Information Technology");
+  const [fullName, setFullName] = useState("Student Intern");
+  const [email, setEmail] = useState("");
+  const [studentId, setStudentId] = useState("AT-2026");
+  const [department, setDepartment] = useState("Computer Science & Engineering");
   const [course, setCourse] = useState("B.Tech (CSE / IT)");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 

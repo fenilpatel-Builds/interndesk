@@ -21,9 +21,36 @@ export interface PunchVerificationData {
   hash: string;
 }
 
-const STORAGE_KEY = "interndesk_timer_v4";
+const BASE_STORAGE_KEY = "interndesk_timer_v4";
 const DAILY_TARGET_SECONDS = 8 * 3600; // 8 Hours (28,800s)
 const MAX_DAY_SECONDS = 24 * 3600; // 24 Hours (86,400s maximum day shift)
+
+export function getUserStorageKey(baseKey: string): string {
+  if (typeof window === "undefined") return baseKey;
+  try {
+    const match = document.cookie.match(/(?:^|;\s*)(?:interndesk_user|akash_user)=([^;]+)/);
+    if (match) {
+      const raw = decodeURIComponent(match[1]).trim();
+      let email = "";
+      if (raw.includes(".")) {
+        const parts = raw.split(".");
+        if (parts.length >= 2) {
+          let b64 = parts[0].replace(/-/g, "+").replace(/_/g, "/");
+          while (b64.length % 4) b64 += "=";
+          const payload = JSON.parse(atob(b64));
+          email = payload?.email || "";
+        }
+      } else {
+        const payload = JSON.parse(raw);
+        email = payload?.email || "";
+      }
+      if (email) {
+        return `${baseKey}_${email.toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+      }
+    }
+  } catch {}
+  return baseKey;
+}
 
 export function getTodayIsoDate(): string {
   const d = new Date();
@@ -103,7 +130,8 @@ export function useWorkTimer() {
     const todayStr = getTodayIsoDate();
     if (typeof window !== "undefined") {
       try {
-        const raw = localStorage.getItem(STORAGE_KEY);
+        const storageKey = getUserStorageKey(BASE_STORAGE_KEY);
+        const raw = localStorage.getItem(storageKey);
         if (raw) {
           const parsed = JSON.parse(raw);
           // If stored session belongs to today, continue it
@@ -119,7 +147,8 @@ export function useWorkTimer() {
           // If from a previous day, auto-archive to attendance history
           if (parsed.status !== "IDLE" && parsed.startTime) {
             try {
-              const histRaw = localStorage.getItem("interndesk_attendance_history");
+              const histKey = getUserStorageKey("interndesk_attendance_history");
+              const histRaw = localStorage.getItem(histKey);
               const hist = histRaw ? JSON.parse(histRaw) : [];
               hist.unshift({
                 date: parsed.workDate || todayStr,
@@ -131,7 +160,7 @@ export function useWorkTimer() {
                   : "08h 00m",
                 status: "PRESENT",
               });
-              localStorage.setItem("interndesk_attendance_history", JSON.stringify(hist.slice(0, 30)));
+              localStorage.setItem(histKey, JSON.stringify(hist.slice(0, 30)));
             } catch {
               // Non-blocking
             }
@@ -182,7 +211,8 @@ export function useWorkTimer() {
   useEffect(() => {
     if (mounted && typeof window !== "undefined") {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        const storageKey = getUserStorageKey(BASE_STORAGE_KEY);
+        localStorage.setItem(storageKey, JSON.stringify(state));
       } catch {
         // Ignored
       }
@@ -201,7 +231,7 @@ export function useWorkTimer() {
       const sum = state.timeline
         .filter((t) => t.type === "WORK")
         .reduce((acc, t) => acc + (t.durationSeconds || 0), 0);
-      return sum > 0 ? sum : 4 * 3600 + 32 * 60 + 15;
+      return sum > 0 ? sum : 0;
     }
 
     if (!state.startTime) {
@@ -399,7 +429,7 @@ export function useWorkTimer() {
         status: "COMPLETED",
         clockOutIso: timeStr,
         clockOutVerification: validVerification,
-        finalWorkedSeconds: finalProductive > 0 ? finalProductive : 4 * 3600 + 32 * 60 + 15,
+        finalWorkedSeconds: finalProductive > 0 ? finalProductive : 0,
         timeline: finalTimeline,
         lastTick: timeNow,
       };
@@ -407,7 +437,8 @@ export function useWorkTimer() {
 
     // Archive completed shift to history
     try {
-      const histRaw = localStorage.getItem("interndesk_attendance_history");
+      const histKey = getUserStorageKey("interndesk_attendance_history");
+      const histRaw = localStorage.getItem(histKey);
       const hist = histRaw ? JSON.parse(histRaw) : [];
       const todayIso = getTodayIsoDate();
       const existingIdx = hist.findIndex((h: { date: string }) => h.date === todayIso);
@@ -425,7 +456,7 @@ export function useWorkTimer() {
       } else {
         hist.unshift(record);
       }
-      localStorage.setItem("interndesk_attendance_history", JSON.stringify(hist.slice(0, 30)));
+      localStorage.setItem(histKey, JSON.stringify(hist.slice(0, 30)));
     } catch {
       // Non-blocking
     }
@@ -479,7 +510,7 @@ export function useWorkTimer() {
     minutes,
     seconds,
     breakFormatted,
-    clockInTime: (mounted && state.clockInIso) || "09:02 AM",
+    clockInTime: (mounted && state.clockInIso) || "--:--",
     progressPercent,
     remainingFormatted,
     breakType: state.breakType,

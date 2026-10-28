@@ -44,7 +44,7 @@ export default function StudentAttendancePage() {
     }
   }, []);
 
-  // Full dynamic attendance history records with today's live session
+    // Full dynamic attendance history records with today's live session
   const attendanceHistory = React.useMemo(() => {
     const records = [];
 
@@ -59,45 +59,51 @@ export default function StudentAttendancePage() {
       status: status === "COMPLETED" ? "PRESENT" : status === "WORKING" || status === "ON_BREAK" ? "IN_PROGRESS" : "PENDING",
     });
 
-    // Past audited sessions
-    records.push(
-      {
-        date: "Yesterday",
-        clockIn: "08:58 AM",
-        breaks: "1 (Lunch)",
-        clockOut: "05:15 PM",
-        productiveHours: "07h 45m",
-        breakTime: "00h 32m",
-        status: "PRESENT",
-      },
-      {
-        date: "2 Days Ago",
-        clockIn: "09:05 AM",
-        breaks: "2 (Coffee, Personal)",
-        clockOut: "05:30 PM",
-        productiveHours: "08h 10m",
-        breakTime: "00h 25m",
-        status: "PRESENT",
-      },
-      {
-        date: "3 Days Ago",
-        clockIn: "09:00 AM",
-        breaks: "1 (Lunch)",
-        clockOut: "05:00 PM",
-        productiveHours: "08h 00m",
-        breakTime: "00h 30m",
-        status: "PRESENT",
-      },
-      {
-        date: "4 Days Ago",
-        clockIn: "09:12 AM",
-        breaks: "2 (Lunch, Coffee)",
-        clockOut: "05:40 PM",
-        productiveHours: "08h 05m",
-        breakTime: "00h 38m",
-        status: "PRESENT",
+    // Load user's actual stored past sessions
+    if (typeof window !== "undefined") {
+      try {
+        const match = document.cookie.match(/(?:^|;\s*)(?:interndesk_user|akash_user)=([^;]+)/);
+        let email = "";
+        if (match) {
+          const raw = decodeURIComponent(match[1]).trim();
+          if (raw.includes(".")) {
+            const parts = raw.split(".");
+            if (parts.length >= 2) {
+              let b64 = parts[0].replace(/-/g, "+").replace(/_/g, "/");
+              while (b64.length % 4) b64 += "=";
+              const payload = JSON.parse(atob(b64));
+              email = payload?.email || "";
+            }
+          } else {
+            const payload = JSON.parse(raw);
+            email = payload?.email || "";
+          }
+        }
+
+        const histKey = email
+          ? `interndesk_attendance_history_${email.toLowerCase().replace(/[^a-z0-9]/g, "_")}`
+          : "interndesk_attendance_history";
+        const histRaw = localStorage.getItem(histKey);
+        if (histRaw) {
+          const past = JSON.parse(histRaw);
+          if (Array.isArray(past)) {
+            past.forEach((p: { date: string; clockIn: string; clockOut: string; breaks: string; productiveHours: string; breakTime?: string; status: string }) => {
+              records.push({
+                date: p.date,
+                clockIn: p.clockIn || "09:00 AM",
+                breaks: p.breaks || "0 Breaks",
+                clockOut: p.clockOut || "05:00 PM",
+                productiveHours: p.productiveHours || "08h 00m",
+                breakTime: p.breakTime || "00h 30m",
+                status: p.status || "PRESENT",
+              });
+            });
+          }
+        }
+      } catch {
+        // Fallback
       }
-    );
+    }
 
     if (activeFilter === "TODAY") {
       return records.slice(0, 1);

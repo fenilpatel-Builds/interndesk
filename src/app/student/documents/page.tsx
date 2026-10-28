@@ -181,7 +181,11 @@ export default function StudentDocumentsPage() {
     );
   });
 
-  const docsList = (userDocs.length > 0 ? userDocs : storeDocs.length > 0 ? storeDocs : STUDENT_DOCUMENTS).map((doc) => ({
+  const docsList = (
+    currentUser
+      ? (currentUser.email?.includes("fenil") ? STUDENT_DOCUMENTS : userDocs)
+      : STUDENT_DOCUMENTS
+  ).map((doc) => ({
     ...doc,
     recipient_name: currentUser?.name || doc.recipient_name,
   }));
@@ -313,9 +317,26 @@ export default function StudentDocumentsPage() {
                 </div>
               </div>
             )}
-
-            {filteredDocs.map((doc) => (
-              <Card
+            {filteredDocs.length === 0 ? (
+              <div className="bg-white rounded-3xl border border-dashed border-slate-200/90 p-12 text-center shadow-2xs space-y-4 my-4">
+                <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-100 text-amber-600 flex items-center justify-center mx-auto shadow-2xs">
+                  <Award className="w-7 h-7" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-base font-bold text-slate-900">No documents issued yet</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
+                    Your official offer letters, internship certificates, and verified skill transcripts will appear here once approved by Akash Technolabs administration.
+                  </p>
+                </div>
+                <Link href="/student/activities" className="inline-block pt-1">
+                  <Button className="bg-[#0F4C81] hover:bg-[#0C3D68] text-white font-bold text-xs rounded-xl px-5 py-2.5 shadow-xs cursor-pointer">
+                    View Academic Activities
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              filteredDocs.map((doc) => (
+                <Card
                 key={doc.id}
                 className="border-slate-200/90 shadow-xs p-4 flex items-center justify-between bg-white hover:border-blue-200 transition-all rounded-2xl"
               >
@@ -395,7 +416,7 @@ export default function StudentDocumentsPage() {
                   )}
                 </div>
               </Card>
-            ))}
+            )))}
           </div>
 
           {/* Right Column: Certificate Preview Card */}

@@ -36,12 +36,20 @@ export default function StudentActivitiesPage() {
   const [liveUrl, setLiveUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
-  const [currentStudentName, setCurrentStudentName] = useState("Priya Sharma");
+  const [currentStudentName, setCurrentStudentName] = useState("Student Intern");
+  const [currentStudentEmail, setCurrentStudentEmail] = useState("");
+  const [currentStudentId, setCurrentStudentId] = useState("");
 
   useEffect(() => {
     const session = parseClientSessionCookie();
     if (session?.name) {
       setCurrentStudentName(session.name);
+    }
+    if (session?.email) {
+      setCurrentStudentEmail(session.email);
+    }
+    if (session?.id) {
+      setCurrentStudentId(session.id);
     }
     fetchActivities();
   }, []);
@@ -81,9 +89,9 @@ export default function StudentActivitiesPage() {
         body: JSON.stringify({
           reportContent: reportContent.trim(),
           attachmentUrl: githubUrl.trim() || liveUrl.trim(),
-          studentId: "AT2024001",
+          studentId: currentStudentId || `STD-${Date.now().toString().slice(-4)}`,
           studentName: currentStudentName,
-          studentEmail: "priya.sharma@akashtechnolabs.com",
+          studentEmail: currentStudentEmail || "student@akashtechnolabs.com",
         }),
       });
 

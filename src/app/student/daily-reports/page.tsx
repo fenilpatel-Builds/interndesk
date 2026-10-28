@@ -21,19 +21,59 @@ interface ReportSlot {
 }
 
 export default function StudentDailyReportsPage() {
-  const [reportDate] = useState("Oct 8, 2026");
+  const [reportDate, setReportDate] = useState("");
   const [reportStatus, setReportStatus] = useState<"DRAFT" | "SUBMITTED">("DRAFT");
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState("");
 
-  // Default slots matching Section 21
   const [slots, setSlots] = useState<ReportSlot[]>([
-    { id: "1", timeSlot: "09:00 – 10:00", description: "Worked on authentication module and Resend OTP delivery." },
-    { id: "2", timeSlot: "10:00 – 11:00", description: "Implemented API integration and database schema migrations." },
-    { id: "3", timeSlot: "11:00 – 11:15", description: "Coffee & Refreshment Break." },
-    { id: "4", timeSlot: "11:15 – 12:00", description: "Testing and debugging work session timer precision." },
-    { id: "5", timeSlot: "12:00 – 01:00", description: "Lunch Break" },
-    { id: "6", timeSlot: "01:00 – 03:00", description: "Engineered programs marketplace and configurable fee checkout." },
+    { id: "1", timeSlot: "09:00 – 11:00", description: "" },
+    { id: "2", timeSlot: "11:15 – 01:00", description: "" },
+    { id: "3", timeSlot: "02:00 – 05:00", description: "" },
   ]);
+
+  React.useEffect(() => {
+    const todayStr = new Date().toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+    setReportDate(todayStr);
+
+    try {
+      const match = document.cookie.match(/(?:^|;\s*)(?:interndesk_user|akash_user)=([^;]+)/);
+      if (match) {
+        const raw = decodeURIComponent(match[1]).trim();
+        let email = "";
+        if (raw.includes(".")) {
+          const parts = raw.split(".");
+          if (parts.length >= 2) {
+            let b64 = parts[0].replace(/-/g, "+").replace(/_/g, "/");
+            while (b64.length % 4) b64 += "=";
+            const payload = JSON.parse(atob(b64));
+            email = payload?.email || "";
+          }
+        } else {
+          const payload = JSON.parse(raw);
+          email = payload?.email || "";
+        }
+        if (email) {
+          setUserEmail(email);
+          const reportKey = `interndesk_daily_report_${email.toLowerCase().replace(/[^a-z0-9]/g, "_")}_${new Date().toISOString().split("T")[0]}`;
+          const stored = localStorage.getItem(reportKey);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed?.slots) && parsed.slots.length > 0) {
+              setSlots(parsed.slots);
+              if (parsed.status) setReportStatus(parsed.status);
+            }
+          }
+        }
+      }
+    } catch {
+      // Ignored
+    }
+  }, []);
 
   const updateSlotDescription = (id: string, val: string) => {
     setSlots(slots.map((s) => (s.id === id ? { ...s, description: val } : s)));
@@ -57,14 +97,29 @@ export default function StudentDailyReportsPage() {
     setSlots(slots.filter((s) => s.id !== id));
   };
 
+  const persistReport = (status: "DRAFT" | "SUBMITTED") => {
+    if (typeof window !== "undefined") {
+      try {
+        const emailKey = userEmail ? userEmail.toLowerCase().replace(/[^a-z0-9]/g, "_") : "guest";
+        const todayIso = new Date().toISOString().split("T")[0];
+        const reportKey = `interndesk_daily_report_${emailKey}_${todayIso}`;
+        localStorage.setItem(reportKey, JSON.stringify({ slots, status, date: reportDate }));
+      } catch {
+        // Ignored
+      }
+    }
+  };
+
   const handleSaveDraft = () => {
     setReportStatus("DRAFT");
+    persistReport("DRAFT");
     setFeedbackMsg("Report draft saved locally.");
     setTimeout(() => setFeedbackMsg(null), 3000);
   };
 
   const handleSubmitReport = () => {
     setReportStatus("SUBMITTED");
+    persistReport("SUBMITTED");
     setFeedbackMsg("Daily work report submitted successfully to supervisor!");
     setTimeout(() => setFeedbackMsg(null), 4000);
   };
