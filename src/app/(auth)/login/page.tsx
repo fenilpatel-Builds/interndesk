@@ -48,9 +48,6 @@ export default function LoginPage() {
   const [otpSuccessMessage, setOtpSuccessMessage] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  // Watch Demo Modal
-  const [demoModalOpen, setDemoModalOpen] = useState(false);
-
   // Refs for 6-box OTP digits
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -294,16 +291,6 @@ export default function LoginPage() {
                   <ArrowRight className="w-3.5 h-3.5" />
                 </Button>
               </Link>
-              <button
-                type="button"
-                onClick={() => setDemoModalOpen(true)}
-                className="w-full sm:w-auto px-4 py-2 rounded-xl border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-2xs transition-all cursor-pointer"
-              >
-                <div className="w-5 h-5 rounded-full bg-red-100 text-[#E52329] flex items-center justify-center">
-                  <Play className="w-2.5 h-2.5 fill-current ml-0.5" />
-                </div>
-                <span>Watch Demo</span>
-              </button>
             </div>
 
             {/* Student Illustration */}
@@ -667,52 +654,6 @@ export default function LoginPage() {
           </div>
         </div>
       </footer>
-
-      {/* Watch Demo Modal */}
-      {demoModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 relative space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-red-100 text-[#E52329] flex items-center justify-center">
-                  <Play className="w-4 h-4 fill-current ml-0.5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">
-                    Akash Technolabs Portal Tour
-                  </h3>
-                  <p className="text-xs text-slate-500">Student &amp; Faculty Activity Management</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setDemoModalOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="aspect-video bg-gradient-to-br from-slate-900 to-[#0F4C81] rounded-2xl flex flex-col items-center justify-center text-white p-8 text-center space-y-3">
-              <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
-                <Sparkles className="w-7 h-7 text-white" />
-              </div>
-              <h4 className="text-lg font-bold">Interactive Platform Walkthrough</h4>
-              <p className="text-xs text-slate-200 max-w-md">
-                Experience the 1-click attendance clock-in, academic assignment submissions with live GitHub review, and student performance analytics.
-              </p>
-              <div className="flex gap-2 pt-2">
-                <Button
-                  size="sm"
-                  onClick={() => setDemoModalOpen(false)}
-                  className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold rounded-xl text-xs"
-                >
-                  Close &amp; Continue
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

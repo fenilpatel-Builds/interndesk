@@ -274,33 +274,33 @@ export default function StudentTasksPage() {
             <Button
               size="sm"
               onClick={() => setIsNewTaskOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs flex items-center gap-1.5"
+              className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold rounded-xl shadow-md shadow-red-500/20 flex items-center gap-1.5 transition-transform hover:scale-[1.02] cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Create / Assign Task</span>
             </Button>
 
-            <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200">
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/80">
               <button
                 onClick={() => setViewMode("BOARD")}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   viewMode === "BOARD"
-                    ? "bg-blue-600 text-white shadow-2xs font-bold"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-white text-slate-900 shadow-xs font-bold"
+                    : "text-slate-500 hover:text-slate-900"
                 }`}
               >
-                <Kanban className="w-3.5 h-3.5" />
+                <Kanban className="w-3.5 h-3.5 text-[#E52329]" />
                 <span>Kanban</span>
               </button>
               <button
                 onClick={() => setViewMode("LIST")}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   viewMode === "LIST"
-                    ? "bg-blue-600 text-white shadow-2xs font-bold"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-white text-slate-900 shadow-xs font-bold"
+                    : "text-slate-500 hover:text-slate-900"
                 }`}
               >
-                <List className="w-3.5 h-3.5" />
+                <List className="w-3.5 h-3.5 text-[#0B192C]" />
                 <span>List</span>
               </button>
             </div>
@@ -744,7 +744,7 @@ export default function StudentTasksPage() {
             <Button
               type="submit"
               size="sm"
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold"
+              className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold rounded-xl shadow-md shadow-red-500/20 cursor-pointer"
             >
               Create Task
             </Button>

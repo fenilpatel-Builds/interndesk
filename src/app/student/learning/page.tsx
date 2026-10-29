@@ -124,10 +124,10 @@ export default function StudentLearningCenterPage() {
 
       <main className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Banner */}
-        <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-900 rounded-2xl p-6 sm:p-8 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+        <div className="bg-gradient-to-r from-[#0B192C] via-[#16273e] to-[#07111E] rounded-2xl p-6 sm:p-8 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm border border-slate-800">
           <div className="space-y-1.5 max-w-xl">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-blue-100 text-xs font-semibold backdrop-blur-xs">
-              <Sparkles className="w-3.5 h-3.5 text-blue-200" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-white text-xs font-semibold backdrop-blur-xs">
+              <Sparkles className="w-3.5 h-3.5 text-[#E52329]" />
               <span>Program Study Materials</span>
             </span>
             <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
@@ -169,9 +169,9 @@ export default function StudentLearningCenterPage() {
               <button
                 key={c.id}
                 onClick={() => setSelectedCategory(c.id)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
                   selectedCategory === c.id
-                    ? "bg-blue-600 text-white shadow-2xs"
+                    ? "bg-[#E52329] text-white shadow-xs font-bold"
                     : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
                 }`}
               >

@@ -63,6 +63,10 @@ export default function StudentSubmissionsPage() {
       <main className="flex-1 overflow-y-auto p-6 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#E52329]" />
+              <span>Learn • Grow • Achieve</span>
+            </div>
             <h2 className="text-2xl font-black text-slate-900 tracking-tight">
               My Submissions
             </h2>
@@ -71,22 +75,22 @@ export default function StudentSubmissionsPage() {
             </p>
           </div>
           <Link href="/student/activities">
-            <Button size="sm" className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold rounded-xl text-xs">
+            <Button size="sm" className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold rounded-xl text-xs shadow-md shadow-red-500/20 transition-transform hover:scale-[1.02]">
               Submit New Assignment
             </Button>
           </Link>
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex items-center gap-1.5 p-1 bg-white border border-slate-200/90 rounded-2xl w-fit shadow-xs">
+        {/* Filter Tabs matching segmented control theme */}
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 border border-slate-200/80 rounded-xl w-fit">
           {(["ALL", "APPROVED", "PENDING"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-4 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+              className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                 filter === f
-                  ? "bg-[#0F4C81] text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-white text-slate-900 shadow-xs font-bold"
+                  : "text-slate-500 hover:text-slate-900"
               }`}
             >
               {f === "ALL" ? "All Submissions" : f === "APPROVED" ? "Approved" : "In Review"}
@@ -114,7 +118,7 @@ export default function StudentSubmissionsPage() {
             </div>
             {filter === "ALL" && (
               <Link href="/student/activities" className="inline-block pt-1">
-                <Button className="bg-[#0F4C81] hover:bg-[#0C3D68] text-white font-bold text-xs rounded-xl px-5 py-2.5 shadow-xs cursor-pointer">
+                <Button className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold text-xs rounded-xl px-5 py-2.5 shadow-md shadow-red-500/20 cursor-pointer">
                   Browse Assignments
                 </Button>
               </Link>

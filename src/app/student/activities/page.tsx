@@ -127,9 +127,13 @@ export default function StudentActivitiesPage() {
       <StudentTopbar title="Activities & Assignments" studentName={currentStudentName} />
 
       <main className="flex-1 overflow-y-auto p-6 space-y-6">
-        {/* Header matching Image 1 Middle Right */}
+        {/* Header matching Akash Technolabs Theme */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#E52329]" />
+              <span>Learn • Grow • Achieve</span>
+            </div>
             <h2 className="text-2xl font-black text-slate-900 tracking-tight">
               Activities &amp; Assignments
             </h2>
@@ -142,15 +146,15 @@ export default function StudentActivitiesPage() {
         {/* Filter Bar with Tabs, Search & Filter Button */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-3 rounded-2xl border border-slate-200/90 shadow-xs">
           {/* Tabs: All, Ongoing, Upcoming, Closed */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl">
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200/80">
             {(["All", "Ongoing", "Upcoming", "Closed"] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                   activeTab === tab
-                    ? "bg-[#0F4C81] text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-white text-slate-900 shadow-xs font-bold"
+                    : "text-slate-500 hover:text-slate-900"
                 }`}
               >
                 {tab}

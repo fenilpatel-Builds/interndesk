@@ -53,17 +53,21 @@ export default function AdminDashboardPage() {
         {/* Header matching Image 2 Screen 9 */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#E52329]" />
+              <span>Akash Technolabs • Admin Console</span>
+            </div>
             <h2 className="text-xl font-black text-slate-900 tracking-tight">
               Good Morning, Admin
             </h2>
             <p className="text-xs text-slate-500">
-              Here&apos;s what&apos;s happening across your internship program.
+              Here&apos;s what&apos;s happening across your institute activity program.
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <Link href="/admin/activities">
-              <Button size="sm" className="bg-[#d32f2f] hover:bg-[#b71c1c] text-white font-bold rounded-xl shadow-xs">
+              <Button size="sm" className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold rounded-xl shadow-md shadow-red-500/20 transition-transform hover:scale-[1.02]">
                 Academic Activities
               </Button>
             </Link>

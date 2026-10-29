@@ -127,7 +127,7 @@ export function StudentSidebar() {
                   className={cn(
                     "flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all duration-150",
                     isActive
-                      ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md shadow-blue-500/25"
+                      ? "bg-[#E52329] text-white shadow-md shadow-red-500/25"
                       : "text-slate-400 hover:text-white hover:bg-slate-800/60"
                   )}
                 >
@@ -140,7 +140,7 @@ export function StudentSidebar() {
                       className={cn(
                         "text-[10px] font-black px-1.5 py-0.2 rounded-full",
                         isActive
-                          ? "bg-white text-blue-700"
+                          ? "bg-white text-[#E52329]"
                           : "bg-[#E52329] text-white"
                       )}
                     >

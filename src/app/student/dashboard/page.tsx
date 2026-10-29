@@ -143,6 +143,10 @@ export default function StudentDashboardPage() {
         {/* Header Greeting */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#E52329]" />
+              <span>Learn • Grow • Achieve</span>
+            </div>
             <h2 className="text-2xl font-black text-slate-900 tracking-tight" suppressHydrationWarning>
               {greeting}, {firstName}! 👋
             </h2>
@@ -152,7 +156,7 @@ export default function StudentDashboardPage() {
           </div>
           <div className="flex items-center gap-2">
             <Link href="/student/activities">
-              <Button size="sm" className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold rounded-xl shadow-xs text-xs">
+              <Button size="sm" className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold rounded-xl shadow-md shadow-red-500/20 text-xs px-4 py-2 transition-transform hover:scale-[1.02]">
                 View Assignments
               </Button>
             </Link>
@@ -307,7 +311,7 @@ export default function StudentDashboardPage() {
                   </div>
                   <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-blue-600 transition-all duration-500"
+                      className="h-full rounded-full bg-gradient-to-r from-[#E52329] to-[#0B192C] transition-all duration-500"
                       style={{ width: `${progressPercent}%` }}
                     />
                   </div>

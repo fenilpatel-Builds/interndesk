@@ -83,7 +83,7 @@ export function StudentTopbar({ title = "Dashboard", studentName }: StudentTopba
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search activities, students, or anything..."
-            className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-800 placeholder-slate-400 transition-all"
+            className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#E52329]/20 focus:border-[#E52329] text-slate-800 placeholder-slate-400 transition-all"
           />
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
         </div>
@@ -118,7 +118,7 @@ export function StudentTopbar({ title = "Dashboard", studentName }: StudentTopba
           href="/student/settings"
           className="flex items-center gap-2.5 pl-2 border-l border-slate-200 hover:opacity-85 transition-opacity"
         >
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#0F4C81] to-blue-500 text-white font-black text-xs flex items-center justify-center shadow-xs">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#0B192C] to-[#E52329] text-white font-black text-xs flex items-center justify-center shadow-xs">
             {initials}
           </div>
           <div className="hidden lg:flex flex-col text-left leading-tight">
