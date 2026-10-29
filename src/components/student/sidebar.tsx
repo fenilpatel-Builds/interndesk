@@ -26,11 +26,23 @@ import {
 import { cn } from "@/lib/utils";
 import { signOutUser } from "@/lib/auth/actions";
 
+interface NavItem {
+  label: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  badge?: string;
+}
+
+interface NavSection {
+  title: string;
+  items: NavItem[];
+}
+
 export function StudentSidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const navSections = [
+  const navSections: NavSection[] = [
     {
       title: "CORE ACTIVITIES",
       items: [
@@ -39,7 +51,7 @@ export function StudentSidebar() {
         { label: "Submissions", href: "/student/submissions", icon: FileCheck },
         { label: "My Progress", href: "/student/progress", icon: TrendingUp },
         { label: "Attendance & Clock", href: "/student/attendance", icon: Clock },
-        { label: "Project Tasks", href: "/student/tasks", icon: CheckSquare, badge: "3" },
+        { label: "Project Tasks", href: "/student/tasks", icon: CheckSquare },
         { label: "Daily Work Reports", href: "/student/daily-reports", icon: FileSpreadsheet },
       ],
     },
@@ -143,13 +155,13 @@ export function StudentSidebar() {
       </div>
 
       {/* User Session Footer & Sign Out */}
-      <div className="p-3.5 border-t border-slate-800/80 bg-[#07111E]/80 relative z-10">
+      <div className="p-3 border-t border-slate-800/80 bg-[#07111E]/90 relative z-10">
         <button
           onClick={handleSignOut}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all cursor-pointer"
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all cursor-pointer group"
         >
-          <LogOut className="w-3.5 h-3.5" />
-          <span>Sign Out</span>
+          <LogOut className="w-4 h-4 text-slate-400 group-hover:text-red-400 transition-colors shrink-0" />
+          <span className="tracking-tight">Sign Out</span>
         </button>
       </div>
     </aside>

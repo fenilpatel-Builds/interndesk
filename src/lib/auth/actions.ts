@@ -70,7 +70,15 @@ export async function sendEmailOtp(email: string): Promise<AuthResponse> {
 export async function verifyEmailOtp(
   email: string,
   token: string,
-  deviceInfo?: {
+  fullNameOrDeviceInfo?:
+    | string
+    | {
+        deviceLabel?: string;
+        browser?: string;
+        os?: string;
+        ipHash?: string;
+      },
+  optionalDeviceInfo?: {
     deviceLabel?: string;
     browser?: string;
     os?: string;
@@ -79,6 +87,10 @@ export async function verifyEmailOtp(
 ): Promise<AuthResponse> {
   const cleanEmail = email.toLowerCase().trim();
   const cleanToken = token.trim();
+  const providedFullName =
+    typeof fullNameOrDeviceInfo === "string" ? fullNameOrDeviceInfo.trim() : undefined;
+  const deviceInfo =
+    typeof fullNameOrDeviceInfo === "object" ? fullNameOrDeviceInfo : optionalDeviceInfo;
 
   if (!cleanEmail || !cleanToken) {
     return { success: false, message: "Email and OTP code are required." };
@@ -104,15 +116,23 @@ export async function verifyEmailOtp(
     const cookieStore = await cookies();
     let localAccount = credentialsStore.findByEmail(cleanEmail);
 
-    if (!localAccount) {
-      const rawName = cleanEmail.split("@")[0].replace(/[^a-zA-Z0-9]/g, " ");
-      const resolvedName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
-      const isAdmin = cleanEmail === "akash@akashtechnolabs.com" || cleanEmail.startsWith("admin@");
-      const role: MemberRole = isAdmin ? "ORG_ADMIN" : "STUDENT";
+    const isAdmin = cleanEmail === "akash@akashtechnolabs.com" || cleanEmail.startsWith("admin@");
+    const role: MemberRole = isAdmin ? "ORG_ADMIN" : "STUDENT";
 
+    // Determine highest-fidelity name
+    let effectiveName = providedFullName;
+    if (!effectiveName && localAccount?.name && !localAccount.name.includes("@")) {
+      effectiveName = localAccount.name;
+    }
+    if (!effectiveName) {
+      const rawName = cleanEmail.split("@")[0].replace(/[^a-zA-Z0-9]/g, " ");
+      effectiveName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+    }
+
+    if (!localAccount || (providedFullName && localAccount.name !== providedFullName)) {
       localAccount = credentialsStore.register({
         email: cleanEmail,
-        name: resolvedName,
+        name: effectiveName,
         password: "Password@123",
         role,
         organizationId: "org-akash-01",
@@ -494,7 +514,21 @@ export async function registerAccountAction(params: {
       sameSite: "lax",
     });
 
+    cookieStore.set("akash_user", sessionToken, {
+      path: "/",
+      httpOnly: false,
+      maxAge: 60 * 60 * 24 * 7,
+      sameSite: "lax",
+    });
+
     cookieStore.set("interndesk_active_org", resolvedOrgId, {
+      path: "/",
+      httpOnly: false,
+      maxAge: 60 * 60 * 24 * 7,
+      sameSite: "lax",
+    });
+
+    cookieStore.set("akash_active_org", resolvedOrgId, {
       path: "/",
       httpOnly: false,
       maxAge: 60 * 60 * 24 * 7,

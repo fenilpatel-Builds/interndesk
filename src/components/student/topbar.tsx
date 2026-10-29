@@ -32,6 +32,16 @@ export function StudentTopbar({ title = "Dashboard", studentName }: StudentTopba
       setResolvedName(studentName);
     }
 
+    // Authoritative full name from server session
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.user?.name) {
+          setResolvedName(data.user.name);
+        }
+      })
+      .catch(() => {});
+
     const updateDateTime = () => {
       const now = new Date();
       setCurrentDate(

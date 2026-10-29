@@ -238,7 +238,7 @@ export default function RegisterPage() {
     setOtpError(null);
 
     try {
-      const verifyRes = await verifyEmailOtp(email.trim().toLowerCase(), fullOtp);
+      const verifyRes = await verifyEmailOtp(email.trim().toLowerCase(), fullOtp, fullName.trim());
       if (verifyRes.success) {
         await finalizeRegistration();
       } else {
@@ -282,19 +282,21 @@ export default function RegisterPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fullName: fullName.trim(),
-          email: email.trim().toLowerCase(),
-          studentId: generatedStudentId,
-          mobile: "9978621654",
-          department: defaultDepartment,
-          course: selectedRole === "Student" ? effectiveCourse : "Faculty Academic Track",
-          semester: selectedRole === "Student" ? semester : "Faculty Staff",
-          college: INSTITUTE_CONFIG.name,
-          university: "Gujarat Technological University",
-          technology: defaultDepartment,
-          duration: "6 Months",
-          startDate: new Date().toISOString().split("T")[0],
-          category: selectedRole === "Student" ? "Student Activity & Capstone" : "Faculty Coordinator",
+          formData: {
+            fullName: fullName.trim(),
+            email: email.trim().toLowerCase(),
+            studentId: generatedStudentId,
+            mobile: "9978621654",
+            department: defaultDepartment,
+            course: selectedRole === "Student" ? effectiveCourse : "Faculty Academic Track",
+            semester: selectedRole === "Student" ? semester : "Faculty Staff",
+            college: INSTITUTE_CONFIG.name,
+            university: "Gujarat Technological University",
+            technology: defaultDepartment,
+            duration: "6 Months",
+            startDate: new Date().toISOString().split("T")[0],
+            category: selectedRole === "Student" ? "Student Activity & Capstone" : "Faculty Coordinator",
+          },
         }),
       });
 

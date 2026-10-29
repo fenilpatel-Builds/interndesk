@@ -42,6 +42,17 @@ export default function StudentDashboardPage() {
       setUserEmail(session.email);
     }
 
+    // Authoritative user name resolution from server session
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.user?.name) {
+          setUserName(data.user.name);
+          if (data.user.email) setUserEmail(data.user.email);
+        }
+      })
+      .catch(() => {});
+
     const hour = new Date().getHours();
     if (hour < 12) {
       setGreeting("Good Morning");
@@ -85,16 +96,16 @@ export default function StudentDashboardPage() {
 
   const firstName = userName.split(" ")[0] || "Intern";
 
-  // Dynamic calculations based strictly on logged-in student's records
-  const totalActivitiesCount = activities.length;
+  // Dynamic calculations based strictly on logged-in student's records (0 for new registrations)
+  const studentActivitiesCount = submissions.length;
   const pendingSubmissionsCount = submissions.filter((s) => s.status === "SUBMITTED").length;
   const approvedSubmissionsCount = submissions.filter((s) => s.status === "APPROVED").length;
   const rejectedSubmissionsCount = submissions.filter(
     (s) => s.status === "REJECTED" || s.status === "NEEDS_REVISION"
   ).length;
 
-  const progressPercent = totalActivitiesCount > 0
-    ? Math.min(100, Math.round((approvedSubmissionsCount / totalActivitiesCount) * 100))
+  const progressPercent = studentActivitiesCount > 0
+    ? Math.min(100, Math.round((approvedSubmissionsCount / studentActivitiesCount) * 100))
     : 0;
 
   // Upcoming deadlines mapped from actual institute published activities
@@ -150,12 +161,12 @@ export default function StudentDashboardPage() {
 
         {/* 4 Dynamic Stat Cards Row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Total Activities */}
+          {/* My Activities */}
           <Card className="p-5 rounded-2xl bg-white border-slate-200/90 shadow-xs flex items-center justify-between">
             <div>
-              <span className="text-xs font-bold text-slate-500 block">Total Activities</span>
+              <span className="text-xs font-bold text-slate-500 block">My Activities</span>
               <span className="text-3xl font-black text-slate-900 mt-1 block">
-                {loading ? "-" : totalActivitiesCount}
+                {loading ? "-" : studentActivitiesCount}
               </span>
             </div>
             <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
@@ -290,7 +301,7 @@ export default function StudentDashboardPage() {
                 <div className="flex-1 space-y-2">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-semibold text-slate-600">
-                      Completed {approvedSubmissionsCount} of {totalActivitiesCount} activities
+                      Completed {approvedSubmissionsCount} of {studentActivitiesCount} activities
                     </span>
                     <span className="font-mono font-bold text-blue-600">{progressPercent}%</span>
                   </div>
@@ -303,9 +314,9 @@ export default function StudentDashboardPage() {
                   <span className="text-[11px] text-slate-400 block">
                     {pendingSubmissionsCount > 0
                       ? `${pendingSubmissionsCount} activities pending evaluation from faculty supervisor`
-                      : totalActivitiesCount > 0 && approvedSubmissionsCount === 0
+                      : studentActivitiesCount > 0 && approvedSubmissionsCount === 0
                       ? "Get started by selecting an activity and submitting your deliverables"
-                      : "All submissions evaluated by faculty"}
+                      : "Start your first activity to track your progress"}
                   </span>
                 </div>
               </div>

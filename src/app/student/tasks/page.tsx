@@ -108,6 +108,7 @@ export default function StudentTasksPage() {
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [newPriority, setNewPriority] = useState<TaskItem["priority"]>("MEDIUM");
+  const [newStatus, setNewStatus] = useState<TaskItem["status"]>("PENDING");
   const [newDue, setNewDue] = useState("2026-10-28");
   const [newTech, setNewTech] = useState("Full Stack Web");
   const [newAssignee, setNewAssignee] = useState("Me (Intern)");
@@ -164,6 +165,18 @@ export default function StudentTasksPage() {
     } catch {
       // Ignored
     }
+
+    // Authoritative name from server session
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.user?.name) {
+          setUserName(data.user.name);
+          setNewAssignee(data.user.name);
+          if (data.user.email) setUserEmail(data.user.email);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const saveTasks = (updated: TaskItem[]) => {
@@ -187,17 +200,18 @@ export default function StudentTasksPage() {
       title: newTitle.trim(),
       description: newDesc.trim() || "Assigned task deliverable.",
       priority: newPriority,
-      status: "PENDING",
+      status: newStatus,
       dueAt: newDue,
       assignedTo: newAssignee,
       technology: newTech,
-      progress: 0,
+      progress: newStatus === "COMPLETED" ? 100 : newStatus === "IN_PROGRESS" ? 60 : 0,
     };
 
     saveTasks([newTask, ...tasks]);
     setIsNewTaskOpen(false);
     setNewTitle("");
     setNewDesc("");
+    setNewStatus("PENDING");
   };
 
   const handleUpdateStatus = (taskId: string, newStatus: TaskItem["status"]) => {
@@ -322,175 +336,234 @@ export default function StudentTasksPage() {
           </div>
         </div>
 
-        {/* Empty State when no tasks exist for this user */}
-        {tasks.length === 0 ? (
-          <div className="bg-white rounded-3xl border border-dashed border-slate-200/90 p-12 text-center max-w-lg mx-auto shadow-2xs space-y-4 my-8">
-            <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center mx-auto shadow-2xs">
-              <CheckCircle2 className="w-7 h-7" />
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-base font-bold text-slate-900">No tasks created yet</h3>
-              <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
-                Your task board is clear! Create your first internship milestone, assignment ticket, or project deliverable to begin tracking.
-              </p>
-            </div>
-            <Button
-              onClick={() => setIsNewTaskOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl px-5 py-2.5 shadow-xs cursor-pointer inline-flex items-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Create First Task</span>
-            </Button>
-          </div>
-        ) : (
-          <>
-            {/* KANBAN BOARD VIEW */}
-            {viewMode === "BOARD" && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
-                {columns.map((col) => {
-                  const colTasks = filteredTasks.filter((t) => t.status === col.id);
-                  return (
-                    <div
-                      key={col.id}
-                      className="bg-slate-100/70 p-3.5 rounded-2xl border border-slate-200/80 space-y-3"
-                    >
-                      <div className="flex items-center justify-between px-1">
-                        <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                          {col.title}
-                        </span>
-                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-white text-slate-600 shadow-2xs">
-                          {colTasks.length}
-                        </span>
-                      </div>
-
-                      <div className="space-y-3">
-                        {colTasks.map((task) => (
-                          <Card
-                            key={task.id}
-                            onClick={() => {
-                              setSelectedTask(task);
-                              setNotes(task.completionNotes || "");
-                            }}
-                            className="border-slate-200/90 shadow-2xs hover:border-blue-400 hover:shadow-md transition-all cursor-pointer rounded-xl bg-white p-4 space-y-3"
-                          >
-                            <div className="flex items-start justify-between gap-2">
-                              <span
-                                className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded ${
-                                  task.priority === "URGENT"
-                                    ? "bg-red-50 text-red-700"
-                                    : task.priority === "HIGH"
-                                    ? "bg-amber-50 text-amber-700"
-                                    : "bg-slate-100 text-slate-700"
-                                }`}
-                              >
-                                {task.priority}
-                              </span>
-                              <span className="text-[10px] text-slate-400 font-semibold">
-                                {formatDate(task.dueAt)}
-                              </span>
-                            </div>
-
-                            <div>
-                              <h4 className="text-xs font-bold text-slate-900 leading-snug">
-                                {task.title}
-                              </h4>
-                              <p className="text-[11px] text-slate-500 line-clamp-2 mt-1 leading-relaxed">
-                                {task.description}
-                              </p>
-                            </div>
-
-                            {/* Progress Bar */}
-                            <div className="space-y-1">
-                              <div className="flex justify-between text-[10px] font-semibold text-slate-400">
-                                <span>Progress</span>
-                                <span>{task.progress}%</span>
-                              </div>
-                              <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full transition-all ${
-                                    task.status === "COMPLETED"
-                                      ? "bg-emerald-500"
-                                      : task.status === "OVERDUE"
-                                      ? "bg-red-500"
-                                      : "bg-blue-600"
-                                  }`}
-                                  style={{ width: `${task.progress}%` }}
-                                />
-                              </div>
-                            </div>
-
-                            {/* Card Footer: Assigned & Tech */}
-                            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500 font-medium">
-                              <span className="px-1.5 py-0.5 rounded bg-slate-50 text-slate-600">
-                                {task.technology}
-                              </span>
-                              <span>{task.assignedTo}</span>
-                            </div>
-                          </Card>
-                        ))}
-
-                        {colTasks.length === 0 && (
-                          <div className="p-6 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl">
-                            No tasks in {col.title}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* LIST VIEW */}
-            {viewMode === "LIST" && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredTasks.map((task) => (
-                  <Card
-                    key={task.id}
-                    className="border-slate-200/90 shadow-2xs hover:border-blue-300 transition-all rounded-2xl bg-white p-5 flex flex-col justify-between"
-                  >
-                    <div className="space-y-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="text-sm font-bold text-slate-900 tracking-tight">
-                          {task.title}
-                        </h3>
-                        <StatusBadge status={task.status} />
-                      </div>
-
-                      <p className="text-xs text-slate-600 leading-relaxed">
-                        {task.description}
-                      </p>
-
-                      <div className="flex items-center gap-3 text-xs text-slate-500 pt-1">
-                        <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px]">
-                          {task.technology}
-                        </span>
-                        <span>Due: {formatDate(task.dueAt)}</span>
-                      </div>
-                    </div>
-
-                    <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between">
-                      <span className="text-xs font-semibold text-slate-500">
-                        Progress: {task.progress}%
+        {/* KANBAN BOARD VIEW */}
+        {viewMode === "BOARD" && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+            {columns.map((col) => {
+              const colTasks = filteredTasks.filter((t) => t.status === col.id);
+              return (
+                <div
+                  key={col.id}
+                  className="bg-slate-100/70 p-3.5 rounded-2xl border border-slate-200/80 space-y-3"
+                >
+                  {/* Column Header */}
+                  <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                        {col.title}
                       </span>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-xs rounded-xl"
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white text-slate-600 shadow-2xs">
+                        {colTasks.length}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewStatus(col.id);
+                        setIsNewTaskOpen(true);
+                      }}
+                      className="p-1 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-white transition-all cursor-pointer"
+                      title={`Add task to ${col.title}`}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Column Body */}
+                  <div className="space-y-3">
+                    {colTasks.map((task) => (
+                      <Card
+                        key={task.id}
                         onClick={() => {
                           setSelectedTask(task);
                           setNotes(task.completionNotes || "");
                         }}
+                        className="border-slate-200/90 shadow-2xs hover:border-blue-400 hover:shadow-md transition-all cursor-pointer rounded-xl bg-white p-4 space-y-3"
                       >
-                        Update Status
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </>
+                        <div className="flex items-start justify-between gap-2">
+                          <span
+                            className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded ${
+                              task.priority === "URGENT"
+                                ? "bg-red-50 text-red-700"
+                                : task.priority === "HIGH"
+                                ? "bg-amber-50 text-amber-700"
+                                : "bg-slate-100 text-slate-700"
+                            }`}
+                          >
+                            {task.priority}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-semibold">
+                            {formatDate(task.dueAt)}
+                          </span>
+                        </div>
+
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-900 leading-snug">
+                            {task.title}
+                          </h4>
+                          <p className="text-[11px] text-slate-500 line-clamp-2 mt-1 leading-relaxed">
+                            {task.description}
+                          </p>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[10px] font-semibold text-slate-400">
+                            <span>Progress</span>
+                            <span>{task.progress}%</span>
+                          </div>
+                          <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${
+                                task.status === "COMPLETED"
+                                  ? "bg-emerald-500"
+                                  : task.status === "OVERDUE"
+                                  ? "bg-red-500"
+                                  : "bg-blue-600"
+                              }`}
+                              style={{ width: `${task.progress}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Card Footer: Tech, Quick Move & Delete */}
+                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500 font-medium">
+                          <span className="px-1.5 py-0.5 rounded bg-slate-50 text-slate-600 font-semibold">
+                            {task.technology}
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            {task.status !== "COMPLETED" ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const next =
+                                    task.status === "PENDING"
+                                      ? "IN_PROGRESS"
+                                      : "COMPLETED";
+                                  handleUpdateStatus(task.id, next);
+                                }}
+                                className="px-2 py-0.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[10px] transition-colors cursor-pointer"
+                              >
+                                {task.status === "PENDING"
+                                  ? "Start →"
+                                  : "✓ Complete"}
+                              </button>
+                            ) : (
+                              <span className="text-emerald-600 font-bold text-[10px] flex items-center gap-0.5">
+                                <CheckCircle2 className="w-3 h-3" /> Done
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteTask(task.id);
+                              }}
+                              className="p-1 text-slate-300 hover:text-red-500 rounded transition-colors cursor-pointer"
+                              title="Delete task"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+
+                    {/* Column Empty Dropzone */}
+                    {colTasks.length === 0 && (
+                      <div className="p-6 text-center border-2 border-dashed border-slate-200/90 rounded-xl bg-white/50 space-y-2">
+                        <p className="text-xs font-semibold text-slate-400">
+                          No {col.title.toLowerCase()} tasks
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewStatus(col.id);
+                            setIsNewTaskOpen(true);
+                          }}
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-700 cursor-pointer"
+                        >
+                          <Plus className="w-3 h-3" />
+                          <span>Add Task</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
+
+        {/* LIST VIEW */}
+        {viewMode === "LIST" &&
+          (filteredTasks.length === 0 ? (
+            <div className="bg-white rounded-3xl border border-dashed border-slate-200/90 p-12 text-center max-w-lg mx-auto shadow-2xs space-y-4 my-8">
+              <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center mx-auto shadow-2xs">
+                <CheckCircle2 className="w-7 h-7" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-slate-900">No tasks found</h3>
+                <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
+                  Your task board is clear! Create your first internship milestone, assignment ticket, or project deliverable.
+                </p>
+              </div>
+              <Button
+                onClick={() => setIsNewTaskOpen(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl px-5 py-2.5 shadow-xs cursor-pointer inline-flex items-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Create First Task</span>
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredTasks.map((task) => (
+                <Card
+                  key={task.id}
+                  className="border-slate-200/90 shadow-2xs hover:border-blue-300 transition-all rounded-2xl bg-white p-5 flex flex-col justify-between"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="text-sm font-bold text-slate-900 tracking-tight">
+                        {task.title}
+                      </h3>
+                      <StatusBadge status={task.status} />
+                    </div>
+
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      {task.description}
+                    </p>
+
+                    <div className="flex items-center gap-3 text-xs text-slate-500 pt-1">
+                      <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px]">
+                        {task.technology}
+                      </span>
+                      <span>Due: {formatDate(task.dueAt)}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-500">
+                      Progress: {task.progress}%
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs rounded-xl"
+                      onClick={() => {
+                        setSelectedTask(task);
+                        setNotes(task.completionNotes || "");
+                      }}
+                    >
+                      Update Status
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ))}
       </main>
 
       {/* DETAIL / UPDATE MODAL */}
@@ -592,7 +665,21 @@ export default function StudentTasksPage() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Status</label>
+              <select
+                value={newStatus}
+                onChange={(e) => setNewStatus(e.target.value as TaskItem["status"])}
+                className="w-full rounded-xl border border-slate-300 p-2 text-xs focus:outline-none focus:border-blue-600 bg-white"
+              >
+                <option value="PENDING">Pending</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="OVERDUE">Overdue</option>
+              </select>
+            </div>
+
             <div>
               <label className="block font-semibold text-slate-700 mb-1">Priority</label>
               <select

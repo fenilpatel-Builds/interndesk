@@ -12,7 +12,7 @@ function sanitizeText(val: string): string {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { formData } = body;
+    const formData = body.formData || body;
 
     if (!formData) {
       return NextResponse.json(
