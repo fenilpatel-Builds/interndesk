@@ -161,7 +161,8 @@ export async function generateAkashOfferLetterPdf(data: OfferLetterData): Promis
   const pronounHimHer = isGirl ? "her" : "him";
 
   const position = data.internshipPosition || "AI/ML Intern";
-  const tech = data.technology || (position.includes("Intern") ? position.replace(/\s*Intern/i, "") : position);
+  const rawTech = data.technology || (position.includes("Intern") ? position.replace(/\s*Intern/i, "") : position);
+  const tech = rawTech.replace(/\s*technology/i, "").trim() || "AI/ML";
   const startDate = data.commencementDate || "3rd July 2026";
   const endDate = data.continueUntilDate || "30th April 2027";
 
@@ -169,7 +170,17 @@ export async function generateAkashOfferLetterPdf(data: OfferLetterData): Promis
     const paras = data.customDescription.split("\n\n");
     for (const para of paras) {
       if (!para.trim()) continue;
-      renderTokensAsLines([{ text: para.trim(), bold: false }]);
+      if (para.includes(tech)) {
+        const parts = para.split(tech);
+        const tokens: { text: string; bold: boolean }[] = [];
+        for (let i = 0; i < parts.length; i++) {
+          if (parts[i]) tokens.push({ text: parts[i], bold: false });
+          if (i < parts.length - 1) tokens.push({ text: tech, bold: true });
+        }
+        renderTokensAsLines(tokens);
+      } else {
+        renderTokensAsLines([{ text: para.trim(), bold: false }]);
+      }
     }
   } else {
     // Paragraph 1 with authentic bold highlights
@@ -187,10 +198,12 @@ export async function generateAkashOfferLetterPdf(data: OfferLetterData): Promis
       { text: ".", bold: false },
     ]);
 
-    // Paragraph 2
+    // Paragraph 2 with technology highlighted in bold
     renderTokensAsLines([
+      { text: `During the internship period, ${pronounHeShe} will work on `, bold: false },
+      { text: tech, bold: true },
       {
-        text: `During the internship period, ${pronounHeShe} will work on ${tech} technology and will be involved in projects and assignments designed to enhance ${pronounHisHer} technical knowledge and practical skills. ${pronounCapitalHeShe} is expected to maintain a professional attitude, follow the company's policies and guidelines, and perform ${pronounHisHer} assigned responsibilities with sincerity and dedication throughout the internship.`,
+        text: ` technology and will be involved in projects and assignments designed to enhance ${pronounHisHer} technical knowledge and practical skills. ${pronounCapitalHeShe} is expected to maintain a professional attitude, follow the company's policies and guidelines, and perform ${pronounHisHer} assigned responsibilities with sincerity and dedication throughout the internship.`,
         bold: false,
       },
     ]);
@@ -269,3 +282,4 @@ export async function downloadAkashOfferLetterPdf(
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+

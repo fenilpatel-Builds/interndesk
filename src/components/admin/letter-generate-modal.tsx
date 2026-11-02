@@ -869,10 +869,10 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                             and continue until <strong>{continueUntilDate}</strong>.
                           </p>
 
-                          {/* Paragraph 2 */}
+                          {/* Paragraph 2 with technology highlighted in bold */}
                           <p>
                             During the internship period, {pronounHeShe} will work on{" "}
-                            {technology} technology and will be involved in projects and
+                            <strong>{technology.replace(/\s*technology/i, "").trim()}</strong> technology and will be involved in projects and
                             assignments designed to enhance {pronounHisHer} technical
                             knowledge and practical skills. {pronounCapitalHeShe} is
                             expected to maintain a professional attitude, follow the

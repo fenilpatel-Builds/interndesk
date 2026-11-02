@@ -1251,7 +1251,17 @@ export function DocumentStudioModal({
                     </p>
 
                     <p>
-                      During the internship period, {doc.template_data?.salutation === "Ms." ? "she" : "he"} will work on {doc.template_data?.program_or_track || doc.template_data?.technology || "AI/ML"} technology and will be involved in projects and assignments designed to enhance {doc.template_data?.salutation === "Ms." ? "her" : "his"} technical knowledge and practical skills. {doc.template_data?.salutation === "Ms." ? "She" : "He"} is expected to maintain a professional attitude, follow the company&apos;s policies and guidelines, and perform {doc.template_data?.salutation === "Ms." ? "her" : "his"} assigned responsibilities with sincerity and dedication throughout the internship.
+                      During the internship period, {doc.template_data?.salutation === "Ms." ? "she" : "he"} will work on{" "}
+                      <strong>
+                        {((doc.template_data as any)?.technology || doc.template_data?.program_or_track || "AI/ML")
+                          .replace(/\s*technology/i, "")
+                          .trim()}
+                      </strong>{" "}
+                      technology and will be involved in projects and assignments designed to enhance{" "}
+                      {doc.template_data?.salutation === "Ms." ? "her" : "his"} technical knowledge and practical skills.{" "}
+                      {doc.template_data?.salutation === "Ms." ? "She" : "He"} is expected to maintain a professional attitude, follow the
+                      company&apos;s policies and guidelines, and perform {doc.template_data?.salutation === "Ms." ? "her" : "his"}{" "}
+                      assigned responsibilities with sincerity and dedication throughout the internship.
                     </p>
 
                     <p>
