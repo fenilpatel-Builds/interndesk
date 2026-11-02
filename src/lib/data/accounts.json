@@ -50,14 +50,14 @@
   {
     "id": "usr-1793103685484-528",
     "email": "fenil8160@gmail.com",
-    "passwordHash": "ffc90b9693b9fb84a11ecff45b1ae4637e97f036ae0d3bfdef1ca60a17a73c8c",
-    "salt": "8ae3416409b607d1e972e1218f5b3ca7",
+    "passwordHash": "61118a65597ccd1021c8e499a90d5628b61a1235ba78dbeec98a3300e5507f51",
+    "salt": "6ad26522dcf01d7cd238d1401fd5cdf2",
     "name": "Fenil Patel",
-    "role": "STUDENT",
+    "role": "ORG_ADMIN",
     "organizationId": "org-akash-01",
     "organizationName": "Akash Technolabs",
     "organizationType": "CORPORATE",
-    "createdAt": "2026-10-27T12:21:25.584Z"
+    "createdAt": "2026-11-02T06:42:50.409Z"
   },
   {
     "id": "usr-1793106423924-750",

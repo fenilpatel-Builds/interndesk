@@ -31,8 +31,6 @@ import { loginWithPassword, sendEmailOtp, verifyEmailOtp } from "@/lib/auth/acti
 export default function LoginPage() {
   const router = useRouter();
 
-  // Role tab state: Student, Faculty, Admin
-  const [selectedRole, setSelectedRole] = useState<"Student" | "Faculty" | "Admin">("Student");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
@@ -56,12 +54,6 @@ export default function LoginPage() {
     const timer = setInterval(() => setResendCooldown((p) => p - 1), 1000);
     return () => clearInterval(timer);
   }, [resendCooldown]);
-
-  // Role selection
-  const handleRoleSelect = (role: "Student" | "Faculty" | "Admin") => {
-    setSelectedRole(role);
-    setErrorMessage(null);
-  };
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -315,24 +307,6 @@ export default function LoginPage() {
                 <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
                   Sign in to your account to continue
                 </p>
-              </div>
-
-              {/* Role Switcher Tabs (Student, Faculty, Admin) */}
-              <div className="flex p-1 bg-slate-100 rounded-xl mb-3.5">
-                {(["Student", "Faculty", "Admin"] as const).map((role) => (
-                  <button
-                    key={role}
-                    type="button"
-                    onClick={() => handleRoleSelect(role)}
-                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                      selectedRole === role
-                        ? "bg-white text-slate-900 shadow-xs"
-                        : "text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    {role}
-                  </button>
-                ))}
               </div>
 
               {/* Feedback messages */}

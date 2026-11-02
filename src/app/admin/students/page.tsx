@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AdminTopbar } from "@/components/admin/topbar";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -118,6 +118,21 @@ export default function AdminStudentsPage() {
       joinedDate: "2026-09-15",
     },
   ]);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/admin/students")
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Failed to load"))))
+      .then((data) => {
+        if (active && Array.isArray(data.students) && data.students.length > 0) {
+          setStudents(data.students);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const [search, setSearch] = useState("");
   const [filterTech, setFilterTech] = useState("ALL");

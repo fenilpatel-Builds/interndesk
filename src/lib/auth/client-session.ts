@@ -1,4 +1,5 @@
 import { MemberRole } from "@/types/multitenant";
+import { ADMIN_EMAILS } from "./admin-whitelist";
 
 export interface ClientSession {
   id: string;
@@ -87,9 +88,15 @@ export function parseClientSessionCookie(): ClientSession | null {
         "TRAINER_MENTOR",
       ].includes(rawRole);
 
-      const effectiveRole: MemberRole = (!isSigned && isPrivileged)
+      const isAllowedAdmin = ADMIN_EMAILS.includes(email);
+
+      let effectiveRole: MemberRole = (!isSigned && isPrivileged)
         ? "STUDENT"
         : (rawRole as MemberRole);
+
+      if (effectiveRole !== "STUDENT" && !isAllowedAdmin) {
+        effectiveRole = "STUDENT";
+      }
 
       const rawName = payload.name || email.split("@")[0].replace(/[^a-zA-Z0-9]/g, " ");
       const name = rawName.charAt(0).toUpperCase() + rawName.slice(1);

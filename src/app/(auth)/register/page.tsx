@@ -45,9 +45,6 @@ const PRESET_COURSES = [
 export default function RegisterPage() {
   const router = useRouter();
 
-  // Role tab state matching Login Page
-  const [selectedRole, setSelectedRole] = useState<"Student" | "Faculty" | "Admin">("Student");
-
   // Registration Form Fields (Department & Student ID removed per request)
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -98,11 +95,6 @@ export default function RegisterPage() {
     }
   }, [fullName, email, course, customCourse, isCustomCourse, password, confirmPassword]);
 
-  const handleRoleSelect = (role: "Student" | "Faculty" | "Admin") => {
-    setSelectedRole(role);
-    setErrors({});
-  };
-
   const handleCourseSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
     if (val === "__CUSTOM__") {
@@ -126,13 +118,11 @@ export default function RegisterPage() {
     if (!email.trim() || !email.includes("@")) {
       newErrors.email = "Please enter a valid institute email address.";
     }
-    if (selectedRole === "Student") {
-      if (!effectiveCourse) {
-        newErrors.course = "Please enter or select your course / program.";
-      }
-      if (!semester) {
-        newErrors.semester = "Please select your academic year or semester.";
-      }
+    if (!effectiveCourse) {
+      newErrors.course = "Please enter or select your course / program.";
+    }
+    if (!semester) {
+      newErrors.semester = "Please select your academic year or semester.";
     }
     if (!password || password.length < 6) {
       newErrors.password = "Password must be at least 6 characters.";
@@ -250,18 +240,16 @@ export default function RegisterPage() {
   const finalizeRegistration = async () => {
     setIsSubmitting(true);
     try {
-      const accountType = selectedRole === "Student" ? "STUDENT" : "INSTITUTE";
-      const role = selectedRole === "Student" ? "STUDENT" : "ORG_ADMIN";
       const defaultDepartment = "Information Technology & Computer Engineering";
       const generatedStudentId = `AT${new Date().getFullYear()}${Math.floor(1000 + Math.random() * 9000)}`;
 
-      // Create user auth account
+      // Create user auth account strictly as STUDENT
       const authResult = await registerAccountAction({
         name: fullName.trim(),
         email: email.trim().toLowerCase(),
         password,
-        accountType,
-        role,
+        accountType: "STUDENT",
+        role: "STUDENT",
         college: INSTITUTE_CONFIG.name,
         university: "Gujarat Technological University",
         technology: defaultDepartment,
@@ -285,27 +273,23 @@ export default function RegisterPage() {
             studentId: generatedStudentId,
             mobile: "9978621654",
             department: defaultDepartment,
-            course: selectedRole === "Student" ? effectiveCourse : "Faculty Academic Track",
-            semester: selectedRole === "Student" ? semester : "Faculty Staff",
+            course: effectiveCourse,
+            semester: semester,
             college: INSTITUTE_CONFIG.name,
             university: "Gujarat Technological University",
             technology: defaultDepartment,
             duration: "6 Months",
             startDate: new Date().toISOString().split("T")[0],
-            category: selectedRole === "Student" ? "Student Activity & Capstone" : "Faculty Coordinator",
+            category: "Student Activity & Capstone",
           },
         }),
       });
 
-      setSuccessToast("Registration successful! Redirecting to dashboard...");
+      setSuccessToast("Registration successful! Redirecting to student dashboard...");
       setOtpModalOpen(false);
 
       setTimeout(() => {
-        if (selectedRole === "Student") {
-          router.push("/student/dashboard");
-        } else {
-          router.push("/admin/dashboard");
-        }
+        router.push("/student/dashboard");
       }, 1000);
     } catch {
       setErrors({ submit: "An error occurred during final submission." });
@@ -457,31 +441,11 @@ export default function RegisterPage() {
             <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-lg shadow-slate-200/50 p-4 sm:p-6 relative">
               <div className="text-center mb-3 sm:mb-4">
                 <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                  {selectedRole === "Student"
-                    ? "Student Registration"
-                    : `${selectedRole} Registration`}
+                  Student Registration
                 </h2>
                 <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
-                  Create your verified profile to access the activity portal
+                  Create your verified student profile to access the activity portal
                 </p>
-              </div>
-
-              {/* Role Switcher Tabs (Student, Faculty, Admin) */}
-              <div className="flex p-1 bg-slate-100 rounded-xl mb-3.5">
-                {(["Student", "Faculty", "Admin"] as const).map((role) => (
-                  <button
-                    key={role}
-                    type="button"
-                    onClick={() => handleRoleSelect(role)}
-                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                      selectedRole === role
-                        ? "bg-white text-slate-900 shadow-xs"
-                        : "text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    {role}
-                  </button>
-                ))}
               </div>
 
               {/* Stepper Progress Bar: ① Personal  ② Academic  ③ Security */}
@@ -610,8 +574,7 @@ export default function RegisterPage() {
                 </div>
 
                 {/* Row 2: Course / Program with "Write Your Own" custom capability */}
-                {selectedRole === "Student" && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="text-xs font-bold text-slate-700">
@@ -688,7 +651,6 @@ export default function RegisterPage() {
                       )}
                     </div>
                   </div>
-                )}
 
                 {/* Row 3: Password & Confirm Password with WORKING SHOW/HIDE TOGGLES */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

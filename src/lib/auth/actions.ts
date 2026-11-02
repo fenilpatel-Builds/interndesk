@@ -9,6 +9,7 @@ import { credentialsStore } from "./credentials-store";
 import { multiTenantStore } from "@/lib/multitenant/store";
 import { otpStore } from "./otp-store";
 import { sendOtpEmail } from "./email-service";
+import { ADMIN_EMAILS, isUserAdmin } from "./admin-whitelist";
 
 export interface AuthResponse {
   success: boolean;
@@ -116,7 +117,7 @@ export async function verifyEmailOtp(
     const cookieStore = await cookies();
     let localAccount = credentialsStore.findByEmail(cleanEmail);
 
-    const isAdmin = cleanEmail === "akash@akashtechnolabs.com" || cleanEmail.startsWith("admin@");
+    const isAdmin = isUserAdmin(cleanEmail);
     const role: MemberRole = isAdmin ? "ORG_ADMIN" : "STUDENT";
 
     // Determine highest-fidelity name
@@ -244,11 +245,15 @@ export async function loginWithPassword(email: string, password: string): Promis
     // 1. Check local persistent credentials store (Newly registered accounts: Institute, Company, Student, Admin)
     const localAccount = credentialsStore.authenticate(cleanEmail, password);
     if (localAccount) {
+      const isAdmin = isUserAdmin(cleanEmail);
+      const effectiveRole: MemberRole = isAdmin ? "ORG_ADMIN" : "STUDENT";
+      localAccount.role = effectiveRole;
+
       const sessionToken = signSessionToken({
         id: localAccount.id,
         name: localAccount.name,
         email: localAccount.email,
-        role: localAccount.role,
+        role: effectiveRole,
         organizationId: localAccount.organizationId || "org-akash-01",
       });
 
@@ -280,38 +285,20 @@ export async function loginWithPassword(email: string, password: string): Promis
         sameSite: "lax",
       });
 
-      if (localAccount.role === "SUPER_ADMIN") {
-        return {
-          success: true,
-          message: `Authenticated as ${localAccount.name}. Launching Super Admin Console...`,
-          redirectTo: "/super-admin",
-          role: localAccount.role,
-        };
-      }
-
-      if (localAccount.role === "ORG_ADMIN" || localAccount.role === "ORG_OWNER") {
+      if (isAdmin) {
         return {
           success: true,
           message: `Authenticated as Administrator ${localAccount.name}. Launching Akash Technolabs Admin Dashboard...`,
           redirectTo: "/admin/dashboard",
-          role: localAccount.role,
-        };
-      }
-
-      if (localAccount.role === "STUDENT") {
-        return {
-          success: true,
-          message: `Authenticated as ${localAccount.name}. Launching Student Dashboard...`,
-          redirectTo: "/student/dashboard",
-          role: localAccount.role,
+          role: "ORG_ADMIN",
         };
       }
 
       return {
         success: true,
-        message: `Authenticated as ${localAccount.name}. Launching Akash Technolabs Workspace...`,
-        redirectTo: "/workspace",
-        role: localAccount.role,
+        message: `Authenticated as ${localAccount.name}. Launching Student Dashboard...`,
+        redirectTo: "/student/dashboard",
+        role: "STUDENT",
       };
     }
 
@@ -339,7 +326,8 @@ export async function loginWithPassword(email: string, password: string): Promis
           // Ignored
         }
 
-        const role = profile?.role || "STUDENT";
+        const isAdmin = isUserAdmin(cleanEmail);
+        const effectiveRole: MemberRole = isAdmin ? "ORG_ADMIN" : "STUDENT";
         const rawName = profile?.full_name || user.user_metadata?.full_name || cleanEmail.split("@")[0].replace(/[^a-zA-Z0-9]/g, " ");
         const formattedName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
 
@@ -347,7 +335,7 @@ export async function loginWithPassword(email: string, password: string): Promis
           id: user.id,
           name: formattedName,
           email: cleanEmail,
-          role: role as MemberRole,
+          role: effectiveRole,
         });
 
         cookieStore.set("interndesk_user", sessionToken, {
@@ -357,26 +345,27 @@ export async function loginWithPassword(email: string, password: string): Promis
           sameSite: "lax",
         });
 
-        if (role === "SUPER_ADMIN" || cleanEmail === "superadmin@interndesk.com") {
-          return {
-            success: true,
-            message: "Super Admin authenticated via Supabase. Directing to Super Admin Console...",
-            redirectTo: "/super-admin",
-          };
-        }
+        cookieStore.set("akash_user", sessionToken, {
+          path: "/",
+          httpOnly: false,
+          maxAge: 60 * 60 * 24 * 7,
+          sameSite: "lax",
+        });
 
-        if (role === "STUDENT") {
+        if (isAdmin) {
           return {
             success: true,
-            message: "Student authenticated successfully. Directing to Student Portal...",
-            redirectTo: "/student/dashboard",
+            message: `Authenticated as Administrator ${formattedName}. Launching Akash Technolabs Admin Dashboard...`,
+            redirectTo: "/admin/dashboard",
+            role: "ORG_ADMIN",
           };
         }
 
         return {
           success: true,
-          message: "Authenticated successfully. Directing to Organization Workspace...",
-          redirectTo: "/workspace",
+          message: `Authenticated as ${formattedName}. Launching Student Dashboard...`,
+          redirectTo: "/student/dashboard",
+          role: "STUDENT",
         };
       }
     } catch {
@@ -483,18 +472,23 @@ export async function registerAccountAction(params: {
       });
     }
 
-    const resolvedOrgId = orgId || "org-akash-01";
-    const resolvedOrgName = orgName || "Akash Technolabs";
+    const resolvedOrgId = "org-akash-01";
+    const resolvedOrgName = "Akash Technolabs";
+
+    // Strictly enforce role: Only designated admin emails can have ORG_ADMIN.
+    // Public registrations are always registered as STUDENT.
+    const isAdmin = isUserAdmin(cleanEmail);
+    const resolvedRole: MemberRole = isAdmin ? "ORG_ADMIN" : "STUDENT";
 
     // Save to server-side credentials store
     const account = credentialsStore.register({
       email: cleanEmail,
       password: params.password,
       name: cleanName,
-      role: (params.accountType === "STUDENT" ? "STUDENT" : "ORG_ADMIN") as MemberRole,
+      role: resolvedRole,
       organizationId: resolvedOrgId,
       organizationName: resolvedOrgName,
-      organizationType: params.accountType === "INSTITUTE" ? "EDUCATIONAL" : "CORPORATE",
+      organizationType: "CORPORATE",
     });
 
     // Automatically set signed session cookies
@@ -535,7 +529,7 @@ export async function registerAccountAction(params: {
       sameSite: "lax",
     });
 
-    const redirectTo = params.accountType === "STUDENT" ? "/student/dashboard" : "/admin/dashboard";
+    const redirectTo = isAdmin ? "/admin/dashboard" : "/student/dashboard";
 
     return {
       success: true,
