@@ -27,7 +27,11 @@ import {
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { downloadAkashOfferLetterPdf } from "@/lib/documents/akash-pdf-generator";
+import {
+  downloadAkashOfferLetterPdf,
+  isFemaleCandidate,
+  deriveTrackTechnology,
+} from "@/lib/documents/akash-pdf-generator";
 import {
   AKASH_HEADER_BASE64,
   AKASH_FOOTER_BASE64,
@@ -199,7 +203,7 @@ export function LetterGenerateModal({
   const [studentName, setStudentName] = useState("Fenil Patel");
   const [recipientEmail, setRecipientEmail] = useState("huntarmy001@gmail.com");
   const [internshipPosition, setInternshipPosition] = useState("AI/ML Intern");
-  const [commencementDate, setCommencementDate] = useState("3rd August 2026");
+  const [commencementDate, setCommencementDate] = useState("3rd July 2026");
   const [continueUntilDate, setContinueUntilDate] = useState("30th April 2027");
   const [technology, setTechnology] = useState("AI/ML");
 
@@ -217,6 +221,16 @@ export function LetterGenerateModal({
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  // Always reset to the edit FORM and clear state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setViewMode("FORM");
+      setStatusMessage(null);
+      setIsSubmitting(false);
+      setIsCustomEdited(false);
+    }
+  }, [isOpen]);
+
   // Generate body text from dynamic fields
   const generateBodyText = (
     sal: "Mr." | "Ms.",
@@ -232,10 +246,13 @@ export function LetterGenerateModal({
     const pronounCapitalHisHer = isGirl ? "Her" : "His";
     const pronounCapitalHeShe = isGirl ? "She" : "He";
     const pronounHimHer = isGirl ? "her" : "him";
+    const cleanTech = (tech || deriveTrackTechnology(pos))
+      .replace(/\s*technology/i, "")
+      .trim() || "Information Technology";
 
     return `This is to inform that ${sal} ${name} has been selected for an internship at Akash Technolabs as a ${pos}. ${pronounCapitalHisHer} internship will commence on ${start} and continue until ${end}.
 
-During the internship period, ${pronounHeShe} will work on ${tech} technology and will be involved in projects and assignments designed to enhance ${pronounHisHer} technical knowledge and practical skills. ${pronounCapitalHeShe} is expected to maintain a professional attitude, follow the company's policies and guidelines, and perform ${pronounHisHer} assigned responsibilities with sincerity and dedication throughout the internship.
+During the internship period, ${pronounHeShe} will work on ${cleanTech} technology and will be involved in projects and assignments designed to enhance ${pronounHisHer} technical knowledge and practical skills. ${pronounCapitalHeShe} is expected to maintain a professional attitude, follow the company's policies and guidelines, and perform ${pronounHisHer} assigned responsibilities with sincerity and dedication throughout the internship.
 
 Upon successful completion of the internship, ${pronounHeShe} will be awarded an Internship Completion Certificate based on ${pronounHisHer} performance and adherence to the company's rules and regulations.
 
@@ -245,7 +262,10 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
   // Keep description synchronized unless manually modified
   useEffect(() => {
     if (!isCustomEdited) {
-      const isGirl = templateType === "INTERNSHIP OFFER LETTER (Girl)" || salutation === "Ms.";
+      const isGirl =
+        templateType === "INTERNSHIP OFFER LETTER (Girl)" ||
+        salutation === "Ms." ||
+        isFemaleCandidate(studentName);
       const text = generateBodyText(
         salutation,
         studentName,
@@ -281,7 +301,7 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
         setStudents([
           { id: "usr-1793251075106-352", name: "Fenil Patel", email: "huntarmy001@gmail.com", technology: "AI/ML" },
           { id: "usr-student-fenil", name: "Fenil Patel", email: "fenil.patel@akashtechnolabs.com", technology: "AI/ML" },
-          { id: "usr-student-priya", name: "Priya Sharma", email: "priya.sharma@akashtechnolabs.com", technology: "Full Stack Web Development" },
+          { id: "usr-student-priya", name: "Priya Sharma", email: "priya.sharma@akashtechnolabs.com", technology: "PHP / Laravel" },
           { id: "usr-student-harshit", name: "Harshit Mehta", email: "harshit.mehta@akashtechnolabs.com", technology: "Cloud & DevOps" },
           { id: "usr-1793106423924-750", name: "Akshat Nayak", email: "akshatnayak0910@gmail.com", technology: "Cybersecurity" },
         ]);
@@ -295,10 +315,7 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
     if (found) {
       setStudentName(found.name);
       setRecipientEmail(found.email);
-      const isFemale =
-        found.name.toLowerCase().includes("priya") ||
-        found.name.toLowerCase().includes("neha") ||
-        found.name.toLowerCase().includes("pooja");
+      const isFemale = isFemaleCandidate(found.name);
       const sal = isFemale ? "Ms." : "Mr.";
       setSalutation(sal);
       if (isFemale) {
@@ -308,8 +325,9 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
       }
 
       if (found.technology) {
-        setTechnology(found.technology);
-        setInternshipPosition(`${found.technology} Intern`);
+        const cleanT = deriveTrackTechnology(found.technology);
+        setTechnology(cleanT);
+        setInternshipPosition(`${cleanT} Intern`);
       }
       setIsCustomEdited(false);
     }
@@ -322,6 +340,34 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
       setSalutation("Ms.");
     } else if (val === "INTERNSHIP OFFER LETTER (Boy)") {
       setSalutation("Mr.");
+    }
+    setIsCustomEdited(false);
+  };
+
+  const handleSalutationChange = (val: "Mr." | "Ms.") => {
+    setSalutation(val);
+    if (val === "Ms.") {
+      setTemplateType("INTERNSHIP OFFER LETTER (Girl)");
+    } else {
+      setTemplateType("INTERNSHIP OFFER LETTER (Boy)");
+    }
+    setIsCustomEdited(false);
+  };
+
+  const handleStudentNameChange = (val: string) => {
+    setStudentName(val);
+    if (isFemaleCandidate(val)) {
+      setSalutation("Ms.");
+      setTemplateType("INTERNSHIP OFFER LETTER (Girl)");
+    }
+    setIsCustomEdited(false);
+  };
+
+  const handlePositionChange = (val: string) => {
+    setInternshipPosition(val);
+    const derived = deriveTrackTechnology(val);
+    if (derived) {
+      setTechnology(derived);
     }
     setIsCustomEdited(false);
   };
@@ -403,12 +449,18 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
     }
   };
 
-  const isGirl = templateType === "INTERNSHIP OFFER LETTER (Girl)" || salutation === "Ms.";
+  const isGirl =
+    templateType === "INTERNSHIP OFFER LETTER (Girl)" ||
+    salutation === "Ms." ||
+    isFemaleCandidate(studentName);
   const pronounHeShe = isGirl ? "she" : "he";
   const pronounHisHer = isGirl ? "her" : "his";
   const pronounCapitalHisHer = isGirl ? "Her" : "His";
   const pronounCapitalHeShe = isGirl ? "She" : "He";
   const pronounHimHer = isGirl ? "her" : "him";
+  const cleanTech = (technology || deriveTrackTechnology(internshipPosition))
+    .replace(/\s*technology/i, "")
+    .trim() || "Information Technology";
 
   if (!isOpen) return null;
 
@@ -568,7 +620,7 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                     </label>
                     <select
                       value={salutation}
-                      onChange={(e) => setSalutation(e.target.value as "Mr." | "Ms.")}
+                      onChange={(e) => handleSalutationChange(e.target.value as "Mr." | "Ms.")}
                       className="w-full text-xs font-semibold text-slate-900 border border-slate-300 rounded-xl px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="Mr.">Mr.</option>
@@ -584,7 +636,7 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                     <input
                       type="text"
                       value={studentName}
-                      onChange={(e) => setStudentName(e.target.value)}
+                      onChange={(e) => handleStudentNameChange(e.target.value)}
                       placeholder="e.g. Fenil Patel"
                       required
                       className="w-full text-xs font-semibold text-slate-900 border border-slate-300 rounded-xl px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
@@ -599,8 +651,8 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                     <input
                       type="text"
                       value={internshipPosition}
-                      onChange={(e) => setInternshipPosition(e.target.value)}
-                      placeholder="e.g. AI/ML Intern or Cybersecurity Intern"
+                      onChange={(e) => handlePositionChange(e.target.value)}
+                      placeholder="e.g. AI/ML Intern or PHP / Laravel Developer Intern"
                       required
                       className="w-full text-xs font-semibold text-slate-900 border border-slate-300 rounded-xl px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     />
@@ -611,7 +663,7 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                     label="Internship Start Date"
                     value={commencementDate}
                     onChange={setCommencementDate}
-                    placeholder="e.g. 3rd August 2026"
+                    placeholder="e.g. 3rd July 2026"
                     mode="ORDINAL"
                   />
 
@@ -632,8 +684,11 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                     <input
                       type="text"
                       value={technology}
-                      onChange={(e) => setTechnology(e.target.value)}
-                      placeholder="e.g. AI/ML, Cybersecurity, Python..."
+                      onChange={(e) => {
+                        setTechnology(e.target.value);
+                        setIsCustomEdited(false);
+                      }}
+                      placeholder="e.g. AI/ML, PHP / Laravel, Cybersecurity..."
                       required
                       className="w-full text-xs font-semibold text-slate-900 border border-slate-300 rounded-xl px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     />
@@ -872,7 +927,7 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                           {/* Paragraph 2 with technology highlighted in bold */}
                           <p>
                             During the internship period, {pronounHeShe} will work on{" "}
-                            <strong>{technology.replace(/\s*technology/i, "").trim()}</strong> technology and will be involved in projects and
+                            <strong>{cleanTech}</strong> technology and will be involved in projects and
                             assignments designed to enhance {pronounHisHer} technical
                             knowledge and practical skills. {pronounCapitalHeShe} is
                             expected to maintain a professional attitude, follow the

@@ -100,4 +100,41 @@ describe("Akash Technolabs Integration & Accounts", () => {
     const adminAccount = credentialsStore.findByEmail(adminEmail);
     expect(adminAccount?.role).toBe("ORG_ADMIN");
   });
+
+  it("should detect female candidates accurately and derive correct track technologies", async () => {
+    const { isFemaleCandidate, deriveTrackTechnology, generateAkashOfferLetterPdf } = await import(
+      "../src/lib/documents/akash-pdf-generator"
+    );
+
+    // 1. Female candidate detection
+    expect(isFemaleCandidate("Ms. Priya Sharma")).toBe(true);
+    expect(isFemaleCandidate("Priya Sharma")).toBe(true);
+    expect(isFemaleCandidate("Neha Patel")).toBe(true);
+    expect(isFemaleCandidate("Pooja Shah")).toBe(true);
+    expect(isFemaleCandidate("Ananya Desai")).toBe(true);
+    expect(isFemaleCandidate("Fenil Patel")).toBe(false);
+    expect(isFemaleCandidate("Mr. Fenil Patel")).toBe(false);
+    expect(isFemaleCandidate("Aarav Sharma")).toBe(false);
+
+    // 2. Track technology synchronization
+    expect(deriveTrackTechnology("PHP / Laravel Developer Intern")).toBe("PHP / Laravel");
+    expect(deriveTrackTechnology("AI/ML Intern")).toBe("AI/ML");
+    expect(deriveTrackTechnology("Python Developer Intern")).toBe("Python");
+    expect(deriveTrackTechnology("Quality Assurance (QA) Intern")).toBe("Software Testing & QA");
+    expect(deriveTrackTechnology("Full Stack Web Developer Intern")).toBe("Full Stack Web Development");
+    expect(deriveTrackTechnology("Cybersecurity Intern")).toBe("Cybersecurity");
+
+    // 3. Generate official PDF for female candidate with PHP / Laravel position
+    const pdfBytes = await generateAkashOfferLetterPdf({
+      salutation: "Ms.",
+      studentName: "Ms. Priya Sharma",
+      internshipPosition: "PHP / Laravel Developer Intern",
+      commencementDate: "3rd July 2026",
+      continueUntilDate: "30th April 2027",
+      letterDate: "30-10-2026",
+    });
+
+    expect(pdfBytes).toBeInstanceOf(Uint8Array);
+    expect(pdfBytes.length).toBeGreaterThan(1000);
+  });
 });

@@ -9,7 +9,11 @@ import { CheckCircle2, Eye, FileText, Plus, Search, Sparkles, Download } from "l
 import { DocumentStudioModal } from "@/components/documents/document-studio-modal";
 import { LetterGenerateModal } from "@/components/admin/letter-generate-modal";
 import { IssuedDocument, DocumentType } from "@/types/multitenant";
-import { downloadAkashOfferLetterPdf } from "@/lib/documents/akash-pdf-generator";
+import {
+  downloadAkashOfferLetterPdf,
+  isFemaleCandidate,
+  deriveTrackTechnology,
+} from "@/lib/documents/akash-pdf-generator";
 
 export default function AdminDocumentsPage() {
   const [documents, setDocuments] = useState([
@@ -48,14 +52,14 @@ export default function AdminDocumentsPage() {
     },
     {
       id: "doc3",
-      student: "Priya Sharma",
+      student: "Ms. Priya Sharma",
       type: "OFFER_LETTER",
       title: "INTERNSHIP OFFER LETTER",
       docNumber: "ID-AKT-2026-OF04",
       status: "AVAILABLE",
       eligibility: "Registration Approved ✓",
       appliedAt: "2026-10-02",
-      role: "Full Stack Web Developer Intern",
+      role: "PHP / Laravel Developer Intern",
     },
     {
       id: "doc4",
@@ -91,6 +95,7 @@ export default function AdminDocumentsPage() {
             eligibility: d.status === "ACCEPTED" ? "Digitally Accepted by Student ✓" : "Candidate Enrolled & Verified ✓",
             appliedAt: d.issued_date || "2026-10-30",
             role: d.recipient_role || "Intern",
+            rawDoc: d,
           }));
           setDocuments(mapped);
         }
@@ -112,10 +117,20 @@ export default function AdminDocumentsPage() {
     const docType: DocumentType =
       doc.type === "OFFER_LETTER" ? "OFFER_LETTER" : "COMPLETION_CERTIFICATE";
 
+    const rawDocData = (doc as any).rawDoc;
+    const isFemale = isFemaleCandidate(doc.student, rawDocData?.template_data?.salutation);
+    const cleanTech = deriveTrackTechnology(
+      doc.role,
+      rawDocData?.template_data?.technology ||
+        (rawDocData?.template_data?.program_or_track && !rawDocData?.template_data?.program_or_track.includes("Enterprise Practicum")
+          ? rawDocData?.template_data?.program_or_track
+          : "")
+    );
+
     const studioDoc: IssuedDocument = {
       id: doc.id,
       organization_id: "org-akash-01",
-      member_id: `usr-${doc.student.toLowerCase().replace(/\s+/g, "-")}`,
+      member_id: `usr-${doc.student.toLowerCase().replace(/[^a-z0-9]/g, "-")}`,
       document_number: doc.docNumber,
       document_type: docType,
       title: doc.title,
@@ -134,7 +149,12 @@ export default function AdminDocumentsPage() {
         contact_phone: "+91 99786 21654",
         signatory_name: "Akash Padhiyar",
         signatory_title: "CEO",
-        program_or_track: "AI & Full Stack Enterprise Practicum",
+        salutation: isFemale ? "Ms." : "Mr.",
+        student_name: doc.student.replace(/^(Mr\.|Ms\.)\s*/i, "").trim(),
+        program_or_track: `${cleanTech} technology`,
+        technology: cleanTech,
+        commencement_date: rawDocData?.template_data?.commencement_date || "3rd July 2026",
+        continue_until_date: rawDocData?.template_data?.continue_until_date || "30th April 2027",
         validity: "Active / Verified",
         is_akash_template: true,
         custom_terms: "Official internship placement with 100% free learning framework and verified project credentials.",
@@ -147,10 +167,21 @@ export default function AdminDocumentsPage() {
 
   const handleDirectDownloadDoc = async (doc: any) => {
     if (doc.type === "OFFER_LETTER") {
+      const isFemale = isFemaleCandidate(doc.student, doc.rawDoc?.template_data?.salutation);
+      const cleanTech = deriveTrackTechnology(
+        doc.role,
+        doc.rawDoc?.template_data?.technology ||
+          (doc.rawDoc?.template_data?.program_or_track && !doc.rawDoc?.template_data?.program_or_track.includes("Enterprise Practicum")
+            ? doc.rawDoc?.template_data?.program_or_track
+            : "")
+      );
       await downloadAkashOfferLetterPdf({
-        salutation: doc.student?.startsWith("Ms.") ? "Ms." : "Mr.",
+        salutation: isFemale ? "Ms." : "Mr.",
         studentName: doc.student,
         internshipPosition: doc.role,
+        technology: cleanTech,
+        commencementDate: doc.rawDoc?.template_data?.commencement_date || "3rd July 2026",
+        continueUntilDate: doc.rawDoc?.template_data?.continue_until_date || "30th April 2027",
         letterDate: doc.appliedAt,
         title: doc.title,
       });

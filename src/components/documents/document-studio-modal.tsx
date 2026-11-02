@@ -30,7 +30,11 @@ import { Button } from "@/components/ui/button";
 import { IssuedDocument, TemplateTheme } from "@/types/multitenant";
 import { multiTenantStore } from "@/lib/multitenant/store";
 import { downloadElementAsPdf } from "@/lib/documents/pdf-downloader";
-import { downloadAkashOfferLetterPdf } from "@/lib/documents/akash-pdf-generator";
+import {
+  downloadAkashOfferLetterPdf,
+  isFemaleCandidate,
+  deriveTrackTechnology,
+} from "@/lib/documents/akash-pdf-generator";
 import {
   AKASH_HEADER_BASE64,
   AKASH_FOOTER_BASE64,
@@ -349,13 +353,18 @@ export function DocumentStudioModal({
     setIsDownloadingPdf(true);
     try {
       if (isOfferLetter) {
+        const isFemale = isFemaleCandidate(doc.recipient_name, (doc.template_data as any)?.salutation);
+        const cleanTech = deriveTrackTechnology(
+          doc.recipient_role,
+          (doc.template_data as any)?.technology || doc.template_data?.program_or_track
+        );
         await downloadAkashOfferLetterPdf({
-          salutation: (doc.template_data as any)?.salutation || (doc.recipient_name.startsWith("Ms.") ? "Ms." : "Mr."),
+          salutation: isFemale ? "Ms." : "Mr.",
           studentName: doc.recipient_name,
           internshipPosition: doc.recipient_role,
-          technology: (doc.template_data as any)?.technology || doc.template_data?.program_or_track,
-          commencementDate: (doc.template_data as any)?.commencement_date,
-          continueUntilDate: (doc.template_data as any)?.continue_until_date,
+          technology: cleanTech,
+          commencementDate: (doc.template_data as any)?.commencement_date || "3rd July 2026",
+          continueUntilDate: (doc.template_data as any)?.continue_until_date || "30th April 2027",
           letterDate: doc.issued_date,
           title: doc.title,
         });
@@ -1242,36 +1251,52 @@ export function DocumentStudioModal({
                   </div>
 
                   {/* 4 Official Letter Paragraphs matching authentic PDF with bold highlights */}
-                  <div className="space-y-4 text-xs sm:text-[13px] leading-relaxed text-slate-800 font-normal text-justify">
-                    <p>
-                      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;This is to inform that <strong>{doc.recipient_name}</strong> has been selected for an internship at{" "}
-                      <strong>Akash Technolabs</strong> as a <strong>{doc.recipient_role}</strong>. {doc.template_data?.salutation === "Ms." ? "Her" : "His"} internship will commence on{" "}
-                      <strong>{doc.template_data?.commencement_date || "3rd July 2026"}</strong> and continue until{" "}
-                      <strong>{doc.template_data?.continue_until_date || "30th April 2027"}</strong>.
-                    </p>
+                  {(() => {
+                    const isFemaleDoc = isFemaleCandidate(doc.recipient_name, doc.template_data?.salutation);
+                    const pHeShe = isFemaleDoc ? "she" : "he";
+                    const pHisHer = isFemaleDoc ? "her" : "his";
+                    const pCapHisHer = isFemaleDoc ? "Her" : "His";
+                    const pCapHeShe = isFemaleDoc ? "She" : "He";
+                    const pHimHer = isFemaleDoc ? "her" : "him";
 
-                    <p>
-                      During the internship period, {doc.template_data?.salutation === "Ms." ? "she" : "he"} will work on{" "}
-                      <strong>
-                        {((doc.template_data as any)?.technology || doc.template_data?.program_or_track || "AI/ML")
-                          .replace(/\s*technology/i, "")
-                          .trim()}
-                      </strong>{" "}
-                      technology and will be involved in projects and assignments designed to enhance{" "}
-                      {doc.template_data?.salutation === "Ms." ? "her" : "his"} technical knowledge and practical skills.{" "}
-                      {doc.template_data?.salutation === "Ms." ? "She" : "He"} is expected to maintain a professional attitude, follow the
-                      company&apos;s policies and guidelines, and perform {doc.template_data?.salutation === "Ms." ? "her" : "his"}{" "}
-                      assigned responsibilities with sincerity and dedication throughout the internship.
-                    </p>
+                    const displayTech = deriveTrackTechnology(
+                      doc.recipient_role,
+                      (doc.template_data as any)?.technology || doc.template_data?.program_or_track
+                    );
 
-                    <p>
-                      Upon successful completion of the internship, {doc.template_data?.salutation === "Ms." ? "she" : "he"} will be awarded an <strong>Internship Completion Certificate</strong> based on {doc.template_data?.salutation === "Ms." ? "her" : "his"} performance and adherence to the company&apos;s rules and regulations.
-                    </p>
+                    const rawName = doc.recipient_name.replace(/^(Mr\.|Ms\.)\s*/i, "").trim();
+                    const salutationPrefix = isFemaleDoc ? "Ms." : "Mr.";
+                    const displayRecipientName =
+                      doc.recipient_name.startsWith("Mr.") || doc.recipient_name.startsWith("Ms.")
+                        ? doc.recipient_name
+                        : `${salutationPrefix} ${rawName}`;
 
-                    <p>
-                      We are pleased to welcome {doc.template_data?.salutation === "Ms." ? "her" : "him"} to Akash Technolabs and wish {doc.template_data?.salutation === "Ms." ? "her" : "him"} a successful and enriching internship experience.
-                    </p>
-                  </div>
+                    return (
+                      <div className="space-y-4 text-xs sm:text-[13px] leading-relaxed text-slate-800 font-normal text-justify">
+                        <p>
+                          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;This is to inform that <strong>{displayRecipientName}</strong> has been selected for an internship at{" "}
+                          <strong>Akash Technolabs</strong> as a <strong>{doc.recipient_role}</strong>. {pCapHisHer} internship will commence on{" "}
+                          <strong>{doc.template_data?.commencement_date || "3rd July 2026"}</strong> and continue until{" "}
+                          <strong>{doc.template_data?.continue_until_date || "30th April 2027"}</strong>.
+                        </p>
+
+                        <p>
+                          During the internship period, {pHeShe} will work on{" "}
+                          <strong>{displayTech}</strong> technology and will be involved in projects and assignments designed to enhance{" "}
+                          {pHisHer} technical knowledge and practical skills. {pCapHeShe} is expected to maintain a professional attitude, follow the
+                          company&apos;s policies and guidelines, and perform {pHisHer} assigned responsibilities with sincerity and dedication throughout the internship.
+                        </p>
+
+                        <p>
+                          Upon successful completion of the internship, {pHeShe} will be awarded an <strong>Internship Completion Certificate</strong> based on {pHisHer} performance and adherence to the company&apos;s rules and regulations.
+                        </p>
+
+                        <p>
+                          We are pleased to welcome {pHimHer} to Akash Technolabs and wish {pHimHer} a successful and enriching internship experience.
+                        </p>
+                      </div>
+                    );
+                  })()}
 
                   {/* Signatory Section matching authentic PDF */}
                   <div className="pt-6 space-y-0.5 text-xs sm:text-sm">

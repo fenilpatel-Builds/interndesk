@@ -25,7 +25,11 @@ import {
 import { DocumentStudioModal } from "@/components/documents/document-studio-modal";
 import { IssuedDocument } from "@/types/multitenant";
 import { multiTenantStore } from "@/lib/multitenant/store";
-import { downloadAkashOfferLetterPdf } from "@/lib/documents/akash-pdf-generator";
+import {
+  downloadAkashOfferLetterPdf,
+  isFemaleCandidate,
+  deriveTrackTechnology,
+} from "@/lib/documents/akash-pdf-generator";
 
 const STUDENT_DOCUMENTS: IssuedDocument[] = [
   {
@@ -226,13 +230,18 @@ export default function StudentDocumentsPage() {
 
   const handleDirectStudentDownload = async (doc: IssuedDocument) => {
     if (doc.document_type === "OFFER_LETTER") {
+      const isFemale = isFemaleCandidate(doc.recipient_name, (doc.template_data as any)?.salutation);
+      const cleanTech = deriveTrackTechnology(
+        doc.recipient_role,
+        (doc.template_data as any)?.technology || doc.template_data?.program_or_track
+      );
       await downloadAkashOfferLetterPdf({
-        salutation: (doc.template_data as any)?.salutation || (doc.recipient_name.startsWith("Ms.") ? "Ms." : "Mr."),
+        salutation: isFemale ? "Ms." : "Mr.",
         studentName: doc.recipient_name,
         internshipPosition: doc.recipient_role,
-        technology: (doc.template_data as any)?.technology || doc.template_data?.program_or_track,
-        commencementDate: (doc.template_data as any)?.commencement_date,
-        continueUntilDate: (doc.template_data as any)?.continue_until_date,
+        technology: cleanTech,
+        commencementDate: (doc.template_data as any)?.commencement_date || "3rd July 2026",
+        continueUntilDate: (doc.template_data as any)?.continue_until_date || "30th April 2027",
         letterDate: doc.issued_date,
         title: doc.title,
       });

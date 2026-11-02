@@ -19,6 +19,55 @@ export interface OfferLetterData {
   isCustomEdited?: boolean;
 }
 
+export function isFemaleCandidate(name?: string, salutation?: string): boolean {
+  if (salutation === "Ms." || salutation === "Mrs." || salutation === "Miss") return true;
+  if (!name) return false;
+  const lower = name.toLowerCase().trim();
+  if (
+    lower.startsWith("ms.") ||
+    lower.startsWith("ms ") ||
+    lower.startsWith("miss") ||
+    lower.startsWith("mrs.")
+  ) {
+    return true;
+  }
+  const femalePatterns = [
+    "priya", "neha", "pooja", "ananya", "riddhi", "isha", "shreya",
+    "aditi", "kavita", "sneha", "sakshi", "tanvi", "divya", "khushi",
+    "aayushi", "ayushi", "drasti", "drashti", "diya", "prachi", "simran", "kiran"
+  ];
+  return femalePatterns.some((fn) => lower.includes(fn));
+}
+
+export function deriveTrackTechnology(position?: string, customTech?: string): string {
+  if (customTech && !customTech.toLowerCase().includes("practicum") && customTech.trim().length > 0) {
+    return customTech.replace(/\s*technology/i, "").trim();
+  }
+  if (!position) return "AI/ML";
+  const pos = position.toLowerCase().trim();
+
+  if (pos.includes("php") || pos.includes("laravel")) return "PHP / Laravel";
+  if (pos.includes("ai/ml") || pos.includes("machine learning") || (pos.includes("ai") && !pos.includes("email") && !pos.includes("detail"))) return "AI/ML";
+  if (pos.includes("cyber") || pos.includes("security")) return "Cybersecurity";
+  if (pos.includes("python")) return "Python";
+  if (pos.includes("full stack") || pos.includes("mern") || pos.includes("web dev")) return "Full Stack Web Development";
+  if (pos.includes("data science") || pos.includes("analytics")) return "Data Science & Analytics";
+  if (pos.includes("cloud") || pos.includes("devops") || pos.includes("aws")) return "Cloud & DevOps";
+  if (pos.includes("flutter") || pos.includes("mobile") || pos.includes("android") || pos.includes("ios")) return "Flutter & Mobile App Development";
+  if (pos.includes("ui") || pos.includes("ux") || pos.includes("design")) return "UI/UX Design";
+  if (pos.includes("java") && !pos.includes("javascript")) return "Java";
+  if (pos.includes("qa") || pos.includes("testing") || pos.includes("quality assurance")) return "Software Testing & QA";
+  if (pos.includes("iot") || pos.includes("embedded")) return "Embedded Systems & IoT";
+
+  const cleaned = position
+    .replace(/\s*Developer\s*Intern/i, "")
+    .replace(/\s*Intern/i, "")
+    .replace(/\s*technology/i, "")
+    .trim();
+
+  return cleaned || "Information Technology";
+}
+
 function base64ToUint8Array(base64Uri: string): Uint8Array {
   const base64 = base64Uri.replace(/^data:image\/\w+;base64,/, "");
   if (typeof Buffer !== "undefined") {
@@ -152,8 +201,8 @@ export async function generateAkashOfferLetterPdf(data: OfferLetterData): Promis
   }
 
   const rawName = data.studentName.replace(/^(Mr\.|Ms\.)\s*/i, "").trim();
-  const sal = data.salutation || (data.studentName.startsWith("Ms.") ? "Ms." : "Mr.");
-  const isGirl = sal === "Ms.";
+  const isGirl = isFemaleCandidate(data.studentName, data.salutation);
+  const sal = data.salutation || (isGirl ? "Ms." : "Mr.");
   const pronounHeShe = isGirl ? "she" : "he";
   const pronounHisHer = isGirl ? "her" : "his";
   const pronounCapitalHisHer = isGirl ? "Her" : "His";
@@ -161,8 +210,7 @@ export async function generateAkashOfferLetterPdf(data: OfferLetterData): Promis
   const pronounHimHer = isGirl ? "her" : "him";
 
   const position = data.internshipPosition || "AI/ML Intern";
-  const rawTech = data.technology || (position.includes("Intern") ? position.replace(/\s*Intern/i, "") : position);
-  const tech = rawTech.replace(/\s*technology/i, "").trim() || "AI/ML";
+  const tech = deriveTrackTechnology(position, data.technology);
   const startDate = data.commencementDate || "3rd July 2026";
   const endDate = data.continueUntilDate || "30th April 2027";
 
