@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   X,
   Sparkles,
@@ -20,14 +20,20 @@ import {
   CheckCircle2,
   UserCheck,
   FileText,
-  Printer,
   Download,
   Lock,
   Eye,
   ShieldCheck,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { OfficialAkashStamp } from "@/components/documents/document-studio-modal";
+import { downloadElementAsPdf } from "@/lib/documents/pdf-downloader";
+import {
+  AKASH_HEADER_BASE64,
+  AKASH_FOOTER_BASE64,
+  AKASH_WATERMARK_BASE64,
+  AKASH_SIGNATURE_BASE64,
+} from "@/lib/documents/akash-letterhead-assets";
 
 interface StudentOption {
   id: string;
@@ -41,6 +47,139 @@ interface LetterGenerateModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: (createdDoc: any) => void;
+}
+
+// Predefined tracks for fast domain selection (AI/ML, Cybersecurity, Python, etc.)
+export interface PredefinedTrack {
+  label: string;
+  position: string;
+  technology: string;
+  icon: string;
+}
+
+export const PREDEFINED_TRACKS: PredefinedTrack[] = [
+  { label: "AI / ML", position: "AI/ML Intern", technology: "AI/ML", icon: "🤖" },
+  { label: "Cybersecurity", position: "Cybersecurity Intern", technology: "Cybersecurity", icon: "🛡️" },
+  { label: "Python Developer", position: "Python Developer Intern", technology: "Python", icon: "🐍" },
+  { label: "Full Stack Web", position: "Full Stack Web Developer Intern", technology: "Full Stack Web Development", icon: "💻" },
+  { label: "Data Science & Analytics", position: "Data Science & Analytics Intern", technology: "Data Science & Analytics", icon: "📊" },
+  { label: "Cloud & DevOps", position: "Cloud & DevOps Intern", technology: "Cloud & DevOps", icon: "☁️" },
+  { label: "Flutter / Mobile", position: "Mobile App Developer Intern", technology: "Flutter & Mobile App Development", icon: "📱" },
+  { label: "UI / UX Design", position: "UI/UX Design Intern", technology: "UI/UX Design", icon: "🎨" },
+  { label: "Java Developer", position: "Java Developer Intern", technology: "Java", icon: "☕" },
+  { label: "PHP & Laravel", position: "PHP / Laravel Developer Intern", technology: "PHP & Laravel", icon: "🐘" },
+  { label: "IoT & Embedded", position: "Embedded Systems & IoT Intern", technology: "Embedded Systems & IoT", icon: "⚡" },
+  { label: "QA & Testing", position: "Quality Assurance (QA) Intern", technology: "Software Testing & QA", icon: "🔍" },
+];
+
+// Helper to format date into "3rd August 2026"
+export function formatOrdinalDate(dateStr: string): string {
+  if (!dateStr || !dateStr.includes("-")) return dateStr;
+  const parts = dateStr.split("-").map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return dateStr;
+  const [year, month, day] = parts;
+  const getOrdinal = (n: number) => {
+    const s = ["th", "st", "nd", "rd"];
+    const v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  };
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ];
+  return `${getOrdinal(day)} ${months[month - 1]} ${year}`;
+}
+
+// Helper to format date into "30-10-2026" (DD-MM-YYYY)
+export function formatStandardDate(dateStr: string): string {
+  if (!dateStr || !dateStr.includes("-")) return dateStr;
+  const parts = dateStr.split("-");
+  if (parts.length === 3 && parts[0].length === 4) {
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  }
+  return dateStr;
+}
+
+// Reusable Dual Input: Allows BOTH typing directly and picking from a popup calendar
+interface DualDateFieldProps {
+  label: string;
+  value: string;
+  onChange: (val: string) => void;
+  placeholder?: string;
+  mode: "DD-MM-YYYY" | "ORDINAL";
+  required?: boolean;
+}
+
+function DualDateField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  mode,
+  required = true,
+}: DualDateFieldProps) {
+  const pickerRef = useRef<HTMLInputElement>(null);
+
+  const handleCalendarClick = () => {
+    if (pickerRef.current) {
+      if ("showPicker" in HTMLInputElement.prototype) {
+        try {
+          pickerRef.current.showPicker();
+        } catch {
+          pickerRef.current.focus();
+        }
+      } else {
+        pickerRef.current.focus();
+      }
+    }
+  };
+
+  const handlePickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = e.target.value; // "YYYY-MM-DD"
+    if (!picked) return;
+    if (mode === "DD-MM-YYYY") {
+      onChange(formatStandardDate(picked));
+    } else {
+      onChange(formatOrdinalDate(picked));
+    }
+  };
+
+  return (
+    <div>
+      <label className="block text-xs font-bold text-slate-700 mb-1">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <div className="relative flex items-center">
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          required={required}
+          className="w-full text-xs font-semibold text-slate-900 border border-slate-300 rounded-xl pl-3 pr-10 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+        />
+        <button
+          type="button"
+          onClick={handleCalendarClick}
+          title="Pick date from calendar"
+          className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+        >
+          <Calendar className="w-4 h-4" />
+        </button>
+        <input
+          ref={pickerRef}
+          type="date"
+          onChange={handlePickerChange}
+          className="absolute opacity-0 pointer-events-none w-0 h-0"
+          tabIndex={-1}
+          aria-hidden="true"
+        />
+      </div>
+      <p className="text-[10px] text-slate-400 mt-1">
+        Type directly or click 📅 calendar icon
+      </p>
+    </div>
+  );
 }
 
 export function LetterGenerateModal({
@@ -74,6 +213,7 @@ export function LetterGenerateModal({
   // View mode: Form or Full Official Preview
   const [viewMode, setViewMode] = useState<"FORM" | "PREVIEW">("FORM");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Generate body text from dynamic fields
@@ -185,6 +325,12 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
     setIsCustomEdited(false);
   };
 
+  const handleTrackSelect = (trk: PredefinedTrack) => {
+    setInternshipPosition(trk.position);
+    setTechnology(trk.technology);
+    setIsCustomEdited(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -233,16 +379,35 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  // Direct client-side PDF download without print dialog
+  const handleDownloadPdf = async () => {
+    setIsDownloadingPdf(true);
+    try {
+      const cleanName = studentName.trim().replace(/\s+/g, "_");
+      const filename = `${cleanName}_Internship_Offer_Letter.pdf`;
+      await downloadElementAsPdf("akash-official-offer-letter-sheet", filename);
+    } catch (err) {
+      console.error("PDF download failed:", err);
+      // Fallback
+      window.print();
+    } finally {
+      setIsDownloadingPdf(false);
+    }
   };
+
+  const isGirl = templateType === "INTERNSHIP OFFER LETTER (Girl)" || salutation === "Ms.";
+  const pronounHeShe = isGirl ? "she" : "he";
+  const pronounHisHer = isGirl ? "her" : "his";
+  const pronounCapitalHisHer = isGirl ? "Her" : "His";
+  const pronounCapitalHeShe = isGirl ? "She" : "He";
+  const pronounHimHer = isGirl ? "her" : "him";
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-xs overflow-y-auto">
       <div className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[92vh] flex flex-col">
-        {/* Top cyan/blue line matching Image 2 */}
+        {/* Top brand line: Cyan, Navy, Red */}
         <div className="h-1.5 w-full bg-gradient-to-r from-[#00A8CC] via-[#0F4C81] to-[#E52329]" />
 
         {/* Header Bar */}
@@ -306,7 +471,7 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
         <div className="flex-1 overflow-y-auto p-6">
           {viewMode === "FORM" ? (
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Card 1: Auto-fill from Registered Student (Image 3) */}
+              {/* Card 1: Auto-fill from Registered Student */}
               <div className="bg-slate-50/80 rounded-2xl border border-slate-200/90 p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
@@ -314,7 +479,7 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                     <span>Auto-fill from Registered Student (Optional)</span>
                   </div>
                   <span className="text-[11px] text-slate-500 font-medium">
-                    Links letter to student portal profile
+                    Links letter directly to verified student portal profile
                   </span>
                 </div>
 
@@ -334,7 +499,41 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                 </div>
               </div>
 
-              {/* Card 2: Predefined Dynamic Letter Fields (Image 3) */}
+              {/* Card 2: Predefined Track Quick Select (AI/ML, Cybersecurity, Python, Full Stack...) */}
+              <div className="bg-white rounded-2xl border border-slate-200/90 p-5 space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-blue-600" />
+                    Predefined Internship Domain &amp; Track Quick Select
+                  </h3>
+                  <span className="text-[11px] text-slate-400">Click to auto-populate position &amp; tech</span>
+                </div>
+
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {PREDEFINED_TRACKS.map((trk) => {
+                    const isSelected =
+                      internshipPosition === trk.position ||
+                      technology.toLowerCase() === trk.technology.toLowerCase();
+                    return (
+                      <button
+                        key={trk.label}
+                        type="button"
+                        onClick={() => handleTrackSelect(trk)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 ${
+                          isSelected
+                            ? "bg-[#0F4C81] text-white shadow-xs ring-2 ring-blue-400"
+                            : "bg-slate-50 text-slate-700 border border-slate-200 hover:border-blue-400 hover:bg-blue-50/60"
+                        }`}
+                      >
+                        <span>{trk.icon}</span>
+                        <span>{trk.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Card 3: Predefined Dynamic Letter Fields */}
               <div className="bg-white rounded-2xl border border-slate-200/90 p-5 space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2">
@@ -345,23 +544,14 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {/* Letter Date */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Letter Date <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={letterDate}
-                        onChange={(e) => setLetterDate(e.target.value)}
-                        placeholder="DD-MM-YYYY (e.g. 30-10-2026)"
-                        required
-                        className="w-full text-xs font-semibold text-slate-900 border border-slate-300 rounded-xl px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                      />
-                      <Calendar className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    </div>
-                  </div>
+                  {/* Letter Date with both typing and calendar picker */}
+                  <DualDateField
+                    label="Letter Date"
+                    value={letterDate}
+                    onChange={setLetterDate}
+                    placeholder="DD-MM-YYYY (e.g. 30-10-2026)"
+                    mode="DD-MM-YYYY"
+                  />
 
                   {/* Salutation */}
                   <div>
@@ -402,41 +592,29 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                       type="text"
                       value={internshipPosition}
                       onChange={(e) => setInternshipPosition(e.target.value)}
-                      placeholder="e.g. AI/ML Intern"
+                      placeholder="e.g. AI/ML Intern or Cybersecurity Intern"
                       required
                       className="w-full text-xs font-semibold text-slate-900 border border-slate-300 rounded-xl px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
 
-                  {/* Internship Start Date */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Internship Start Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={commencementDate}
-                      onChange={(e) => setCommencementDate(e.target.value)}
-                      placeholder="e.g. 3rd August 2026"
-                      required
-                      className="w-full text-xs font-semibold text-slate-900 border border-slate-300 rounded-xl px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+                  {/* Internship Start Date with both typing and calendar picker */}
+                  <DualDateField
+                    label="Internship Start Date"
+                    value={commencementDate}
+                    onChange={setCommencementDate}
+                    placeholder="e.g. 3rd August 2026"
+                    mode="ORDINAL"
+                  />
 
-                  {/* Internship End Date */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Internship End Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={continueUntilDate}
-                      onChange={(e) => setContinueUntilDate(e.target.value)}
-                      placeholder="e.g. 30th April 2027"
-                      required
-                      className="w-full text-xs font-semibold text-slate-900 border border-slate-300 rounded-xl px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+                  {/* Internship End Date with both typing and calendar picker */}
+                  <DualDateField
+                    label="Internship End Date"
+                    value={continueUntilDate}
+                    onChange={setContinueUntilDate}
+                    placeholder="e.g. 30th April 2027"
+                    mode="ORDINAL"
+                  />
 
                   {/* Technology */}
                   <div className="sm:col-span-2 lg:col-span-1">
@@ -447,7 +625,7 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                       type="text"
                       value={technology}
                       onChange={(e) => setTechnology(e.target.value)}
-                      placeholder="e.g. AI/ML or Full Stack"
+                      placeholder="e.g. AI/ML, Cybersecurity, Python..."
                       required
                       className="w-full text-xs font-semibold text-slate-900 border border-slate-300 rounded-xl px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     />
@@ -455,7 +633,7 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                 </div>
               </div>
 
-              {/* Card 3: Letter Template, Date, Title & Rich Description (Image 2) */}
+              {/* Card 4: Letter Template, Date, Title & Rich Description */}
               <div className="bg-white rounded-2xl border border-slate-200/90 p-5 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {/* Letter Template */}
@@ -474,19 +652,14 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                     </select>
                   </div>
 
-                  {/* Date * */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={letterDate}
-                      onChange={(e) => setLetterDate(e.target.value)}
-                      required
-                      className="w-full text-xs font-semibold text-slate-900 border border-slate-300 rounded-xl px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+                  {/* Date * with both typing and calendar picker */}
+                  <DualDateField
+                    label="Date"
+                    value={letterDate}
+                    onChange={setLetterDate}
+                    placeholder="DD-MM-YYYY (e.g. 30-10-2026)"
+                    mode="DD-MM-YYYY"
+                  />
 
                   {/* Title * */}
                   <div>
@@ -503,7 +676,7 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                   </div>
                 </div>
 
-                {/* Description Rich Text Editor Box (Image 2) */}
+                {/* Description Rich Text Editor Box */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-xs font-bold text-slate-700">Description</label>
@@ -517,7 +690,7 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                   </div>
 
                   <div className="border border-slate-300 rounded-xl overflow-hidden shadow-2xs">
-                    {/* Simulated WYSIWYG Toolbar matching Image 2 */}
+                    {/* Simulated WYSIWYG Toolbar */}
                     <div className="bg-slate-100/90 px-3 py-1.5 border-b border-slate-200 flex flex-wrap items-center gap-1 text-slate-600">
                       <button type="button" className="p-1 hover:bg-slate-200 rounded text-slate-700"><Sparkles className="w-3.5 h-3.5" /></button>
                       <span className="w-px h-4 bg-slate-300 mx-1" />
@@ -551,12 +724,12 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                   </div>
                 </div>
 
-                {/* Company Letterhead Elements note (Image 3) */}
+                {/* Company Letterhead Elements note */}
                 <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
                   <div className="flex items-center gap-2 text-slate-600">
                     <Lock className="w-3.5 h-3.5 text-emerald-600" />
                     <span className="text-[11px] font-semibold">
-                      Company Letterhead Elements locked: Official Banner, Center Watermark, Aligned Right Date, Digital Signature &amp; Registered Stamp, Corporate Address &amp; Contact Footer.
+                      Company Letterhead Elements locked: Official Banner, Center Watermark, Aligned Right Date, Digital Signature &amp; Corporate Address &amp; Contact Footer.
                     </span>
                   </div>
                   <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full shrink-0">
@@ -565,7 +738,7 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                 </div>
               </div>
 
-              {/* Submit Button matching Image 2 */}
+              {/* Submit Button */}
               <div className="flex items-center justify-between pt-2">
                 <Button
                   type="submit"
@@ -594,17 +767,28 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-5 h-5 text-emerald-600" />
                   <span className="text-xs font-bold text-slate-800">
-                    Official Akash Technolabs Letterhead (Print-Ready A4 Ratio)
+                    Official Akash Technolabs Letterhead (Authentic A4 Format)
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
+                  {/* Direct PDF Download without print dialog */}
                   <Button
                     size="sm"
-                    onClick={handlePrint}
-                    className="bg-[#0F4C81] hover:bg-[#0C3D68] text-white font-bold text-xs rounded-xl shadow-xs"
+                    disabled={isDownloadingPdf}
+                    onClick={handleDownloadPdf}
+                    className="bg-[#0F4C81] hover:bg-[#0C3D68] text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
                   >
-                    <Printer className="w-3.5 h-3.5 mr-1" />
-                    Print / Save PDF
+                    {isDownloadingPdf ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Downloading PDF...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Download Official PDF</span>
+                      </>
+                    )}
                   </Button>
                   <Button
                     size="sm"
@@ -620,62 +804,105 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
               {/* The Official Letter Paper Sheet */}
               <div
                 id="akash-official-offer-letter-sheet"
-                className="relative bg-white mx-auto max-w-[800px] p-8 sm:p-14 shadow-lg border border-slate-300 rounded-sm text-slate-900 select-text"
+                className="relative bg-white mx-auto max-w-[800px] p-8 sm:p-14 shadow-lg border border-slate-200 rounded-sm text-slate-900 select-text overflow-hidden"
                 style={{ minHeight: "1050px" }}
               >
-                {/* Center Dual-Tone Translucent Watermark matching PDF */}
+                {/* Center Dual-Tone Translucent Watermark matching authentic PDF */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
                   <img
-                    src="/images/akash-at-watermark-hd.png"
+                    src={AKASH_WATERMARK_BASE64}
                     alt="Akash Technolabs Official Watermark"
-                    className="w-[340px] max-w-[85%] object-contain opacity-[0.08] select-none"
+                    className="w-[300px] max-w-[85%] object-contain select-none pointer-events-none"
+                    style={{ opacity: 0.12 }}
                   />
                 </div>
 
                 <div className="relative z-10 flex flex-col justify-between" style={{ minHeight: "960px" }}>
                   <div>
-                    {/* Header with Logo and Two-Tone Bar matching PDF */}
-                    <div className="pb-4">
-                      <div className="flex items-center justify-between pb-2">
-                        <img
-                          src="/images/akash-technolabs-header-logo.png"
-                          alt="Akash Technolabs"
-                          className="h-12 sm:h-14 w-auto object-contain"
-                        />
-                      </div>
-                      {/* Split Two-Color Bar matching PDF: Navy blue left ~28%, Red right ~72% */}
-                      <div className="w-full flex h-[3.5px]">
-                        <div className="w-[28%] bg-[#1e3264]" />
-                        <div className="w-[72%] bg-[#d32f2f]" />
-                      </div>
+                    {/* Header with Official Akash Technolabs Banner matching authentic PDF */}
+                    <div className="pb-3">
+                      <img
+                        src={AKASH_HEADER_BASE64}
+                        alt="Akash Technolabs Official Banner"
+                        className="w-full object-contain select-none"
+                      />
                     </div>
 
-                    {/* Right-aligned Date matching PDF */}
+                    {/* Right-aligned Date matching authentic PDF */}
                     <div className="text-right text-xs sm:text-sm font-medium text-slate-900 pr-1 pt-1 pb-4">
                       <span>Date :{letterDate}</span>
                     </div>
 
                     {/* Centered Bold Underlined Title */}
-                    <div className="text-center pt-2 pb-6">
+                    <div className="text-center pt-1 pb-6">
                       <h1 className="text-lg sm:text-xl font-bold tracking-wider text-slate-900 uppercase underline underline-offset-4 decoration-slate-900 decoration-1">
                         {letterTitle}
                       </h1>
                     </div>
 
-                    {/* 4 Paragraphs of Body Text */}
+                    {/* 4 Paragraphs of Body Text with exact highlighted bold keywords matching PDF */}
                     <div className="space-y-4 text-xs sm:text-[13px] leading-relaxed text-slate-800 font-normal text-justify">
-                      {description.split("\n\n").map((para, idx) => (
-                        <p key={idx}>{para}</p>
-                      ))}
+                      {isCustomEdited ? (
+                        description.split("\n\n").map((para, idx) => (
+                          <p key={idx}>{para}</p>
+                        ))
+                      ) : (
+                        <>
+                          {/* Paragraph 1 */}
+                          <p>
+                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;This is to inform that{" "}
+                            <strong>
+                              {salutation} {studentName}
+                            </strong>{" "}
+                            has been selected for an internship at{" "}
+                            <strong>Akash Technolabs</strong> as a{" "}
+                            <strong>{internshipPosition}</strong>. {pronounCapitalHisHer}{" "}
+                            internship will commence on <strong>{commencementDate}</strong>{" "}
+                            and continue until <strong>{continueUntilDate}</strong>.
+                          </p>
+
+                          {/* Paragraph 2 */}
+                          <p>
+                            During the internship period, {pronounHeShe} will work on{" "}
+                            {technology} technology and will be involved in projects and
+                            assignments designed to enhance {pronounHisHer} technical
+                            knowledge and practical skills. {pronounCapitalHeShe} is
+                            expected to maintain a professional attitude, follow the
+                            company&apos;s policies and guidelines, and perform{" "}
+                            {pronounHisHer} assigned responsibilities with sincerity and
+                            dedication throughout the internship.
+                          </p>
+
+                          {/* Paragraph 3 */}
+                          <p>
+                            Upon successful completion of the internship, {pronounHeShe}{" "}
+                            will be awarded an{" "}
+                            <strong>Internship Completion Certificate</strong> based on{" "}
+                            {pronounHisHer} performance and adherence to the company&apos;s
+                            rules and regulations.
+                          </p>
+
+                          {/* Paragraph 4 */}
+                          <p>
+                            We are pleased to welcome {pronounHimHer} to Akash Technolabs
+                            and wish {pronounHimHer} a successful and enriching internship
+                            experience.
+                          </p>
+                        </>
+                      )}
                     </div>
 
-                    {/* Sign-Off Block (Bottom Left) */}
-                    <div className="pt-8 space-y-1 text-xs sm:text-sm">
+                    {/* Sign-Off Block (Bottom Left) matching authentic PDF */}
+                    <div className="pt-8 space-y-0.5 text-xs sm:text-sm">
                       <p className="text-slate-800 font-medium">Sincerely</p>
 
-                      {/* Official Akash Technolabs Seal & Signature */}
+                      {/* Official CEO Signature matching authentic Fenil Offer Letter */}
                       <div className="py-1">
-                        <OfficialAkashStamp />
+                        <img
+                          src={AKASH_SIGNATURE_BASE64}
+                          alt="Akash Padhiyar CEO Signature"
+                          className="h-16 w-auto object-contain select-none"
+                        />
                       </div>
 
                       <p className="font-bold text-slate-900 text-sm">Akash Padhiyar</p>

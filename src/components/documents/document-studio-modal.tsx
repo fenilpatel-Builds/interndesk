@@ -24,10 +24,18 @@ import {
   TrendingUp,
   PenTool,
   Edit3,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { IssuedDocument, TemplateTheme } from "@/types/multitenant";
 import { multiTenantStore } from "@/lib/multitenant/store";
+import { downloadElementAsPdf } from "@/lib/documents/pdf-downloader";
+import {
+  AKASH_HEADER_BASE64,
+  AKASH_FOOTER_BASE64,
+  AKASH_WATERMARK_BASE64,
+  AKASH_SIGNATURE_BASE64,
+} from "@/lib/documents/akash-letterhead-assets";
 
 interface DocumentStudioModalProps {
   isOpen: boolean;
@@ -333,6 +341,24 @@ export function DocumentStudioModal({
     fullVerifyUrl
   )}&certId=${encodeURIComponent(doc.document_number)}`;
 
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+
+  const handleDownloadPdf = async () => {
+    setIsDownloadingPdf(true);
+    try {
+      const rawName = doc.recipient_name || "Official";
+      const cleanName = rawName.replace(/^(Mr\.|Ms\.)\s*/i, "").trim().replace(/\s+/g, "_");
+      const cleanTitle = (doc.title || "Document").replace(/\s+/g, "_");
+      const filename = `${cleanName}_${cleanTitle}.pdf`;
+      await downloadElementAsPdf("document-studio-canvas", filename);
+    } catch (err) {
+      console.error("Direct PDF download failed, falling back to print:", err);
+      window.print();
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
   const handleCopyUrl = () => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       const liveUrl = typeof window !== "undefined" ? `${window.location.origin}${verifyPath}` : fullVerifyUrl;
@@ -476,7 +502,28 @@ export function DocumentStudioModal({
               </span>
             )}
 
-            {/* Print / Download PDF */}
+            {/* Direct PDF Download */}
+            <Button
+              id="studio-download-pdf-btn"
+              size="sm"
+              disabled={isDownloadingPdf}
+              onClick={handleDownloadPdf}
+              className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl h-8 px-3 cursor-pointer shadow-xs flex items-center gap-1.5"
+            >
+              {isDownloadingPdf ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Downloading PDF...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download PDF</span>
+                </>
+              )}
+            </Button>
+
+            {/* Print / Save PDF */}
             <Button
               id="studio-print-btn"
               size="sm"
@@ -484,7 +531,7 @@ export function DocumentStudioModal({
               className="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl h-8 px-3 cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5 mr-1" />
-              Print / Save PDF
+              Print
             </Button>
 
             {/* Copy Verification Link */}
@@ -1148,31 +1195,25 @@ export function DocumentStudioModal({
               )
             ) : isAkashOrg && isOfferLetter ? (
               // ================= OFFICIAL AKASH TECHNOLABS OFFER LETTER =================
-              <div className="relative bg-white p-6 sm:p-12 text-slate-800 space-y-6">
-                {/* Authentic 'At' Dual-Tone Watermark matching PDF */}
+              <div className="relative bg-white p-6 sm:p-12 text-slate-800 space-y-6 overflow-hidden">
+                {/* Authentic Dual-Tone Center Watermark matching authentic PDF */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
                   <img
-                    src="/images/akash-at-watermark-hd.png"
+                    src={AKASH_WATERMARK_BASE64}
                     alt="Akash Technolabs Official Watermark"
-                    className="w-[320px] sm:w-[440px] max-w-[85%] object-contain opacity-[0.08] select-none pointer-events-none"
+                    className="w-[280px] sm:w-[320px] max-w-[85%] object-contain select-none pointer-events-none"
+                    style={{ opacity: 0.12 }}
                   />
                 </div>
 
                 <div className="relative z-10 space-y-6">
-                  {/* Header with Akash Horizontal Logo and Split Bar matching PDF */}
-                  <div>
-                    <div className="flex items-center justify-between pb-2">
-                      <img
-                        src="/images/akash-technolabs-header-logo.png"
-                        alt="Akash Technolabs"
-                        className="h-12 sm:h-14 w-auto object-contain"
-                      />
-                    </div>
-                    {/* Split Two-Color Bar matching PDF: Navy blue left ~28%, Red right ~72% */}
-                    <div className="w-full flex h-[3px]">
-                      <div className="w-[28%] bg-[#1e3264]" />
-                      <div className="w-[72%] bg-[#d32f2f]" />
-                    </div>
+                  {/* Header with Official Akash Technolabs Banner matching authentic PDF */}
+                  <div className="pb-2">
+                    <img
+                      src={AKASH_HEADER_BASE64}
+                      alt="Akash Technolabs Official Banner"
+                      className="w-full object-contain select-none"
+                    />
                   </div>
 
                   {/* Right aligned date matching PDF */}
@@ -1181,70 +1222,45 @@ export function DocumentStudioModal({
                   </div>
 
                   {/* Centered Bold Underlined Title */}
-                  <div className="text-center pt-2 pb-3">
+                  <div className="text-center pt-1 pb-3">
                     <h1 className="text-lg sm:text-xl font-bold tracking-wider text-slate-900 uppercase underline underline-offset-4 decoration-slate-900 decoration-1">
                       INTERNSHIP OFFER LETTER
                     </h1>
                   </div>
 
-                  {/* 4 Official Letter Paragraphs matching PDF */}
+                  {/* 4 Official Letter Paragraphs matching authentic PDF with bold highlights */}
                   <div className="space-y-4 text-xs sm:text-[13px] leading-relaxed text-slate-800 font-normal text-justify">
                     <p>
-                      This is to inform that <strong>{doc.recipient_name}</strong> has been selected for an internship at{" "}
-                      <strong>Akash Technolabs</strong> as a <strong>{doc.recipient_role}</strong>. His internship will commence on{" "}
+                      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;This is to inform that <strong>{doc.recipient_name}</strong> has been selected for an internship at{" "}
+                      <strong>Akash Technolabs</strong> as a <strong>{doc.recipient_role}</strong>. {doc.template_data?.salutation === "Ms." ? "Her" : "His"} internship will commence on{" "}
                       <strong>{doc.template_data?.commencement_date || "3rd July 2026"}</strong> and continue until{" "}
                       <strong>{doc.template_data?.continue_until_date || "30th April 2027"}</strong>.
                     </p>
 
                     <p>
-                      During the internship period, he will work on <strong>{doc.template_data?.program_or_track || "AI/ML technology"}</strong> and will be involved in projects and assignments designed to enhance his technical knowledge and practical skills. He is expected to maintain a professional attitude, follow the company&apos;s policies and guidelines, and perform his assigned responsibilities with sincerity and dedication throughout the internship.
+                      During the internship period, {doc.template_data?.salutation === "Ms." ? "she" : "he"} will work on {doc.template_data?.program_or_track || doc.template_data?.technology || "AI/ML"} technology and will be involved in projects and assignments designed to enhance {doc.template_data?.salutation === "Ms." ? "her" : "his"} technical knowledge and practical skills. {doc.template_data?.salutation === "Ms." ? "She" : "He"} is expected to maintain a professional attitude, follow the company&apos;s policies and guidelines, and perform {doc.template_data?.salutation === "Ms." ? "her" : "his"} assigned responsibilities with sincerity and dedication throughout the internship.
                     </p>
 
                     <p>
-                      Upon successful completion of the internship, he will be awarded an <strong>Internship Completion Certificate</strong> based on his performance and adherence to the company&apos;s rules and regulations.
+                      Upon successful completion of the internship, {doc.template_data?.salutation === "Ms." ? "she" : "he"} will be awarded an <strong>Internship Completion Certificate</strong> based on {doc.template_data?.salutation === "Ms." ? "her" : "his"} performance and adherence to the company&apos;s rules and regulations.
                     </p>
 
                     <p>
-                      We are pleased to welcome him to Akash Technolabs and wish him a successful and enriching internship experience.
+                      We are pleased to welcome {doc.template_data?.salutation === "Ms." ? "her" : "him"} to Akash Technolabs and wish {doc.template_data?.salutation === "Ms." ? "her" : "him"} a successful and enriching internship experience.
                     </p>
                   </div>
 
-                  {/* Candidate Acceptance / Signing Widget */}
-                  {isOfferLetter && !isAccepted && (
-                    <div className="my-2 p-3.5 rounded-xl bg-amber-50/90 border border-amber-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-                      <span className="text-amber-800 font-medium">
-                        Welcome to Akash Technolabs! Please review the terms and click &quot;Sign &amp; Accept Offer&quot; below.
-                      </span>
-                      <Button
-                        size="sm"
-                        onClick={() => setIsSignModalOpen(true)}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg px-3 py-1 text-xs shrink-0 cursor-pointer"
-                      >
-                        <PenTool className="w-3.5 h-3.5 mr-1" />
-                        Sign &amp; Accept Offer
-                      </Button>
-                    </div>
-                  )}
-
-                  {isOfferLetter && isAccepted && (
-                    <div className="my-2 p-3 rounded-xl bg-emerald-50 border border-emerald-300 flex items-center justify-between text-xs text-emerald-800 font-medium">
-                      <span className="flex items-center gap-1.5 font-bold">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        Offer Formally Accepted by {candidateNameInput || doc.recipient_name}
-                      </span>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-100 border border-emerald-300">
-                        Signed: {acceptedDate}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Signatory Section */}
-                  <div className="pt-4 space-y-1 text-xs sm:text-sm">
+                  {/* Signatory Section matching authentic PDF */}
+                  <div className="pt-6 space-y-0.5 text-xs sm:text-sm">
                     <p className="text-slate-800 font-medium">Sincerely</p>
                     
-                    {/* Official Akash Technolabs Seal & Signature */}
+                    {/* Official CEO Signature matching authentic Fenil Offer Letter */}
                     <div className="py-1">
-                      <OfficialAkashStamp />
+                      <img
+                        src={AKASH_SIGNATURE_BASE64}
+                        alt="Akash Padhiyar CEO Signature"
+                        className="h-16 w-auto object-contain select-none"
+                      />
                     </div>
 
                     <p className="font-bold text-slate-900 text-sm">Akash Padhiyar</p>
@@ -1582,11 +1598,21 @@ export function DocumentStudioModal({
             </Button>
             <Button
               size="sm"
-              onClick={handlePrint}
-              className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
+              disabled={isDownloadingPdf}
+              onClick={handleDownloadPdf}
+              className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer flex items-center gap-1.5"
             >
-              <Download className="w-3.5 h-3.5 mr-1.5" />
-              Download Official PDF
+              {isDownloadingPdf ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Downloading PDF...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-3.5 h-3.5 mr-1.5" />
+                  <span>Download Official PDF</span>
+                </>
+              )}
             </Button>
           </div>
         </div>

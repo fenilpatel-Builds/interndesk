@@ -41,10 +41,10 @@ describe("Organization Code System Business Rules", () => {
   it("resolves registered organizations case-insensitively from store", () => {
     const foundUpper = multiTenantStore.getOrganizationByCode("ORG-7K4P9X");
     expect(foundUpper).toBeDefined();
-    expect(foundUpper?.name).toBe("Apex Technologies");
+    expect(foundUpper?.name).toBe("Akash Technolabs");
 
     const foundLower = multiTenantStore.getOrganizationByCode("org-7k4p9x");
     expect(foundLower).toBeDefined();
-    expect(foundLower?.name).toBe("Apex Technologies");
+    expect(foundLower?.name).toBe("Akash Technolabs");
   });
 });

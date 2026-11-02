@@ -1445,7 +1445,7 @@ export default function WorkspacePage() {
                         <p>Role: <strong>{getRoleDisplayName(selectedMember.role)}</strong></p>
                         <p>Member Type: <strong>{selectedMember.member_type}</strong></p>
                         <p>Designation: <strong>{selectedMember.designation || selectedMember.job_title}</strong></p>
-                        <p>Assigned Manager/Mentor: <strong>{selectedMember.mentor_name || selectedMember.manager_name || "Elena Rostova"}</strong></p>
+                        <p>Assigned Manager/Mentor: <strong>{selectedMember.mentor_name || selectedMember.manager_name || "Akash Padhiyar"}</strong></p>
                         <p suppressHydrationWarning>Joined Workspace: <strong>{new Date(selectedMember.joined_at).toLocaleDateString()}</strong></p>
                         <p>Status: <strong className={selectedMember.status === "ACTIVE" ? "text-emerald-600" : "text-red-600"}>{selectedMember.status}</strong></p>
                       </div>
@@ -3237,7 +3237,7 @@ export default function WorkspacePage() {
                             <span className="text-slate-500">Institution Code:</span> <span className="text-white font-bold">{activeOrg.code}</span>
                           </div>
                           <div>
-                            <span className="text-slate-500">Signatory Authority:</span> <span className="text-white font-bold">{activeOrg.branding?.signatoryName || "Elena Rostova"}</span>
+                            <span className="text-slate-500">Signatory Authority:</span> <span className="text-white font-bold">{activeOrg.branding?.signatoryName || "Akash Padhiyar"}</span>
                           </div>
                           <div>
                             <span className="text-slate-500">Ledger Hash:</span> <span className="text-emerald-400 break-all">urn:sha256:{activeOrg.code}:ledger:{documents.length}:2026</span>
@@ -3500,7 +3500,7 @@ export default function WorkspacePage() {
                         type="text"
                         value={brandOrgName}
                         onChange={(e) => setBrandOrgName(e.target.value)}
-                        placeholder="e.g. Apex Technologies Inc."
+                        placeholder="e.g. Akash Technolabs"
                         className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                       />
                     </div>

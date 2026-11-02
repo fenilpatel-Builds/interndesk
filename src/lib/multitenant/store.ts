@@ -27,14 +27,14 @@ import { hasPermission } from "./permissions";
 const INITIAL_ORGANIZATIONS: Organization[] = [
   {
     id: "org-apex-01",
-    name: "Apex Technologies",
+    name: "Akash Technolabs",
     slug: "apex-technologies",
     code: "ORG-7K4P9X",
     type: "CORPORATE",
     status: "APPROVED",
-    official_email: "contact@apextech.com",
-    contact_number: "+1 (555) 234-5678",
-    website: "https://apextech.com",
+    official_email: "info@akashtechnolabs.com",
+    contact_number: "+91 99786 21654",
+    website: "https://www.akashtechnolabs.com",
     country: "United States",
     size: "500-1000",
     industry_or_category: "Cloud Infrastructure & Enterprise SaaS",
@@ -58,11 +58,11 @@ const INITIAL_ORGANIZATIONS: Organization[] = [
       logoUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&auto=format&fit=crop&q=80",
       brandColor: "#2563EB",
       secondaryColor: "#1E40AF",
-      address: "100 Innovation Way, Suite 400, Tech District, NY 10001",
-      website: "https://apextech.com",
-      contactEmail: "talent@apextech.com",
-      contactPhone: "+1 (555) 234-5678",
-      signatoryName: "Elena Rostova",
+      address: "202, Aarya Arcade, Above Passport Seva Kendra, Mithakhali Six Road, Navrangpura, Ahmedabad-09.",
+      website: "https://www.akashtechnolabs.com",
+      contactEmail: "info@akashtechnolabs.com",
+      contactPhone: "+91 99786 21654",
+      signatoryName: "Akash Padhiyar",
       signatoryTitle: "Head of Operations & Engineering",
       signatorySignatureUrl: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='40' viewBox='0 0 140 40'><path d='M10 25 C 25 10, 35 30, 45 15 C 55 5, 65 28, 80 18 C 95 10, 110 30, 130 15' stroke='%231e3a8a' stroke-width='2.5' fill='none' stroke-linecap='round'/></svg>",
       headerLayout: "MODERN_MINIMAL",
@@ -229,7 +229,7 @@ const INITIAL_MEMBERSHIPS: OrganizationMembership[] = [
     status: "ACTIVE",
     job_title: "Head of Engineering Operations",
     designation: "Head of Engineering Operations",
-    user_full_name: "Elena Rostova",
+    user_full_name: "Akash Padhiyar",
     user_email: "admin@apextech.com",
     manager_name: "Board of Directors",
     skills: ["System Architecture", "Leadership", "Cloud Security", "DevOps"],
@@ -251,7 +251,7 @@ const INITIAL_MEMBERSHIPS: OrganizationMembership[] = [
     designation: "Senior Cloud Architect",
     user_full_name: "Marcus Sterling",
     user_email: "marcus@apextech.com",
-    manager_name: "Elena Rostova",
+    manager_name: "Akash Padhiyar",
     skills: ["Go", "TypeScript", "PostgreSQL", "Docker", "Kubernetes"],
     employment_status: "FULL_TIME",
     qualifications: "B.Tech Computer Science, 8+ yrs industry",
@@ -851,9 +851,9 @@ const INITIAL_DOCUMENTS: IssuedDocument[] = [
     status: "ISSUED",
     verification_code: "VRF-APX-98214-SEC",
     template_data: {
-      organization_name: "Apex Technologies",
+      organization_name: "Akash Technolabs",
       organization_type: "CORPORATE",
-      signatory_name: "Elena Rostova",
+      signatory_name: "Akash Padhiyar",
       signatory_title: "Head of Engineering Operations",
       program_or_track: "Cloud Backend Engineering Track",
       validity: "Active / Verified",
@@ -896,9 +896,9 @@ const INITIAL_DOCUMENTS: IssuedDocument[] = [
     status: "ISSUED",
     verification_code: "VRF-APX-8918-EXC",
     template_data: {
-      organization_name: "Apex Technologies",
+      organization_name: "Akash Technolabs",
       organization_type: "CORPORATE",
-      signatory_name: "Elena Rostova",
+      signatory_name: "Akash Padhiyar",
       signatory_title: "Head of Engineering Operations",
       program_or_track: "Full Stack Cloud Platform Internship",
       grade_or_evaluation: "Grade: Outstanding (98.4% Efficiency)",
@@ -919,7 +919,7 @@ const INITIAL_DOCUMENTS: IssuedDocument[] = [
     status: "ISSUED",
     verification_code: "VRF-APX-4412-OFR",
     template_data: {
-      organization_name: "Apex Technologies",
+      organization_name: "Akash Technolabs",
       organization_type: "CORPORATE",
       signatory_name: "Marcus Sterling",
       signatory_title: "Director of Talent & Mentorship",
@@ -942,10 +942,10 @@ const INITIAL_DOCUMENTS: IssuedDocument[] = [
     approval_status: "PENDING",
     verification_code: "VRF-APX-9041-REV",
     template_data: {
-      organization_name: "Apex Technologies",
+      organization_name: "Akash Technolabs",
       organization_type: "CORPORATE",
       organization_logo: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&auto=format&fit=crop&q=80",
-      signatory_name: "Elena Rostova",
+      signatory_name: "Akash Padhiyar",
       signatory_title: "Head of Operations & Engineering",
       program_or_track: "Full Stack Cloud Platform Internship",
       grade_or_evaluation: "Grade: Outstanding (98.4% Score)",
@@ -966,14 +966,14 @@ const INITIAL_DOCUMENTS: IssuedDocument[] = [
     issued_date: "2026-10-22",
     status: "ISSUED",
     approval_status: "APPROVED",
-    approved_by: "Elena Rostova",
+    approved_by: "Akash Padhiyar",
     approved_at: "2026-10-22T08:00:00Z",
     verification_code: "VRF-APX-9812-TRSC",
     template_data: {
-      organization_name: "Apex Technologies",
+      organization_name: "Akash Technolabs",
       organization_type: "CORPORATE",
       organization_logo: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&auto=format&fit=crop&q=80",
-      signatory_name: "Elena Rostova",
+      signatory_name: "Akash Padhiyar",
       signatory_title: "Head of Operations & Engineering",
       signatory_signature: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='40' viewBox='0 0 140 40'><path d='M10 25 C 25 10, 35 30, 45 15 C 55 5, 65 28, 80 18 C 95 10, 110 30, 130 15' stroke='%231e3a8a' stroke-width='2.5' fill='none' stroke-linecap='round'/></svg>",
       brand_color: "#2563EB",
@@ -1121,7 +1121,7 @@ const INITIAL_ANNOUNCEMENTS: Announcement[] = [
     title: "Q4 Engineering All-Hands & Technical Showcase",
     content: "All engineering teams and interns will gather virtually this Thursday at 2 PM EST for project presentations and cloud architecture updates.",
     target_scope: "ORG_WIDE",
-    author_name: "Elena Rostova (Org Admin)",
+    author_name: "Akash Padhiyar (Org Admin)",
     priority: "IMPORTANT",
     created_at: "2026-10-10T11:00:00Z",
   },
@@ -1898,7 +1898,7 @@ class MultiTenantStore {
   public approveDocument(
     organizationId: string,
     documentId: string,
-    approvedBy: string = "Elena Rostova"
+    approvedBy: string = "Akash Padhiyar"
   ): IssuedDocument | undefined {
     const doc = this.documents.find((d) => d.id === documentId && d.organization_id === organizationId);
     if (!doc) return undefined;
@@ -1930,7 +1930,7 @@ class MultiTenantStore {
     organizationId: string,
     documentId: string,
     reason: string = "Requires revision",
-    rejectedBy: string = "Elena Rostova"
+    rejectedBy: string = "Akash Padhiyar"
   ): IssuedDocument | undefined {
     const doc = this.documents.find((d) => d.id === documentId && d.organization_id === organizationId);
     if (!doc) return undefined;
@@ -1974,7 +1974,7 @@ class MultiTenantStore {
     const brand = org.branding;
     const requireApproval = org.settings?.requireDocumentApproval ?? true;
     const shouldApprove = options.autoApprove ?? !requireApproval;
-    const approver = options.approvedBy || brand?.signatoryName || "Elena Rostova";
+    const approver = options.approvedBy || brand?.signatoryName || "Akash Padhiyar";
     const nowIso = new Date().toISOString();
     const todayYmd = nowIso.split("T")[0];
 
@@ -2031,7 +2031,7 @@ class MultiTenantStore {
           organization_logo: brand?.logoUrl,
           organization_address: brand?.address,
           organization_website: brand?.website,
-          signatory_name: brand?.signatoryName || "Elena Rostova",
+          signatory_name: brand?.signatoryName || "Akash Padhiyar",
           signatory_title: brand?.signatoryTitle || "Head of Operations & Engineering",
           signatory_signature: brand?.signatorySignatureUrl,
           official_stamp: brand?.officialStampUrl,
@@ -2091,7 +2091,7 @@ class MultiTenantStore {
   public approveBatchDocuments(
     organizationId: string,
     documentIds: string[],
-    approvedBy: string = "Elena Rostova"
+    approvedBy: string = "Akash Padhiyar"
   ): IssuedDocument[] {
     const approvedBatch: IssuedDocument[] = [];
     const nowIso = new Date().toISOString();

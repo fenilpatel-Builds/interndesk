@@ -154,10 +154,10 @@ describe("Phase 21: End-to-End Multi-Tenant Workflows & Security Validation", ()
       expect(westbridge?.name).toBe("Westbridge University");
       expect(westbridge?.joining_policy).toBe("CODE_ONLY");
 
-      // Apex Tech has joining_policy REQUEST_APPROVAL
+      // Akash Technolabs has joining_policy REQUEST_APPROVAL
       const apex = await dbService.getOrganizationByCode("ORG-7K4P9X");
       expect(apex).toBeDefined();
-      expect(apex?.name).toBe("Apex Technologies");
+      expect(apex?.name).toBe("Akash Technolabs");
       expect(apex?.joining_policy).toBe("REQUEST_APPROVAL");
     });
 

@@ -428,6 +428,8 @@ export interface IssuedDocument {
     contact_email?: string;
     contact_phone?: string;
     is_akash_template?: boolean;
+    salutation?: "Mr." | "Ms." | string;
+    student_name?: string;
     commencement_date?: string;
     continue_until_date?: string;
     technology?: string;
