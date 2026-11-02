@@ -375,6 +375,26 @@ const INITIAL_MEMBERSHIPS: OrganizationMembership[] = [
     updated_at: "2026-06-01T09:00:00Z",
   },
   {
+    id: "mem-akash-fenil-admin",
+    organization_id: "org-akash-01",
+    user_id: "usr-1793103685484-528",
+    employee_id: "EMP-AKT-002",
+    role: "ORG_ADMIN",
+    member_type: "ADMIN",
+    status: "ACTIVE",
+    job_title: "Organization Administrator",
+    designation: "Administrator",
+    user_full_name: "Fenil Patel",
+    user_email: "fenil8160@gmail.com",
+    manager_name: "Akash Padhiyar",
+    skills: ["AI/ML Systems", "Administration", "System Architecture", "Leadership"],
+    employment_status: "FULL_TIME",
+    qualifications: "B.Tech Computer Engineering",
+    joined_at: "2026-06-01T09:00:00Z",
+    created_at: "2026-06-01T09:00:00Z",
+    updated_at: "2026-06-01T09:00:00Z",
+  },
+  {
     id: "mem-akash-fenil",
     organization_id: "org-akash-01",
     user_id: "usr-student-fenil",
@@ -1359,9 +1379,15 @@ class MultiTenantStore {
   }
 
   // ================= ORGANIZATIONS =================
-  public getOrganizations(): Organization[] {
+  public getOrganizations(includeTestingSandboxes: boolean = false): Organization[] {
     this.loadCustomData();
-    return [...this.organizations];
+    if (includeTestingSandboxes) {
+      return [...this.organizations];
+    }
+    // Return exclusively the official Akash Technolabs organization for user-facing UI
+    const akashOrg = this.organizations.find((o) => o.code === "ORG-AKASH8" || o.id === "org-akash-01");
+    if (akashOrg) return [akashOrg];
+    return this.organizations.filter((o) => o.name === "Akash Technolabs");
   }
 
   public getOrganizationById(id: string): Organization | undefined {

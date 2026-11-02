@@ -30,6 +30,7 @@ import {
   X,
   Palette,
   Upload,
+  Shield,
   ShieldCheck,
   FileText,
   Check,
@@ -75,22 +76,15 @@ import { getWorkforceAnalytics } from "@/lib/multitenant/analytics";
 import { parseClientSessionCookie } from "@/lib/auth/client-session";
 
 export default function WorkspacePage() {
-  const [organizations, setOrganizations] = useState<Organization[]>(() => multiTenantStore.getOrganizations());
+  const [organizations, setOrganizations] = useState<Organization[]>(() => {
+    const orgs = multiTenantStore.getOrganizations();
+    const akashOrg = orgs.find((o) => o.code === "ORG-AKASH8" || o.id === "org-akash-01");
+    return akashOrg ? [akashOrg] : orgs;
+  });
   const [activeOrg, setActiveOrg] = useState<Organization>(() => {
     const orgs = multiTenantStore.getOrganizations();
-    const session = parseClientSessionCookie();
-    if (session?.organizationId) {
-      const match = orgs.find((o) => o.id === session.organizationId);
-      if (match) return match;
-    }
-    if (typeof document !== "undefined") {
-      const matchCookie = document.cookie.match(/(?:^|;\s*)interndesk_active_org=([^;]+)/);
-      if (matchCookie) {
-        const match = orgs.find((o) => o.id === decodeURIComponent(matchCookie[1]));
-        if (match) return match;
-      }
-    }
-    return orgs[0];
+    const akashOrg = orgs.find((o) => o.code === "ORG-AKASH8" || o.id === "org-akash-01");
+    return akashOrg || orgs[0];
   });
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -248,7 +242,7 @@ export default function WorkspacePage() {
 
   // Mentorship Review Modal
   const [isNewMentorReviewOpen, setIsNewMentorReviewOpen] = useState(false);
-  const [reviewInternId, setReviewInternId] = useState("mem-apex-intern");
+  const [reviewInternId, setReviewInternId] = useState("mem-akash-fenil");
   const [reviewTechScore, setReviewTechScore] = useState(9);
   const [reviewCommScore, setReviewCommScore] = useState(9);
   const [reviewInitScore, setReviewInitScore] = useState(10);
@@ -312,7 +306,7 @@ export default function WorkspacePage() {
   const [activeSession, setActiveSession] = useState<WorkSession | null>(() => {
     const initOrgId = organizations[0]?.id || "";
     const initMems = multiTenantStore.getMemberships(initOrgId);
-    return multiTenantStore.getActiveWorkSession(initOrgId, initMems[0]?.id || "mem-apex-intern") || null;
+    return multiTenantStore.getActiveWorkSession(initOrgId, initMems[0]?.id || "mem-akash-fenil") || null;
   });
 
   // Deterministic Analytics Computation
@@ -340,7 +334,7 @@ export default function WorkspacePage() {
     setLeaveRequests(multiTenantStore.getLeaveRequests(orgId));
     setMentorshipReviews(multiTenantStore.getMentorshipReviews(orgId));
 
-    const currentMemberId = multiTenantStore.getMemberships(orgId)[0]?.id || "mem-apex-intern";
+    const currentMemberId = multiTenantStore.getMemberships(orgId)[0]?.id || "mem-akash-fenil";
     const act = multiTenantStore.getActiveWorkSession(orgId, currentMemberId);
     setActiveSession(act || null);
   };
@@ -412,7 +406,7 @@ export default function WorkspacePage() {
 
   // Attendance Handlers
   const handleClockIn = () => {
-    const memberId = members[0]?.id || "mem-apex-intern";
+    const memberId = members[0]?.id || "mem-akash-fenil";
     const sess = multiTenantStore.clockIn(activeOrg.id, memberId, currentUser.name);
     setActiveSession(sess);
     setTimerSeconds(0);
@@ -477,7 +471,7 @@ export default function WorkspacePage() {
     if (!reportActivities) return;
     multiTenantStore.submitDailyReport({
       organization_id: activeOrg.id,
-      member_id: members[0]?.id || "mem-apex-intern",
+      member_id: members[0]?.id || "mem-akash-fenil",
       member_name: currentUser.name,
       report_date: new Date().toISOString().split("T")[0],
       project_or_program: programs[0]?.name || "Core Track",
@@ -498,7 +492,7 @@ export default function WorkspacePage() {
     if (!leaveReason.trim()) return;
     multiTenantStore.submitLeaveRequest({
       organization_id: activeOrg.id,
-      member_id: members[0]?.id || "mem-apex-intern",
+      member_id: members[0]?.id || "mem-akash-fenil",
       member_name: currentUser.name,
       leave_type: leaveType,
       start_date: leaveStartDate,
@@ -522,9 +516,9 @@ export default function WorkspacePage() {
     const intern = members.find((m) => m.id === reviewInternId) || members[2];
     multiTenantStore.submitMentorshipReview({
       organization_id: activeOrg.id,
-      intern_id: intern?.id || "mem-apex-intern",
+      intern_id: intern?.id || "mem-akash-fenil",
       intern_name: intern?.user_full_name || "Sarah Chen",
-      mentor_id: members[1]?.id || "mem-apex-mgr",
+      mentor_id: members[1]?.id || "mem-akash-admin",
       mentor_name: currentUser.name,
       week_number: mentorshipReviews.length + 1,
       technical_score: reviewTechScore,
@@ -780,7 +774,7 @@ export default function WorkspacePage() {
     const attempt = multiTenantStore.submitAssessmentAttempt(
       activeOrg.id,
       examRunnerAssessment.id,
-      members[0]?.id || "mem-apex-intern",
+      members[0]?.id || "mem-akash-fenil",
       examAnswers
     );
     setExamResult({
@@ -883,28 +877,42 @@ export default function WorkspacePage() {
           {activeTab === "dashboard" && (
             <div className="space-y-6">
               {/* Org Hero Card */}
-              <div className="p-6 sm:p-8 rounded-2xl bg-gradient-to-r from-blue-700 via-blue-800 to-indigo-900 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+              <div className="p-6 sm:p-8 rounded-2xl bg-gradient-to-r from-[#0F4C81] via-[#1E3264] to-[#0A192F] text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-6 border border-blue-900/40">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-blue-500/30 border border-blue-400/40">
-                      {activeOrg.type} TENANT
+                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-red-500/30 border border-red-400/40 text-red-200">
+                      AKASH TECHNOLABS • CORPORATE
                     </span>
                     <span className="text-xs font-mono font-bold bg-white/20 px-2 py-0.5 rounded">
-                      {activeOrg.code}
+                      ORG-AKASH8
                     </span>
                   </div>
                   <h1 className="text-2xl sm:text-3xl font-black tracking-tight mt-1">
-                    {activeOrg.name}
+                    Akash Technolabs
                   </h1>
                   <p className="text-xs sm:text-sm text-blue-100 mt-1 font-normal">
                     Logged in as <strong>{currentUser.name}</strong> ({getRoleDisplayName(currentUser.role)}). All data is strictly scoped to this workspace.
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {(currentUser.role === "ORG_ADMIN" ||
+                    currentUser.role === "ORG_OWNER" ||
+                    currentUser.email === "fenil8160@gmail.com" ||
+                    currentUser.email === "akash@akashtechnolabs.com") && (
+                    <Link href="/admin/dashboard">
+                      <Button
+                        size="sm"
+                        className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold rounded-xl shadow-md text-xs cursor-pointer flex items-center gap-1.5 transition-transform hover:scale-102"
+                      >
+                        <Shield className="w-4 h-4 text-white" />
+                        <span>Open Admin Console →</span>
+                      </Button>
+                    </Link>
+                  )}
                   <Button
                     onClick={() => setIsNewTaskOpen(true)}
                     size="sm"
-                    className="bg-white text-blue-900 hover:bg-blue-50 font-bold rounded-xl shadow-xs"
+                    className="bg-white text-blue-900 hover:bg-blue-50 font-bold rounded-xl shadow-xs text-xs cursor-pointer"
                   >
                     <Plus className="w-4 h-4 mr-1" />
                     New Task
@@ -1355,7 +1363,7 @@ export default function WorkspacePage() {
                         <label className="font-bold text-slate-700 block mb-1">Email Address *</label>
                         <input
                           type="email"
-                          placeholder="e.g. liam@apextech.com"
+                          placeholder="e.g. info@akashtechnolabs.com"
                           value={newMemberEmail}
                           onChange={(e) => setNewMemberEmail(e.target.value)}
                           className="w-full px-3 py-2 rounded-xl border border-slate-300"
@@ -3619,7 +3627,7 @@ export default function WorkspacePage() {
                         type="text"
                         value={brandWebsite}
                         onChange={(e) => setBrandWebsite(e.target.value)}
-                        placeholder="e.g. https://apextechnologies.io"
+                        placeholder="e.g. https://www.akashtechnolabs.com"
                         className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
@@ -3632,7 +3640,7 @@ export default function WorkspacePage() {
                           type="email"
                           value={brandEmail}
                           onChange={(e) => setBrandEmail(e.target.value)}
-                          placeholder="credentials@apextech.io"
+                          placeholder="info@akashtechnolabs.com"
                           className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                         />
                       </div>

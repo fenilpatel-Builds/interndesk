@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import {
   LayoutDashboard,
   Users,
@@ -16,6 +17,7 @@ import {
   Settings,
   CalendarCheck,
   GraduationCap,
+  Shield,
 } from "lucide-react";
 import { MemberRole } from "@/types/multitenant";
 import { hasPermission } from "@/lib/multitenant/permissions";
@@ -76,6 +78,29 @@ export function WorkspaceSidebar({
   const sidebarContent = (
     <div className="h-full flex flex-col justify-between py-4 px-3 bg-white border-r border-slate-200/90 w-64 overflow-y-auto">
       <div className="space-y-6">
+        {/* Prominent Admin Console link for Administrators */}
+        {(userRole === "ORG_ADMIN" || userRole === "ORG_OWNER") && (
+          <div className="px-1 pt-1 pb-1">
+            <Link
+              href="/admin/dashboard"
+              className="w-full flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-[#0F4C81] to-[#1E3264] text-white shadow-xs hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+                  <Shield className="w-4 h-4 text-cyan-300" />
+                </div>
+                <div className="text-left">
+                  <p className="text-xs font-black tracking-tight leading-tight">Admin Console</p>
+                  <p className="text-[10px] text-blue-200">Management &amp; Letters</p>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded-full group-hover:translate-x-0.5 transition-transform">
+                Open →
+              </span>
+            </Link>
+          </div>
+        )}
+
         {navSections.map((sec, idx) => {
           const visibleItems = sec.items.filter((item) => item.visible);
           if (visibleItems.length === 0) return null;

@@ -63,7 +63,25 @@ export default function LoginPage() {
     try {
       const result = await loginWithPassword(email.trim(), password);
       if (result.success) {
-        if (result.role === "SUPER_ADMIN" || result.role === "ADMIN" || result.role === "FACULTY") {
+        if (result.requiresOtp) {
+          setAuthMode("OTP");
+          setOtpSent(true);
+          if (result.forwardedTo) setForwardedTo(result.forwardedTo);
+          setOtpSuccessMessage(result.message || "2-Factor Authentication OTP has been dispatched to your email.");
+          setResendCooldown(30);
+          setOtpDigits(["", "", "", "", "", ""]);
+          setTimeout(() => {
+            otpInputRefs.current[0]?.focus();
+          }, 150);
+          return;
+        }
+
+        if (
+          result.role === "SUPER_ADMIN" ||
+          result.role === "ADMIN" ||
+          result.role === "ORG_ADMIN" ||
+          result.role === "FACULTY"
+        ) {
           router.push("/admin/dashboard");
         } else {
           router.push("/student/dashboard");
@@ -163,7 +181,12 @@ export default function LoginPage() {
     try {
       const res = await verifyEmailOtp(email.trim().toLowerCase(), fullOtp);
       if (res.success) {
-        if (res.role === "SUPER_ADMIN" || res.role === "ADMIN" || res.role === "FACULTY") {
+        if (
+          res.role === "SUPER_ADMIN" ||
+          res.role === "ADMIN" ||
+          res.role === "ORG_ADMIN" ||
+          res.role === "FACULTY"
+        ) {
           router.push("/admin/dashboard");
         } else {
           router.push("/student/dashboard");

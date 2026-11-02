@@ -21,6 +21,7 @@ export interface AuthResponse {
   role?: MemberRole | string;
   provider?: string;
   forwardedTo?: string;
+  requiresOtp?: boolean;
 }
 
 /**
@@ -246,7 +247,22 @@ export async function loginWithPassword(email: string, password: string): Promis
     const localAccount = credentialsStore.authenticate(cleanEmail, password);
     if (localAccount) {
       const isAdmin = isUserAdmin(cleanEmail);
-      const effectiveRole: MemberRole = isAdmin ? "ORG_ADMIN" : "STUDENT";
+      if (isAdmin) {
+        // Enforce 2-Factor OTP verification for Administrator access every time!
+        const otpCode = otpStore.generate(cleanEmail);
+        const emailRes = await sendOtpEmail(cleanEmail, otpCode);
+        return {
+          success: true,
+          requiresOtp: true,
+          forwardedTo: emailRes.forwardedTo,
+          message: emailRes.forwardedTo
+            ? `Admin Credentials Verified! Two-factor OTP dispatched to ${emailRes.forwardedTo} (Resend Sandbox). Please enter code to access Admin Console.`
+            : `Admin Credentials Verified! Two-factor OTP dispatched to ${cleanEmail}. Please enter the 6-digit security code to access Admin Console.`,
+          role: "ORG_ADMIN",
+        };
+      }
+
+      const effectiveRole: MemberRole = "STUDENT";
       localAccount.role = effectiveRole;
 
       const sessionToken = signSessionToken({
