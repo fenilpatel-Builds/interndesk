@@ -5,10 +5,11 @@ import { AdminTopbar } from "@/components/admin/topbar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { CheckCircle2, Eye, FileText, Plus, Search, Sparkles } from "lucide-react";
+import { CheckCircle2, Eye, FileText, Plus, Search, Sparkles, Download } from "lucide-react";
 import { DocumentStudioModal } from "@/components/documents/document-studio-modal";
 import { LetterGenerateModal } from "@/components/admin/letter-generate-modal";
 import { IssuedDocument, DocumentType } from "@/types/multitenant";
+import { downloadAkashOfferLetterPdf } from "@/lib/documents/akash-pdf-generator";
 
 export default function AdminDocumentsPage() {
   const [documents, setDocuments] = useState([
@@ -142,6 +143,20 @@ export default function AdminDocumentsPage() {
     };
 
     setSelectedStudioDoc(studioDoc);
+  };
+
+  const handleDirectDownloadDoc = async (doc: any) => {
+    if (doc.type === "OFFER_LETTER") {
+      await downloadAkashOfferLetterPdf({
+        salutation: doc.student?.startsWith("Ms.") ? "Ms." : "Mr.",
+        studentName: doc.student,
+        internshipPosition: doc.role,
+        letterDate: doc.appliedAt,
+        title: doc.title,
+      });
+    } else {
+      handlePreviewDoc(doc);
+    }
   };
 
   const handleLetterGenerated = (newDoc: any) => {
@@ -325,6 +340,15 @@ export default function AdminDocumentsPage() {
                           >
                             <Eye className="w-3.5 h-3.5 mr-1 text-blue-600" />
                             Preview
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleDirectDownloadDoc(doc)}
+                            className="h-8 px-2.5 text-xs font-bold bg-[#0F4C81] hover:bg-[#0C3D68] text-white rounded-lg shadow-2xs flex items-center gap-1 cursor-pointer"
+                            title="Direct download official PDF"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>Download PDF</span>
                           </Button>
                           {doc.status === "PENDING_APPROVAL" && (
                             <Button

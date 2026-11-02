@@ -27,12 +27,13 @@ import {
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { downloadElementAsPdf } from "@/lib/documents/pdf-downloader";
+import { downloadAkashOfferLetterPdf } from "@/lib/documents/akash-pdf-generator";
 import {
   AKASH_HEADER_BASE64,
   AKASH_FOOTER_BASE64,
   AKASH_WATERMARK_BASE64,
   AKASH_SIGNATURE_BASE64,
+  AKASH_STAMP_BASE64,
 } from "@/lib/documents/akash-letterhead-assets";
 
 interface StudentOption {
@@ -379,17 +380,24 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
     }
   };
 
-  // Direct client-side PDF download without print dialog
+  // Direct client-side PDF download without print dialog matching authentic PDF
   const handleDownloadPdf = async () => {
     setIsDownloadingPdf(true);
     try {
-      const cleanName = studentName.trim().replace(/\s+/g, "_");
-      const filename = `${cleanName}_Internship_Offer_Letter.pdf`;
-      await downloadElementAsPdf("akash-official-offer-letter-sheet", filename);
+      await downloadAkashOfferLetterPdf({
+        salutation,
+        studentName,
+        internshipPosition,
+        technology,
+        commencementDate,
+        continueUntilDate,
+        letterDate,
+        title: letterTitle,
+        customDescription: description,
+        isCustomEdited,
+      });
     } catch (err) {
       console.error("PDF download failed:", err);
-      // Fallback
-      window.print();
     } finally {
       setIsDownloadingPdf(false);
     }
@@ -896,11 +904,11 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                     <div className="pt-8 space-y-0.5 text-xs sm:text-sm">
                       <p className="text-slate-800 font-medium">Sincerely</p>
 
-                      {/* Official CEO Signature matching authentic Fenil Offer Letter */}
+                      {/* Official CEO Rubber Seal & Signature matching authentic Fenil Offer Letter */}
                       <div className="py-1">
                         <img
-                          src={AKASH_SIGNATURE_BASE64}
-                          alt="Akash Padhiyar CEO Signature"
+                          src={AKASH_STAMP_BASE64}
+                          alt="Akash Padhiyar CEO Signature & Stamp"
                           className="h-16 w-auto object-contain select-none"
                         />
                       </div>

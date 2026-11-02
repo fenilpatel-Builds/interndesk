@@ -30,11 +30,13 @@ import { Button } from "@/components/ui/button";
 import { IssuedDocument, TemplateTheme } from "@/types/multitenant";
 import { multiTenantStore } from "@/lib/multitenant/store";
 import { downloadElementAsPdf } from "@/lib/documents/pdf-downloader";
+import { downloadAkashOfferLetterPdf } from "@/lib/documents/akash-pdf-generator";
 import {
   AKASH_HEADER_BASE64,
   AKASH_FOOTER_BASE64,
   AKASH_WATERMARK_BASE64,
   AKASH_SIGNATURE_BASE64,
+  AKASH_STAMP_BASE64,
 } from "@/lib/documents/akash-letterhead-assets";
 
 interface DocumentStudioModalProps {
@@ -346,14 +348,26 @@ export function DocumentStudioModal({
   const handleDownloadPdf = async () => {
     setIsDownloadingPdf(true);
     try {
-      const rawName = doc.recipient_name || "Official";
-      const cleanName = rawName.replace(/^(Mr\.|Ms\.)\s*/i, "").trim().replace(/\s+/g, "_");
-      const cleanTitle = (doc.title || "Document").replace(/\s+/g, "_");
-      const filename = `${cleanName}_${cleanTitle}.pdf`;
-      await downloadElementAsPdf("document-studio-canvas", filename);
+      if (isOfferLetter) {
+        await downloadAkashOfferLetterPdf({
+          salutation: (doc.template_data as any)?.salutation || (doc.recipient_name.startsWith("Ms.") ? "Ms." : "Mr."),
+          studentName: doc.recipient_name,
+          internshipPosition: doc.recipient_role,
+          technology: (doc.template_data as any)?.technology || doc.template_data?.program_or_track,
+          commencementDate: (doc.template_data as any)?.commencement_date,
+          continueUntilDate: (doc.template_data as any)?.continue_until_date,
+          letterDate: doc.issued_date,
+          title: doc.title,
+        });
+      } else {
+        const rawName = doc.recipient_name || "Official";
+        const cleanName = rawName.replace(/^(Mr\.|Ms\.)\s*/i, "").trim().replace(/\s+/g, "_");
+        const cleanTitle = (doc.title || "Document").replace(/\s+/g, "_");
+        const filename = `${cleanName}_${cleanTitle}.pdf`;
+        await downloadElementAsPdf("document-studio-canvas", filename);
+      }
     } catch (err) {
-      console.error("Direct PDF download failed, falling back to print:", err);
-      window.print();
+      console.error("Direct PDF download error:", err);
     } finally {
       setIsDownloadingPdf(false);
     }
@@ -369,9 +383,8 @@ export function DocumentStudioModal({
   };
 
   const handlePrint = () => {
-    if (typeof window !== "undefined") {
-      window.print();
-    }
+    // Directly download the authentic PDF to prevent opening browser print screen with URL/date headers
+    handleDownloadPdf();
   };
 
   const isTranscript = doc.document_type === "PERFORMANCE_TRANSCRIPT";
@@ -1254,11 +1267,11 @@ export function DocumentStudioModal({
                   <div className="pt-6 space-y-0.5 text-xs sm:text-sm">
                     <p className="text-slate-800 font-medium">Sincerely</p>
                     
-                    {/* Official CEO Signature matching authentic Fenil Offer Letter */}
+                    {/* Official Rubber Seal & CEO Signature matching authentic Fenil Offer Letter */}
                     <div className="py-1">
                       <img
-                        src={AKASH_SIGNATURE_BASE64}
-                        alt="Akash Padhiyar CEO Signature"
+                        src={AKASH_STAMP_BASE64}
+                        alt="Akash Padhiyar CEO Rubber Seal & Signature"
                         className="h-16 w-auto object-contain select-none"
                       />
                     </div>
@@ -1290,12 +1303,6 @@ export function DocumentStudioModal({
                     <p className="text-slate-600 font-medium">
                       202, Aarya Arcade, Above Passport Seva Kendra, Mithakhali Six Road, Navrangpura, Ahmedabad-09.
                     </p>
-                  </div>
-
-                  {/* Public Verification Stamp for InternDesk Authenticity */}
-                  <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between text-[9px] font-mono text-slate-400">
-                    <span className="truncate">REF: {doc.document_number} • SHA-256: {sha256Fingerprint.slice(0, 24)}...</span>
-                    <span className="text-emerald-600 font-bold">VERIFIED ON INTERNDESK</span>
                   </div>
                 </div>
               </div>

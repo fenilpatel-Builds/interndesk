@@ -25,6 +25,7 @@ import {
 import { DocumentStudioModal } from "@/components/documents/document-studio-modal";
 import { IssuedDocument } from "@/types/multitenant";
 import { multiTenantStore } from "@/lib/multitenant/store";
+import { downloadAkashOfferLetterPdf } from "@/lib/documents/akash-pdf-generator";
 
 const STUDENT_DOCUMENTS: IssuedDocument[] = [
   {
@@ -223,6 +224,23 @@ export default function StudentDocumentsPage() {
   const approvedCount = docsList.filter((d) => d.status === "ISSUED").length;
   const pendingCount = docsList.filter((d) => d.status === "PENDING_APPROVAL").length;
 
+  const handleDirectStudentDownload = async (doc: IssuedDocument) => {
+    if (doc.document_type === "OFFER_LETTER") {
+      await downloadAkashOfferLetterPdf({
+        salutation: (doc.template_data as any)?.salutation || (doc.recipient_name.startsWith("Ms.") ? "Ms." : "Mr."),
+        studentName: doc.recipient_name,
+        internshipPosition: doc.recipient_role,
+        technology: (doc.template_data as any)?.technology || doc.template_data?.program_or_track,
+        commencementDate: (doc.template_data as any)?.commencement_date,
+        continueUntilDate: (doc.template_data as any)?.continue_until_date,
+        letterDate: doc.issued_date,
+        title: doc.title,
+      });
+    } else {
+      setSelectedStudioDoc(doc);
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
       <StudentTopbar title="Documents & Credentials" studentName={studentName} />
@@ -407,7 +425,7 @@ export default function StudentDocumentsPage() {
                       </Button>
                       <Button
                         size="sm"
-                        onClick={() => setSelectedStudioDoc(doc)}
+                        onClick={() => handleDirectStudentDownload(doc)}
                         className={`${
                           doc.document_type === "PERFORMANCE_TRANSCRIPT"
                             ? "bg-indigo-600 hover:bg-indigo-700"
