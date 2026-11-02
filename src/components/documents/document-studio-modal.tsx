@@ -250,7 +250,7 @@ export function DocumentStudioModal({
   isOpen,
   onClose,
   document: doc,
-  organizationName = "Apex Technologies",
+  organizationName = "Akash Technolabs",
 }: DocumentStudioModalProps) {
   const [copied, setCopied] = useState(false);
   const [showEmbedModal, setShowEmbedModal] = useState(false);
@@ -309,8 +309,8 @@ export function DocumentStudioModal({
   const isPendingApproval = doc.status === "PENDING_APPROVAL" || doc.approval_status === "PENDING";
   const brandColor = doc.template_data?.brand_color || "#2563EB";
   const orgLogo = doc.template_data?.organization_logo;
-  const orgAddress = doc.template_data?.organization_address || "100 Innovation Way, Suite 400, Tech District, NY 10001";
-  const orgWebsite = doc.template_data?.organization_website || "https://apextech.com";
+  const orgAddress = doc.template_data?.organization_address || "202, Aarya Arcade, Above Passport Seva Kendra, Mithakhali Six Road, Navrangpura, Ahmedabad-09.";
+  const orgWebsite = doc.template_data?.organization_website || "www.akashtechnolabs.com";
   const signatorySig = doc.template_data?.signatory_signature;
   const customTerms = doc.template_data?.custom_terms;
   const verifyPath = `/verify/${encodeURIComponent(doc.document_number)}`;
@@ -746,8 +746,8 @@ export function DocumentStudioModal({
                       </div>
                     )}
                     <div className="w-36 h-0.5 bg-slate-300 my-1" />
-                    <p className="font-bold text-slate-900">{doc.template_data?.signatory_name || "Elena Rostova"}</p>
-                    <p className="text-slate-500 text-[11px]">{doc.template_data?.signatory_title || "Head of Operations & Engineering"}</p>
+                    <p className="font-bold text-slate-900">{doc.template_data?.signatory_name || "Akash Padhiyar"}</p>
+                    <p className="text-slate-500 text-[11px]">{doc.template_data?.signatory_title || "CEO"}</p>
                     <p className="text-[10px] text-slate-400 font-mono">Certified on: {doc.issued_date}</p>
                   </div>
 
@@ -864,8 +864,8 @@ export function DocumentStudioModal({
                           </div>
                         )}
                         <div className="w-32 h-0.5 bg-cyan-500/50 my-0.5" />
-                        <div className="font-mono font-bold text-white text-xs">{doc.template_data?.signatory_name || "Elena Rostova"}</div>
-                        <p className="text-[10px] text-slate-400 font-mono">{doc.template_data?.signatory_title || "Head of Engineering Operations"}</p>
+                        <div className="font-mono font-bold text-white text-xs">{doc.template_data?.signatory_name || "Akash Padhiyar"}</div>
+                        <p className="text-[10px] text-slate-400 font-mono">{doc.template_data?.signatory_title || "CEO"}</p>
                       </div>
 
                       <div className="flex justify-center">
@@ -968,8 +968,8 @@ export function DocumentStudioModal({
                           </div>
                         )}
                         <div className="w-32 h-0.5 bg-slate-300 my-0.5" />
-                        <div className="font-serif font-bold text-slate-900 text-sm">{doc.template_data?.signatory_name || "Elena Rostova"}</div>
-                        <p className="text-[11px] text-slate-500 font-medium">{doc.template_data?.signatory_title || "Head of Operations & Engineering"}</p>
+                        <div className="font-serif font-bold text-slate-900 text-sm">{doc.template_data?.signatory_name || "Akash Padhiyar"}</div>
+                        <p className="text-[11px] text-slate-500 font-medium">{doc.template_data?.signatory_title || "CEO"}</p>
                         <p className="text-[10px] text-slate-400 font-mono">Issued: {doc.issued_date}</p>
                       </div>
 
@@ -1094,10 +1094,10 @@ export function DocumentStudioModal({
                         )}
                         <div className="w-32 h-0.5 bg-slate-300 my-0.5" />
                         <div className="font-serif font-bold text-slate-900 text-sm">
-                          {doc.template_data?.signatory_name || "Elena Rostova"}
+                          {doc.template_data?.signatory_name || "Akash Padhiyar"}
                         </div>
                         <p className="text-[11px] text-slate-500 font-medium">
-                          {doc.template_data?.signatory_title || "Head of Engineering Operations"}
+                          {doc.template_data?.signatory_title || "CEO"}
                         </p>
                         <p className="text-[10px] text-slate-400 font-mono">
                           Issue Date: {doc.issued_date}

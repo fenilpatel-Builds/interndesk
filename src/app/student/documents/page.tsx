@@ -65,70 +65,73 @@ const STUDENT_DOCUMENTS: IssuedDocument[] = [
   },
   {
     id: "doc-intern",
-    organization_id: "org-apex-01",
+    organization_id: "org-akash-01",
     member_id: "usr-student-fenil",
-    document_number: "ID-INTR-2026-5591",
+    document_number: "ID-AKT-2026-INTR01",
     document_type: "INTERNSHIP_LETTER",
     title: "Internship Appointment & Enrollment Letter",
-    recipient_name: "Student Intern",
-    recipient_role: "Full Stack Software Engineering Intern",
-    issued_date: "2026-10-03",
+    recipient_name: "Mr. Fenil Patel",
+    recipient_role: "AI/ML & Full Stack Intern",
+    issued_date: "03-10-2026",
     status: "ISSUED",
-    verification_code: "VRF-APX-5591-INT",
+    verification_code: "VRF-AKT-5591-INT",
     template_data: {
-      organization_name: "Apex Technologies",
+      organization_name: "Akash Technolabs",
       organization_type: "CORPORATE",
-      signatory_name: "Elena Rostova",
-      signatory_title: "Head of Engineering Operations",
-      program_or_track: "Enterprise Cloud Architecture Track",
+      signatory_name: "Akash Padhiyar",
+      signatory_title: "CEO",
+      program_or_track: "AI/ML & Enterprise Full Stack Practicum",
       validity: "Active / Verified",
+      is_akash_template: true,
     },
     created_at: "2026-10-03T11:00:00Z",
   },
   {
     id: "doc-cert",
-    organization_id: "org-apex-01",
+    organization_id: "org-akash-01",
     member_id: "usr-student-fenil",
-    document_number: "ID-CERT-2026-8918",
+    document_number: "ID-AKT-2026-CERT01",
     document_type: "COMPLETION_CERTIFICATE",
     title: "Certificate of Internship Excellence",
-    recipient_name: "Student Intern",
-    recipient_role: "Full Stack Software Engineering Intern",
-    issued_date: "2026-10-15",
+    recipient_name: "Fenil Patel",
+    recipient_role: "AI/ML Intern",
+    issued_date: "15-10-2026",
     status: "ISSUED",
-    verification_code: "VRF-APX-8918-EXC",
+    verification_code: "VRF-AKT-8918-EXC",
     template_data: {
-      organization_name: "Apex Technologies",
+      organization_name: "Akash Technolabs",
       organization_type: "CORPORATE",
-      signatory_name: "Elena Rostova",
-      signatory_title: "Head of Engineering Operations",
-      program_or_track: "Full Stack Cloud Platform Internship",
+      signatory_name: "Akash Padhiyar",
+      signatory_title: "CEO",
+      program_or_track: "AI & Full Stack Cloud Platform Internship",
       grade_or_evaluation: "Grade: Outstanding (98.4% Efficiency)",
       validity: "Verified Permanent Credential",
+      is_akash_template: true,
     },
     created_at: "2026-10-15T12:00:00Z",
   },
   {
     id: "doc-transcript",
-    organization_id: "org-apex-01",
+    organization_id: "org-akash-01",
     member_id: "usr-student-fenil",
-    document_number: "ID-TRSC-2026-9812",
+    document_number: "ID-AKT-2026-TRSC01",
     document_type: "PERFORMANCE_TRANSCRIPT",
     title: "Official Internship Performance Transcript & Skill Dossier",
-    recipient_name: "Student Intern",
-    recipient_role: "Full Stack Software Engineering Intern",
-    issued_date: "2026-10-22",
+    recipient_name: "Fenil Patel",
+    recipient_role: "AI/ML Intern",
+    issued_date: "22-10-2026",
     status: "ISSUED",
-    verification_code: "VRF-APX-9812-TRSC",
+    verification_code: "VRF-AKT-9812-TRSC",
     template_data: {
-      organization_name: "Apex Technologies",
+      organization_name: "Akash Technolabs",
       organization_type: "CORPORATE",
-      signatory_name: "Elena Rostova",
-      signatory_title: "Head of Engineering Operations",
-      program_or_track: "Full Stack Cloud Platform Internship",
+      signatory_name: "Akash Padhiyar",
+      signatory_title: "CEO",
+      program_or_track: "AI & Full Stack Cloud Platform Internship",
       grade_or_evaluation: "Grade: Outstanding (Grade Point 4.0 / 4.0)",
       validity: "Verified Permanent Credential",
       template_theme: "CLASSIC_IVY",
+      is_akash_template: true,
       verified_work_hours: 160,
       attendance_percentage: 99.2,
       mentor_scores: {
@@ -140,6 +143,7 @@ const STUDENT_DOCUMENTS: IssuedDocument[] = [
       completed_tasks_count: 14,
       assessments_passed_count: 2,
       verified_skills: [
+        "Python & Machine Learning",
         "Next.js 15 & React 19",
         "TypeScript Strict Mode",
         "REST & GraphQL Microservices",
@@ -160,35 +164,44 @@ export default function StudentDocumentsPage() {
   const [sharingDoc, setSharingDoc] = useState<IssuedDocument | null>(null);
   const [copiedType, setCopiedType] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState(() => parseClientSessionCookie());
-  const [studentName, setStudentName] = useState(() => parseClientSessionCookie()?.name || "Student Intern");
+  const [studentName, setStudentName] = useState(() => parseClientSessionCookie()?.name || "Fenil Patel");
+  const [apiDocs, setApiDocs] = useState<IssuedDocument[]>([]);
 
   React.useEffect(() => {
     const session = parseClientSessionCookie();
     if (session) {
       setCurrentUser(session);
-      setStudentName(session.name);
+      if (session.name) setStudentName(session.name);
     }
+
+    let active = true;
+    fetch("/api/student/documents")
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Failed to load"))))
+      .then((data) => {
+        if (active && Array.isArray(data.documents) && data.documents.length > 0) {
+          setApiDocs(data.documents);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const activeOrgId = currentUser?.organizationId || "org-akash-01";
-  const storeDocs = multiTenantStore.getIssuedDocuments(activeOrgId);
-  const userDocs = storeDocs.filter((d) => {
-    if (!currentUser) return true;
-    return (
-      d.member_id === currentUser.id ||
-      d.member_id === currentUser.email ||
-      d.recipient_name?.toLowerCase() === currentUser.name?.toLowerCase()
-    );
+  const baseDocs = apiDocs.length > 0 ? apiDocs : STUDENT_DOCUMENTS;
+  const docsList = baseDocs.map((doc) => {
+    let name = studentName || doc.recipient_name;
+    if (doc.recipient_name?.startsWith("Mr.") && !name.startsWith("Mr.")) {
+      name = `Mr. ${name}`;
+    } else if (doc.recipient_name?.startsWith("Ms.") && !name.startsWith("Ms.")) {
+      name = `Ms. ${name}`;
+    }
+    return {
+      ...doc,
+      recipient_name: name,
+    };
   });
-
-  const docsList = (
-    currentUser
-      ? (currentUser.email?.includes("fenil") ? STUDENT_DOCUMENTS : userDocs)
-      : STUDENT_DOCUMENTS
-  ).map((doc) => ({
-    ...doc,
-    recipient_name: currentUser?.name || doc.recipient_name,
-  }));
 
   const filteredDocs = docsList.filter((doc) => {
     if (activeTab === "OFFER") return doc.document_type === "OFFER_LETTER";
@@ -203,9 +216,9 @@ export default function StudentDocumentsPage() {
   // LinkedIn Add-to-Profile URL for the certificate
   const certLinkedInUrl = `https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=${encodeURIComponent(
     certificateDoc?.title || "Certificate of Internship Excellence"
-  )}&organizationName=${encodeURIComponent("Apex Technologies")}&issueYear=2026&issueMonth=10&certUrl=${encodeURIComponent(
-    `https://interndesk.io/verify/${certificateDoc?.document_number || "ID-CERT-2026-8918"}`
-  )}&certId=${encodeURIComponent(certificateDoc?.document_number || "ID-CERT-2026-8918")}`;
+  )}&organizationName=${encodeURIComponent("Akash Technolabs")}&issueYear=2026&issueMonth=10&certUrl=${encodeURIComponent(
+    `https://interndesk.io/verify/${certificateDoc?.document_number || "ID-AKT-2026-CERT01"}`
+  )}&certId=${encodeURIComponent(certificateDoc?.document_number || "ID-AKT-2026-CERT01")}`;
 
   const approvedCount = docsList.filter((d) => d.status === "ISSUED").length;
   const pendingCount = docsList.filter((d) => d.status === "PENDING_APPROVAL").length;
@@ -272,7 +285,7 @@ export default function StudentDocumentsPage() {
           <Card className="p-4 bg-white rounded-2xl border-slate-200 shadow-2xs space-y-1">
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Issuer Authority</span>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-900 truncate">Apex Tech</span>
+              <span className="text-xs font-bold text-slate-900 truncate">Akash Technolabs</span>
               <GraduationCap className="w-5 h-5 text-indigo-600" />
             </div>
             <p className="text-[10px] text-indigo-700 font-medium">Enterprise Verified</p>
@@ -435,10 +448,11 @@ export default function StudentDocumentsPage() {
               <div className="border-2 border-dashed border-blue-900/30 p-6 rounded-xl space-y-4 relative bg-gradient-to-b from-blue-50/20 via-white to-amber-50/20">
                 {/* Logo */}
                 <div className="flex items-center justify-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
-                    <GraduationCap className="w-5 h-5" />
-                  </div>
-                  <span className="text-sm font-black text-slate-900 tracking-tight">Apex Technologies</span>
+                  <img
+                    src="/images/akash-technolabs-header-logo.png"
+                    alt="Akash Technolabs"
+                    className="h-7 w-auto object-contain"
+                  />
                 </div>
 
                 <div className="space-y-1">
@@ -452,26 +466,26 @@ export default function StudentDocumentsPage() {
                   <h3 className="text-2xl font-serif font-black text-blue-700 tracking-tight">
                     {studentName && studentName !== "Student Intern" ? studentName : (certificateDoc?.recipient_name || "Certified Intern")}
                   </h3>
-                  <div className="w-28 h-0.5 bg-blue-600 mx-auto mt-1" />
+                  <div className="w-28 h-0.5 bg-[#E52329] mx-auto mt-1" />
                 </div>
 
                 <p className="text-[11px] text-slate-600 max-w-sm mx-auto leading-relaxed">
-                  has successfully completed all milestones for the <strong className="text-slate-800">Full Stack Cloud Platform Internship</strong> from October 1, 2026 to October 31, 2026.
+                  has successfully completed all milestones for the <strong className="text-slate-800">AI &amp; Full Stack Enterprise Internship</strong> from October 1, 2026 to October 31, 2026.
                 </p>
 
                 {/* Footer Stamp, QR Code & Signatory */}
                 <div className="pt-4 mt-4 border-t border-slate-200 flex items-center justify-between text-left">
                   <div className="text-[10px] text-slate-500">
-                    <div className="font-serif text-sm text-slate-900 font-bold">Elena Rostova</div>
-                    <p className="text-[9px] text-slate-400">Head of Operations • Apex Technologies</p>
+                    <div className="font-serif text-sm text-slate-900 font-bold">Akash Padhiyar</div>
+                    <p className="text-[9px] text-slate-500 font-semibold">CEO • Akash Technolabs</p>
                     <span className="font-mono text-[9px] text-blue-600 block mt-0.5">
-                      ID: ID-CERT-2026-8918
+                      ID: {certificateDoc?.document_number || "ID-AKT-2026-CERT01"}
                     </span>
                   </div>
 
                   {/* QR Code Block linking to /verify/[id] */}
                   <Link
-                    href="/verify/ID-CERT-2026-8918"
+                    href={`/verify/${certificateDoc?.document_number || "ID-AKT-2026-0701"}`}
                     className="flex items-center gap-2 p-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors"
                     title="Scan or click to verify authentically on public ledger"
                   >
@@ -705,7 +719,7 @@ export default function StudentDocumentsPage() {
           isOpen={!!selectedStudioDoc}
           onClose={() => setSelectedStudioDoc(null)}
           document={selectedStudioDoc}
-          organizationName="Apex Technologies"
+          organizationName="Akash Technolabs"
         />
       )}
     </div>

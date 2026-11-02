@@ -272,7 +272,7 @@ function DocumentVerificationContent() {
                   </div>
                   <div className="flex justify-between border-b border-slate-800 pb-1">
                     <span className="text-slate-500">Issuer Signature:</span>
-                    <span className="text-blue-300 font-bold">VERIFIED ({doc.template_data?.signatory_name || "Elena Rostova"})</span>
+                    <span className="text-blue-300 font-bold">VERIFIED ({doc.template_data?.signatory_name || "Akash Padhiyar"})</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Standard:</span>
