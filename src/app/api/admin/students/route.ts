@@ -164,13 +164,20 @@ export async function DELETE(request: NextRequest) {
       // 5. Delete student documents/certificates
       documentStore.deleteDocumentsForStudent(cleanEmail);
 
-      // 6. Supabase dual-sync cleanup (best-effort)
-      try {
-        const adminClient = createAdminClient();
-        await adminClient.from("student_profiles").delete().eq("id", student.id);
-        await adminClient.from("profiles").delete().eq("email", cleanEmail);
-      } catch {
-        // Non-blocking
+      // 6. Supabase dual-sync cleanup (best-effort, non-blocking)
+      if (process.env.NODE_ENV !== "test" && process.env.VITEST !== "true") {
+        try {
+          const adminClient = createAdminClient();
+          await Promise.race([
+            Promise.all([
+              adminClient.from("student_profiles").delete().eq("id", student.id),
+              adminClient.from("profiles").delete().eq("email", cleanEmail),
+            ]),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 500)),
+          ]);
+        } catch {
+          // Non-blocking
+        }
       }
 
       deletedCount++;

@@ -17,7 +17,7 @@ export default async function AdminLayout({
   const session = safeParseSession(token);
 
   if (!session) {
-    redirect("/login");
+    redirect("/admin/login");
   }
 
   const cleanEmail = session.email.toLowerCase().trim();
