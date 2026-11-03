@@ -15,6 +15,10 @@ import {
   CheckSquare,
   Square,
   UserX,
+  Trash2,
+  RefreshCw,
+  Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -36,102 +40,31 @@ interface StudentRecord {
 }
 
 export default function AdminStudentsPage() {
-  const [students, setStudents] = useState<StudentRecord[]>([
-    {
-      id: "s1",
-      name: "Fenil Patel",
-      email: "fenil8918@gmail.com",
-      phone: "+91 98765 43210",
-      college: "National Institute of Technology",
-      university: "State Technical University",
-      technology: "Full Stack Web Development",
-      program: "Full Stack Development Cohort",
-      enrollmentId: "ENR-748291",
-      complianceStatus: "VERIFIED",
-      attendancePct: 94.2,
-      tasksCompleted: "5/7",
-      status: "ACTIVE",
-      joinedDate: "2026-10-01",
-    },
-    {
-      id: "s2",
-      name: "Aarav Sharma",
-      email: "aarav@college.edu",
-      phone: "+91 98220 11223",
-      college: "National Institute of Technology",
-      university: "State Tech Univ",
-      technology: "Python & AI Engineering",
-      program: "Python & AI Cohort",
-      enrollmentId: "ENR-982134",
-      complianceStatus: "VERIFIED",
-      attendancePct: 92.4,
-      tasksCompleted: "14/16",
-      status: "ACTIVE",
-      joinedDate: "2026-10-01",
-    },
-    {
-      id: "s3",
-      name: "Priya Patel",
-      email: "priya@university.edu",
-      phone: "+91 98330 44556",
-      college: "Institute of Engineering & Tech",
-      university: "Tech Univ West",
-      technology: "Data Science & Analytics",
-      program: "Data Science Cohort",
-      enrollmentId: "ENR-654321",
-      complianceStatus: "VERIFIED",
-      attendancePct: 88.0,
-      tasksCompleted: "12/14",
-      status: "ACTIVE",
-      joinedDate: "2026-10-02",
-    },
-    {
-      id: "s4",
-      name: "Rohan Varma",
-      email: "rohan@collegemail.in",
-      phone: "+91 98440 77889",
-      college: "City Science College",
-      university: "Central University",
-      technology: "Cloud & DevOps",
-      program: "Cloud & DevOps Track",
-      enrollmentId: "ENR-112233",
-      complianceStatus: "PENDING",
-      attendancePct: 0.0,
-      tasksCompleted: "0/0",
-      status: "PENDING_APPROVAL",
-      joinedDate: "2026-10-06",
-    },
-    {
-      id: "s5",
-      name: "Ananya Iyer",
-      email: "ananya.iyer@engg.edu",
-      phone: "+91 98550 99001",
-      college: "Vellore Tech Academy",
-      university: "Southern Technical University",
-      technology: "Full Stack Web Development",
-      program: "Full Stack Development Cohort",
-      enrollmentId: "ENR-883319",
-      complianceStatus: "VERIFIED",
-      attendancePct: 96.5,
-      tasksCompleted: "7/7",
-      status: "COMPLETED",
-      joinedDate: "2026-09-15",
-    },
-  ]);
+  const [students, setStudents] = useState<StudentRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [studentToDelete, setStudentToDelete] = useState<StudentRecord | null>(null);
+  const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    fetch("/api/admin/students")
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Failed to load"))))
-      .then((data) => {
-        if (active && Array.isArray(data.students) && data.students.length > 0) {
+  const loadStudents = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/students", { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.students)) {
           setStudents(data.students);
         }
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
+      }
+    } catch (err) {
+      console.error("Failed to fetch students:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadStudents();
   }, []);
 
   const [search, setSearch] = useState("");
@@ -141,6 +74,61 @@ export default function AdminStudentsPage() {
   const [detailTab, setDetailTab] = useState<string>("Overview");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
+
+  const handleDeleteStudent = async (student: StudentRecord) => {
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/admin/students", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: student.id, email: student.email }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setActionNotice(`Student "${student.name}" permanently deleted from database.`);
+        setStudents((prev) => prev.filter((s) => s.id !== student.id && s.email !== student.email));
+        setSelectedIds((prev) => prev.filter((id) => id !== student.id));
+        if (selectedStudent?.id === student.id) {
+          setSelectedStudent(null);
+        }
+      } else {
+        setActionNotice(data.error || "Failed to delete student from database.");
+      }
+    } catch {
+      setActionNotice("An unexpected error occurred while deleting student.");
+    } finally {
+      setDeleting(false);
+      setStudentToDelete(null);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    setDeleting(true);
+    try {
+      const selectedStudents = students.filter((s) => selectedIds.includes(s.id));
+      const res = await fetch("/api/admin/students", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ids: selectedIds,
+          emails: selectedStudents.map((s) => s.email),
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setActionNotice(`Successfully deleted ${selectedIds.length} student account(s) from database.`);
+        setStudents((prev) => prev.filter((s) => !selectedIds.includes(s.id)));
+        setSelectedIds([]);
+      } else {
+        setActionNotice(data.error || "Failed to delete selected students.");
+      }
+    } catch {
+      setActionNotice("An unexpected error occurred during bulk deletion.");
+    } finally {
+      setDeleting(false);
+      setBulkDeleteModalOpen(false);
+    }
+  };
 
   const filtered = students.filter((s) => {
     const matchesSearch =
@@ -293,7 +281,17 @@ export default function AdminStudentsPage() {
             <Button
               size="sm"
               variant="outline"
-              className="text-xs font-semibold gap-1.5"
+              disabled={loading}
+              className="text-xs font-semibold gap-1.5 cursor-pointer"
+              onClick={loadStudents}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${loading ? "animate-spin" : ""}`} />
+              <span>Refresh</span>
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs font-semibold gap-1.5 cursor-pointer"
               onClick={() => handleExportCSV(filtered)}
             >
               <Download className="w-3.5 h-3.5 text-blue-600" />
@@ -395,6 +393,16 @@ export default function AdminStudentsPage() {
               <Button
                 size="sm"
                 variant="outline"
+                className="bg-red-600 hover:bg-red-500 text-white border-transparent text-xs h-7 px-2.5 gap-1 font-bold cursor-pointer"
+                onClick={() => setBulkDeleteModalOpen(true)}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete Selected ({selectedIds.length})
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
                 className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs h-7 px-2.5 gap-1"
                 onClick={() =>
                   handleExportCSV(students.filter((s) => selectedIds.includes(s.id)))
@@ -458,86 +466,124 @@ export default function AdminStudentsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filtered.map((s) => {
-                  const isChecked = selectedIds.includes(s.id);
-                  return (
-                    <tr
-                      key={s.id}
-                      className={`hover:bg-slate-50/70 transition-colors ${
-                        isChecked ? "bg-blue-50/30" : ""
-                      }`}
-                    >
-                      <td className="py-3.5 px-3 text-center">
-                        <button
-                          onClick={() => toggleSelectOne(s.id)}
-                          className="text-slate-400 hover:text-slate-700 transition-colors"
-                        >
-                          {isChecked ? (
-                            <CheckSquare className="w-4 h-4 text-blue-600" />
-                          ) : (
-                            <Square className="w-4 h-4" />
-                          )}
-                        </button>
-                      </td>
-                      <td className="py-3.5 px-3">
-                        <span className="font-bold text-slate-900 block">{s.name}</span>
-                        <span className="text-[11px] text-slate-400 font-mono">{s.email}</span>
-                      </td>
-                      <td
-                        className="py-3.5 px-3 text-slate-700 font-medium max-w-[140px] truncate"
-                        title={s.college}
-                      >
-                        {s.college}
-                      </td>
-                      <td
-                        className="py-3.5 px-3 text-slate-600 max-w-[130px] truncate"
-                        title={s.university}
-                      >
-                        {s.university}
-                      </td>
-                      <td className="py-3.5 px-3">
-                        <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-[10px] font-bold">
-                          {s.technology}
+                {loading ? (
+                  <tr>
+                    <td colSpan={12} className="py-14 text-center text-slate-500">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+                        <span className="text-xs font-semibold text-slate-700">
+                          Fetching live student directory from database...
                         </span>
-                      </td>
-                      <td className="py-3.5 px-3 font-medium text-slate-800">{s.program}</td>
-                      <td className="py-3.5 px-3 font-mono font-semibold text-slate-600">
-                        {s.enrollmentId}
-                      </td>
-                      <td className="py-3.5 px-3">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            s.complianceStatus === "VERIFIED"
-                              ? "bg-emerald-50 text-emerald-700"
-                              : "bg-slate-100 text-slate-600"
-                          }`}
-                        >
-                          {s.complianceStatus === "VERIFIED" ? "Verified ✓" : "Pending"}
+                      </div>
+                    </td>
+                  </tr>
+                ) : filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={12} className="py-14 text-center text-slate-500">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <UserX className="w-8 h-8 text-slate-300" />
+                        <span className="text-xs font-bold text-slate-800">No students found</span>
+                        <span className="text-[11px] text-slate-400">
+                          {search
+                            ? "No registered students matched your search criteria."
+                            : "New student registrations will appear here dynamically."}
                         </span>
-                      </td>
-                      <td className="py-3.5 px-3 text-center font-bold text-slate-900">
-                        {s.attendancePct}%
-                      </td>
-                      <td className="py-3.5 px-3 text-center font-mono text-slate-700 font-semibold">
-                        {s.tasksCompleted}
-                      </td>
-                      <td className="py-3.5 px-3 text-center">
-                        <StatusBadge status={s.status} />
-                      </td>
-                      <td className="py-3.5 px-4 text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-xs rounded-lg h-7 px-2.5"
-                          onClick={() => setSelectedStudent(s)}
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map((s) => {
+                    const isChecked = selectedIds.includes(s.id);
+                    return (
+                      <tr
+                        key={s.id}
+                        className={`hover:bg-slate-50/70 transition-colors ${
+                          isChecked ? "bg-blue-50/30" : ""
+                        }`}
+                      >
+                        <td className="py-3.5 px-3 text-center">
+                          <button
+                            onClick={() => toggleSelectOne(s.id)}
+                            className="text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                          >
+                            {isChecked ? (
+                              <CheckSquare className="w-4 h-4 text-blue-600" />
+                            ) : (
+                              <Square className="w-4 h-4" />
+                            )}
+                          </button>
+                        </td>
+                        <td className="py-3.5 px-3">
+                          <span className="font-bold text-slate-900 block">{s.name}</span>
+                          <span className="text-[11px] text-slate-400 font-mono">{s.email}</span>
+                        </td>
+                        <td
+                          className="py-3.5 px-3 text-slate-700 font-medium max-w-[140px] truncate"
+                          title={s.college}
                         >
-                          <Eye className="w-3 h-3 mr-1" />
-                          Details
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                          {s.college}
+                        </td>
+                        <td
+                          className="py-3.5 px-3 text-slate-600 max-w-[130px] truncate"
+                          title={s.university}
+                        >
+                          {s.university}
+                        </td>
+                        <td className="py-3.5 px-3">
+                          <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-[10px] font-bold">
+                            {s.technology}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-3 font-medium text-slate-800">{s.program}</td>
+                        <td className="py-3.5 px-3 font-mono font-semibold text-slate-600">
+                          {s.enrollmentId}
+                        </td>
+                        <td className="py-3.5 px-3">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              s.complianceStatus === "VERIFIED"
+                                ? "bg-emerald-50 text-emerald-700"
+                                : "bg-slate-100 text-slate-600"
+                            }`}
+                          >
+                            {s.complianceStatus === "VERIFIED" ? "Verified ✓" : "Pending"}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-3 text-center font-bold text-slate-900">
+                          {s.attendancePct}%
+                        </td>
+                        <td className="py-3.5 px-3 text-center font-mono text-slate-700 font-semibold">
+                          {s.tasksCompleted}
+                        </td>
+                        <td className="py-3.5 px-3 text-center">
+                          <StatusBadge status={s.status} />
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs rounded-lg h-7 px-2.5 cursor-pointer"
+                              onClick={() => setSelectedStudent(s)}
+                            >
+                              <Eye className="w-3 h-3 mr-1" />
+                              Details
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs rounded-lg h-7 px-2 text-red-600 hover:text-white hover:bg-red-600 border-red-200 hover:border-red-600 transition-colors cursor-pointer"
+                              title={`Delete student ${s.name}`}
+                              onClick={() => setStudentToDelete(s)}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -926,9 +972,145 @@ export default function AdminStudentsPage() {
               </div>
             )}
 
-            <div className="pt-2 flex justify-end">
-              <Button size="sm" variant="outline" onClick={() => setSelectedStudent(null)}>
+            <div className="pt-3 border-t border-slate-200 flex items-center justify-between">
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs text-red-600 hover:text-white hover:bg-red-600 border-red-200 hover:border-red-600 gap-1.5 cursor-pointer font-bold"
+                onClick={() => setStudentToDelete(selectedStudent)}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete Student Record
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                className="cursor-pointer"
+                onClick={() => setSelectedStudent(null)}
+              >
                 Close Profile
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* SINGLE STUDENT DELETE CONFIRMATION MODAL */}
+      {studentToDelete && (
+        <Modal
+          isOpen={!!studentToDelete}
+          onClose={() => !deleting && setStudentToDelete(null)}
+          title="Delete Student Record"
+          description="Permanent removal from database"
+          maxWidth="md"
+        >
+          <div className="space-y-4">
+            <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-800 space-y-2">
+              <div className="flex items-center gap-2 font-bold text-red-900">
+                <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                <span>Confirm Permanent Removal</span>
+              </div>
+              <p>
+                Are you sure you want to delete student{" "}
+                <strong className="text-red-950 font-bold">{studentToDelete.name}</strong> (
+                <span className="font-mono">{studentToDelete.email}</span>)?
+              </p>
+              <ul className="list-disc list-inside text-[11px] text-red-700 space-y-0.5 pt-1">
+                <li>Student login account and credentials will be purged</li>
+                <li>Live attendance punches and work session logs will be deleted</li>
+                <li>Assigned tasks, reports, and activity submissions will be removed</li>
+                <li>All issued credentials and offer letters will be archived</li>
+              </ul>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={deleting}
+                className="cursor-pointer text-xs"
+                onClick={() => setStudentToDelete(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                disabled={deleting}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold gap-1.5 cursor-pointer text-xs shadow-md shadow-red-500/20"
+                onClick={() => handleDeleteStudent(studentToDelete)}
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Confirm Delete</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* BULK DELETE CONFIRMATION MODAL */}
+      {bulkDeleteModalOpen && (
+        <Modal
+          isOpen={bulkDeleteModalOpen}
+          onClose={() => !deleting && setBulkDeleteModalOpen(false)}
+          title="Bulk Delete Students"
+          description="Permanent database cleanup"
+          maxWidth="md"
+        >
+          <div className="space-y-4">
+            <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-800 space-y-2">
+              <div className="flex items-center gap-2 font-bold text-red-900">
+                <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                <span>Delete {selectedIds.length} Student Accounts</span>
+              </div>
+              <p>
+                You are about to permanently delete{" "}
+                <strong className="font-bold text-red-950">
+                  {selectedIds.length} student account(s)
+                </strong>{" "}
+                from the Akash Technolabs database. All associated attendance records, shift timers, and task assignments will be permanently purged.
+              </p>
+              <p className="text-[11px] text-red-600 font-semibold">
+                This action is immediate and cannot be undone.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={deleting}
+                className="cursor-pointer text-xs"
+                onClick={() => setBulkDeleteModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                disabled={deleting}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold gap-1.5 cursor-pointer text-xs shadow-md shadow-red-500/20"
+                onClick={handleBulkDelete}
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete {selectedIds.length} Students</span>
+                  </>
+                )}
               </Button>
             </div>
           </div>

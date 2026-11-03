@@ -338,6 +338,15 @@ class ActivityStore {
     return list[idx];
   }
 
+  public deleteSubmissionsForStudent(email: string): number {
+    const list = loadSubmissionsFromDisk();
+    const cleanEmail = email.toLowerCase().trim();
+    const filtered = list.filter((s) => s.studentEmail.toLowerCase().trim() !== cleanEmail);
+    if (filtered.length === list.length) return 0;
+    saveSubmissionsToDisk(filtered);
+    return list.length - filtered.length;
+  }
+
   private async syncActivityToSupabase(activity: InstituteActivity) {
     try {
       const adminClient = createAdminClient();

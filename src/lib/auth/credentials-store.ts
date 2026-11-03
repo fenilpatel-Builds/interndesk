@@ -152,6 +152,20 @@ class CredentialsStore {
     return false;
   }
 
+  public deleteByIdOrEmail(idOrEmail: string): boolean {
+    this.accounts = loadAccountsFromDisk();
+    const clean = idOrEmail.toLowerCase().trim();
+    const initialLen = this.accounts.length;
+    this.accounts = this.accounts.filter(
+      (a) => a.email.toLowerCase().trim() !== clean && a.id !== idOrEmail
+    );
+    if (this.accounts.length !== initialLen) {
+      saveAccountsToDisk(this.accounts);
+      return true;
+    }
+    return false;
+  }
+
   public clearAllTestingAccounts(): void {
     this.accounts = [];
     saveAccountsToDisk(this.accounts);

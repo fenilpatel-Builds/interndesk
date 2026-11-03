@@ -438,6 +438,17 @@ export class DocumentStore {
     saveToDisk(this.docs);
     return newDoc;
   }
+
+  public deleteDocumentsForStudent(email: string): number {
+    this.docs = loadFromDisk();
+    const cleanEmail = email.toLowerCase().trim();
+    const initialLen = this.docs.length;
+    this.docs = this.docs.filter((d) => d.recipient_email.toLowerCase().trim() !== cleanEmail);
+    if (this.docs.length !== initialLen) {
+      saveToDisk(this.docs);
+    }
+    return initialLen - this.docs.length;
+  }
 }
 
 export const documentStore = new DocumentStore();

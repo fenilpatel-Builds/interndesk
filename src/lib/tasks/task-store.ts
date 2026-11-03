@@ -266,6 +266,15 @@ export class TaskStore {
     saveTasks(filtered);
     return true;
   }
+
+  public deleteTasksForStudent(email: string): number {
+    const all = loadTasks();
+    const cleanEmail = email.toLowerCase().trim();
+    const filtered = all.filter((t) => t.assignedToEmail.toLowerCase().trim() !== cleanEmail);
+    if (filtered.length === all.length) return 0;
+    saveTasks(filtered);
+    return all.length - filtered.length;
+  }
 }
 
 export const taskStore = new TaskStore();

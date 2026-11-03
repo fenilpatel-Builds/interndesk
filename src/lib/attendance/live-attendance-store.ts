@@ -152,6 +152,17 @@ export class LiveAttendanceStore {
       location: updated.location || "Akash Technolabs Campus",
     };
   }
+
+  public deleteStudent(email: string): boolean {
+    const records = loadLiveRecords();
+    const cleanEmail = email.toLowerCase().trim();
+    if (records[cleanEmail]) {
+      delete records[cleanEmail];
+      saveLiveRecords(records);
+      return true;
+    }
+    return false;
+  }
 }
 
 export const liveAttendanceStore = new LiveAttendanceStore();
