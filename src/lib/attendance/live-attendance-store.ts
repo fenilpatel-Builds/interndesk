@@ -63,24 +63,6 @@ function loadLiveRecords(): Record<string, Partial<StudentLiveAttendance>> {
         workedMinutes: 120,
         lastHeartbeat: new Date().toISOString(),
       },
-      "harshit.mehta@akashtechnolabs.com": {
-        status: "COMPLETED",
-        clockInTime: "08:30 AM",
-        clockOutTime: "04:30 PM",
-        workedMinutes: 480,
-        currentBreak: null,
-        breakDurationMinutes: 30,
-        lastHeartbeat: new Date().toISOString(),
-      },
-      "akshatnayak0910@gmail.com": {
-        status: "NOT_CHECKED_IN",
-        clockInTime: null,
-        clockOutTime: null,
-        workedMinutes: 0,
-        currentBreak: null,
-        breakDurationMinutes: 0,
-        lastHeartbeat: new Date().toISOString(),
-      },
     };
     saveLiveRecords(initial);
     return initial;
@@ -111,8 +93,6 @@ export class LiveAttendanceStore {
       "huntarmy001@gmail.com": "AI/ML Systems",
       "fenil.patel@akashtechnolabs.com": "AI/ML Engineering",
       "priya.sharma@akashtechnolabs.com": "Full Stack Web Development",
-      "harshit.mehta@akashtechnolabs.com": "Cloud & DevOps",
-      "akshatnayak0910@gmail.com": "Cybersecurity",
     };
 
     return accounts.map((acc, idx) => {

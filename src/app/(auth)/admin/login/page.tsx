@@ -16,6 +16,10 @@ import {
   KeyRound,
   GraduationCap,
   Sparkles,
+  Shield,
+  FileCheck2,
+  Sliders,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatedLogo } from "@/components/ui/animated-logo";
@@ -101,43 +105,38 @@ export default function AdminLoginPage() {
 
     setLoading(true);
     setErrorMessage(null);
+    setSuccessMessage(null);
 
     try {
       const res = await sendEmailOtp(cleanEmail);
       if (res.success) {
         setOtpSent(true);
         if (res.forwardedTo) setForwardedTo(res.forwardedTo);
-        setSuccessMessage(res.message || `Admin verification code dispatched to ${cleanEmail}`);
+        setSuccessMessage(res.message);
         setResendCooldown(30);
-        setOtpDigits(["", "", "", "", "", ""]);
         setTimeout(() => {
           otpInputRefs.current[0]?.focus();
         }, 150);
       } else {
-        setErrorMessage(res.error || res.message || "Failed to dispatch admin verification OTP.");
+        setErrorMessage(res.message || "Failed to dispatch verification code.");
       }
     } catch {
-      setErrorMessage("Network error during admin OTP dispatch.");
+      setErrorMessage("An unexpected error occurred while sending OTP.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOtpDigitChange = (index: number, value: string) => {
-    const cleanVal = value.replace(/\D/g, "");
-    if (!cleanVal) {
-      const newDigits = [...otpDigits];
-      newDigits[index] = "";
-      setOtpDigits(newDigits);
-      return;
-    }
+  const handleOtpChange = (index: number, value: string) => {
+    const cleanVal = value.replace(/[^0-9]/g, "");
 
+    // Multi-digit paste handler
     if (cleanVal.length > 1) {
       const digitsArr = cleanVal.slice(0, 6).split("");
       const newDigits = [...otpDigits];
-      digitsArr.forEach((d, i) => {
-        if (index + i < 6) newDigits[index + i] = d;
-      });
+      for (let i = 0; i < digitsArr.length; i++) {
+        if (index + i < 6) newDigits[index + i] = digitsArr[i];
+      }
       setOtpDigits(newDigits);
       const nextIdx = Math.min(index + digitsArr.length, 5);
       otpInputRefs.current[nextIdx]?.focus();
@@ -186,213 +185,357 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#060b14] flex flex-col justify-between py-8 px-4 sm:px-6 lg:px-8 relative overflow-hidden text-slate-100">
-      {/* Background glow effects */}
-      <div className="absolute top-1/4 -left-32 w-96 h-96 bg-[#E52329]/15 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-[#0F4C81]/25 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen flex flex-col justify-between bg-gradient-to-b from-slate-50 via-white to-blue-50/40 select-none">
+      {/* Top Header */}
+      <header className="sticky top-0 z-40 w-full border-b border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14 sm:h-16">
+            <AnimatedLogo size="md" showTagline={false} />
 
-      {/* Top Header Strip */}
-      <header className="max-w-7xl mx-auto w-full flex items-center justify-between pb-6 border-b border-slate-800/80 z-10">
-        <AnimatedLogo size="md" />
-        <Link
-          href="/login"
-          className="text-xs font-semibold text-slate-400 hover:text-white flex items-center gap-1.5 transition-colors"
-        >
-          <GraduationCap className="w-4 h-4 text-blue-400" />
-          <span>Student / Intern Portal →</span>
-        </Link>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-700 transition-colors shadow-2xs cursor-pointer"
+              >
+                <GraduationCap className="w-3.5 h-3.5 text-[#0F4C81]" />
+                <span>Student / Intern Portal →</span>
+              </Link>
+            </div>
+          </div>
+        </div>
       </header>
 
-      {/* Center Auth Card */}
-      <div className="w-full max-w-md mx-auto my-auto relative z-10 space-y-6">
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-950/60 border border-red-500/40 text-[11px] font-bold text-red-400 uppercase tracking-widest">
-            <ShieldAlert className="w-3.5 h-3.5" />
-            <span>Administrator Console Gate</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-            Akash Technolabs Admin
-          </h1>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">
-            Authorized administration, offer letter generation, and academic governance
-          </p>
-        </div>
-
-        <div className="bg-slate-900/90 border border-slate-800 backdrop-blur-2xl rounded-3xl p-6 sm:p-8 shadow-2xl shadow-black/80 space-y-5">
-          {/* Security Banner */}
-          <div className="p-3 rounded-2xl bg-blue-950/50 border border-blue-800/50 flex items-start gap-2.5 text-xs text-blue-200">
-            <ShieldCheck className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold text-white">2-Factor Authentication Required</p>
-              <p className="text-[11px] text-blue-300/80 mt-0.5">
-                Restricted to whitelisted administrators (fenil8160@gmail.com).
-              </p>
+      {/* Main Container - Dual Column Layout matching app design */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+          {/* Left Column: Executive Authority Copy & Badges */}
+          <div className="lg:col-span-7 space-y-4 pt-1 sm:pt-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-50 border border-red-200 text-[11px] font-black tracking-widest text-[#E52329] uppercase shadow-2xs">
+              <ShieldAlert className="w-3.5 h-3.5 text-[#E52329]" />
+              <span>ADMINISTRATOR CONSOLE GATE</span>
             </div>
-          </div>
 
-          {/* Feedback Alerts */}
-          {errorMessage && (
-            <div className="p-3 rounded-2xl bg-red-950/70 border border-red-800 text-xs font-semibold text-red-200 flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-              <span>{errorMessage}</span>
-            </div>
-          )}
-          {successMessage && (
-            <div className="p-3 rounded-2xl bg-emerald-950/70 border border-emerald-800 text-xs font-semibold text-emerald-200 flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-              <span>{successMessage}</span>
-            </div>
-          )}
+            <h1 className="text-3xl sm:text-4xl lg:text-[2.6rem] font-black text-slate-900 tracking-tight leading-[1.15]">
+              Akash Technolabs <br />
+              <span className="text-[#E52329]">Administrative Portal</span>
+            </h1>
 
-          {/* Password Mode Form */}
-          {authMode === "PASSWORD" ? (
-            <form onSubmit={handleAdminPasswordLogin} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                  Administrator Email *
-                </label>
-                <div className="relative">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    placeholder="fenil8160@gmail.com"
-                    className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-700 bg-slate-800/90 text-white placeholder-slate-500 focus:outline-hidden focus:ring-2 focus:ring-red-500 font-medium"
-                  />
-                  <Mail className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-xl font-normal">
+              Restricted executive gateway for authorized coordinators, faculty evaluators, and institutional administrators. Manage task allocations, review submissions, and supervise certified credentials.
+            </p>
+
+            {/* 4 Feature Badges */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2">
+              <div className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs flex flex-col items-center text-center">
+                <div className="w-8 h-8 rounded-xl bg-red-50 text-[#E52329] flex items-center justify-center mb-1.5">
+                  <ShieldCheck className="w-4 h-4" />
                 </div>
+                <span className="text-xs font-bold text-slate-800 leading-tight">
+                  Whitelisted Access
+                </span>
+                <span className="text-[10px] text-slate-400 mt-0.5">fenil8160@gmail.com</span>
               </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-bold text-slate-300">
-                    Administrator Password *
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAuthMode("OTP");
-                      handleRequestOtp();
-                    }}
-                    className="text-[11px] font-bold text-blue-400 hover:text-blue-300 cursor-pointer"
-                  >
-                    Use Direct OTP →
-                  </button>
+              <div className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs flex flex-col items-center text-center">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#0F4C81] flex items-center justify-center mb-1.5">
+                  <Lock className="w-4 h-4" />
                 </div>
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    placeholder="Enter administrator password"
-                    className="w-full pl-3.5 pr-10 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-700 bg-slate-800/90 text-white placeholder-slate-500 focus:outline-hidden focus:ring-2 focus:ring-red-500 font-medium"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((p) => !p)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
+                <span className="text-xs font-bold text-slate-800 leading-tight">
+                  2FA Cryptographic
+                </span>
+                <span className="text-[10px] text-slate-400 mt-0.5">Email OTP &amp; HMAC</span>
               </div>
 
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-[#E52329] hover:bg-[#C41C22] text-white font-bold py-3 rounded-xl shadow-lg shadow-red-950/60 text-xs sm:text-sm cursor-pointer transition-transform hover:scale-[1.01]"
-              >
-                {loading ? "Authenticating Admin..." : "Authenticate & Proceed to 2FA →"}
-              </Button>
-            </form>
-          ) : (
-            /* 6-Digit 2FA OTP Mode Form */
-            <form onSubmit={handleVerifyOtp} className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-slate-300">
-                    Admin 2FA Verification Code
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAuthMode("PASSWORD");
-                      setErrorMessage(null);
-                    }}
-                    className="text-[11px] font-bold text-slate-400 hover:text-slate-200 cursor-pointer"
-                  >
-                    ← Password Mode
-                  </button>
+              <div className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs flex flex-col items-center text-center">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-1.5">
+                  <FileCheck2 className="w-4 h-4" />
                 </div>
-                <p className="text-[11px] text-slate-400 mb-3">
-                  Enter the 6-digit cryptographic security code dispatched to <strong className="text-white">{email}</strong>.
+                <span className="text-xs font-bold text-slate-800 leading-tight">
+                  Official Letters
+                </span>
+                <span className="text-[10px] text-slate-400 mt-0.5">Direct PDF Issuance</span>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs flex flex-col items-center text-center">
+                <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-1.5">
+                  <Sliders className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-bold text-slate-800 leading-tight">
+                  Live Attendance
+                </span>
+                <span className="text-[10px] text-slate-400 mt-0.5">Real-time Punches</span>
+              </div>
+            </div>
+
+            {/* Whitelist Security Notice */}
+            <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5 max-w-xl">
+              <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="text-[11px] leading-relaxed">
+                <strong className="font-bold text-amber-950">Security Notice: </strong>
+                This console is protected by zero-trust role-based authorization. Logins are strictly whitelisted to executive administrators. Unrecognized emails will be rejected automatically.
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Clean White Authentication Card */}
+          <div className="lg:col-span-5 w-full">
+            <div className="bg-white border border-slate-200/90 shadow-xl shadow-slate-200/50 rounded-3xl p-6 sm:p-8 space-y-5">
+              {/* Card Header */}
+              <div>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-black text-slate-900 tracking-tight">
+                    Administrator Sign In
+                  </h2>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-[#0F4C81] border border-blue-200">
+                    Lead Console
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Authenticate with administrator password or direct 2FA OTP code.
                 </p>
-
-                {forwardedTo && (
-                  <div className="p-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-amber-300 mb-3 font-mono">
-                    {forwardedTo}
-                  </div>
-                )}
-
-                {/* 6 Individual Code Boxes */}
-                <div className="flex items-center justify-between gap-2">
-                  {otpDigits.map((digit, idx) => (
-                    <input
-                      key={idx}
-                      ref={(el) => {
-                        otpInputRefs.current[idx] = el;
-                      }}
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={1}
-                      value={digit}
-                      onChange={(e) => handleOtpDigitChange(idx, e.target.value)}
-                      onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                      className="w-11 sm:w-12 h-12 sm:h-14 text-center text-lg sm:text-xl font-mono font-black rounded-xl border border-slate-700 bg-slate-800/90 text-white focus:outline-hidden focus:ring-2 focus:ring-red-500 shadow-inner"
-                    />
-                  ))}
-                </div>
               </div>
 
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-[#E52329] hover:bg-[#C41C22] text-white font-bold py-3 rounded-xl shadow-lg shadow-red-950/60 text-xs sm:text-sm cursor-pointer"
-              >
-                {loading ? "Verifying..." : "Verify OTP & Enter Console"}
-              </Button>
-
-              <div className="flex items-center justify-between pt-1 text-xs">
-                <span className="text-slate-400">Didn&apos;t receive code?</span>
+              {/* Mode Toggle Switcher */}
+              <div className="grid grid-cols-2 p-1 rounded-xl bg-slate-100 border border-slate-200/80 text-xs font-bold">
                 <button
                   type="button"
-                  disabled={resendCooldown > 0 || loading}
-                  onClick={handleRequestOtp}
-                  className="font-bold text-blue-400 hover:text-blue-300 disabled:opacity-50 cursor-pointer"
+                  onClick={() => {
+                    setAuthMode("PASSWORD");
+                    setErrorMessage(null);
+                  }}
+                  className={`py-1.5 rounded-lg transition-all cursor-pointer ${
+                    authMode === "PASSWORD"
+                      ? "bg-white text-slate-900 shadow-2xs font-extrabold"
+                      : "text-slate-500 hover:text-slate-900"
+                  }`}
                 >
-                  {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend OTP"}
+                  Password Login
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("OTP");
+                    setErrorMessage(null);
+                  }}
+                  className={`py-1.5 rounded-lg transition-all cursor-pointer ${
+                    authMode === "OTP"
+                      ? "bg-white text-[#0F4C81] shadow-2xs font-extrabold"
+                      : "text-slate-500 hover:text-slate-900"
+                  }`}
+                >
+                  Email OTP Code
                 </button>
               </div>
-            </form>
-          )}
 
-          <div className="pt-2 text-center border-t border-slate-800">
-            <Link
-              href="/login"
-              className="text-xs text-slate-400 hover:text-white font-medium inline-flex items-center gap-1 transition-colors"
-            >
-              <span>Not an administrator?</span>
-              <span className="text-blue-400 font-bold underline">Go to Student Login</span>
-            </Link>
+              {/* Feedback Alerts */}
+              {errorMessage && (
+                <div className="p-3 rounded-2xl bg-red-50 border border-red-200 text-xs font-semibold text-red-700 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
+              {successMessage && (
+                <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-700 flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>{successMessage}</span>
+                </div>
+              )}
+
+              {/* PASSWORD LOGIN FORM */}
+              {authMode === "PASSWORD" ? (
+                <form onSubmit={handleAdminPasswordLogin} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Administrator Email <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        placeholder="fenil8160@gmail.com"
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-red-500 text-slate-900 bg-white placeholder-slate-400 font-medium"
+                      />
+                      <Mail className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-bold text-slate-700">
+                        Administrator Password <span className="text-red-500">*</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAuthMode("OTP");
+                          handleRequestOtp();
+                        }}
+                        className="text-[11px] font-bold text-[#0F4C81] hover:underline cursor-pointer"
+                      >
+                        Use Direct OTP →
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        placeholder="Enter administrator password"
+                        className="w-full pl-3.5 pr-10 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-red-500 text-slate-900 bg-white placeholder-slate-400 font-medium"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((p) => !p)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer p-1"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-[#E52329] hover:bg-[#C41C22] text-white font-bold py-3 rounded-xl shadow-md shadow-red-500/20 text-xs sm:text-sm transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <span>{loading ? "Authenticating..." : "Authenticate & Proceed to 2FA"}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </form>
+              ) : (
+                /* OTP LOGIN FORM */
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Administrator Email
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        placeholder="fenil8160@gmail.com"
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white font-medium"
+                      />
+                      <Mail className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  {!otpSent ? (
+                    <Button
+                      type="button"
+                      onClick={handleRequestOtp}
+                      disabled={loading}
+                      className="w-full bg-[#0F4C81] hover:bg-[#0C3D68] text-white font-bold py-3 rounded-xl text-xs sm:text-sm cursor-pointer shadow-md transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <KeyRound className="w-4 h-4" />
+                      <span>{loading ? "Sending OTP..." : "Send Verification OTP to Admin Email"}</span>
+                    </Button>
+                  ) : (
+                    <form onSubmit={handleVerifyOtp} className="space-y-3.5">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-2 text-center">
+                          Enter 6-Digit Admin Security Code
+                        </label>
+                        <div className="flex items-center justify-center gap-2">
+                          {otpDigits.map((digit, idx) => (
+                            <input
+                              key={idx}
+                              ref={(el) => {
+                                otpInputRefs.current[idx] = el;
+                              }}
+                              type="text"
+                              inputMode="numeric"
+                              maxLength={1}
+                              value={digit}
+                              onChange={(e) => handleOtpChange(idx, e.target.value)}
+                              onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                              className={`w-10 h-12 text-center text-lg font-mono font-bold rounded-xl border transition-all ${
+                                digit
+                                  ? "border-red-500 bg-red-50/30 text-slate-900 shadow-2xs"
+                                  : "border-slate-300 bg-white text-slate-900 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      <Button
+                        type="submit"
+                        disabled={loading || otpDigits.join("").length !== 6}
+                        className="w-full bg-[#E52329] hover:bg-[#C41C22] text-white font-bold py-3 rounded-xl text-xs sm:text-sm cursor-pointer shadow-md shadow-red-500/20 disabled:opacity-50"
+                      >
+                        {loading ? "Verifying..." : "Verify & Enter Admin Console"}
+                      </Button>
+
+                      <div className="flex items-center justify-between text-xs text-slate-500 px-1 pt-1">
+                        <span className="text-[11px]">Valid 10 mins</span>
+                        <button
+                          type="button"
+                          onClick={handleRequestOtp}
+                          disabled={resendCooldown > 0 || loading}
+                          className={`font-semibold cursor-pointer ${
+                            resendCooldown > 0 ? "text-slate-400" : "text-[#0F4C81] hover:underline"
+                          }`}
+                        >
+                          {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend OTP"}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              )}
+
+              {/* Card Footer: Return to Student Login */}
+              <div className="text-center mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500 font-medium">
+                Not an administrator?{" "}
+                <Link
+                  href="/login"
+                  className="font-bold text-[#0F4C81] hover:text-[#0C3D68] hover:underline inline-flex items-center gap-1"
+                >
+                  <GraduationCap className="w-3.5 h-3.5" />
+                  <span>Go to Student Login</span>
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </main>
 
-      {/* Footer */}
-      <footer className="text-center text-[11px] text-slate-500 max-w-7xl mx-auto w-full pt-6 border-t border-slate-800/80">
-        © 2026 Akash Technolabs Private Limited. Dedicated Administrative Console. All rights reserved.
+      {/* Signature Bottom Ribbon */}
+      <footer className="bg-[#050914] border-t border-slate-800/90 py-3.5 px-4 sm:px-6 lg:px-8 select-none">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
+          <div className="flex items-center gap-3">
+            <Link href="/" className="hover:opacity-95 transition-opacity">
+              <div className="bg-white px-3 py-1.5 rounded-xl border border-white/20 flex items-center shadow-2xs">
+                <img
+                  src="/images/akash-technolabs-logo-transparent.png"
+                  alt="Akash Technolabs"
+                  className="h-6 w-auto object-contain"
+                />
+              </div>
+            </Link>
+            <span className="text-slate-600 hidden sm:inline">|</span>
+            <span className="text-slate-400 font-medium hidden sm:inline text-xs">
+              Akash Technolabs Enterprise Administrative Gateway
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4 text-slate-400 text-[11px] font-semibold">
+            <span className="flex items-center gap-1.5 hover:text-white transition-colors">
+              <Shield className="w-3.5 h-3.5 text-blue-400" />
+              Secure RBAC
+            </span>
+            <span className="flex items-center gap-1.5 hover:text-white transition-colors">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              2FA Protected
+            </span>
+          </div>
+        </div>
       </footer>
     </div>
   );

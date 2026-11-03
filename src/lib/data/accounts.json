@@ -12,42 +12,6 @@
     "createdAt": "2026-10-26T05:45:49.390Z"
   },
   {
-    "id": "usr-student-fenil",
-    "email": "fenil.patel@akashtechnolabs.com",
-    "passwordHash": "6f871e4133d7b3ef810406965bad0fee86e71ba627885b2af8b57f221fd3ab90",
-    "salt": "92bfc61c87f59bddeae31e069bf3d855",
-    "name": "Fenil Patel",
-    "role": "STUDENT",
-    "organizationId": "org-akash-01",
-    "organizationName": "Akash Technolabs",
-    "organizationType": "CORPORATE",
-    "createdAt": "2026-10-26T05:45:49.390Z"
-  },
-  {
-    "id": "usr-student-priya",
-    "email": "priya.sharma@akashtechnolabs.com",
-    "passwordHash": "3a9646c5c4ac6576eb044870130a2e69cf25611805ee2ed03564b3dc82356596",
-    "salt": "dcb03535a0836f2b005d0c4de0f80f66",
-    "name": "Priya Sharma",
-    "role": "STUDENT",
-    "organizationId": "org-akash-01",
-    "organizationName": "Akash Technolabs",
-    "organizationType": "CORPORATE",
-    "createdAt": "2026-10-27T09:12:30.094Z"
-  },
-  {
-    "id": "usr-student-harshit",
-    "email": "harshit.mehta@akashtechnolabs.com",
-    "passwordHash": "d8550504d6b56e84ffa2bbc8c6ddff15370b12768ba4f38dd1e344ad69ba6b01",
-    "salt": "d73b6fac11520ca4b751cabb6a604816",
-    "name": "Harshit Mehta",
-    "role": "STUDENT",
-    "organizationId": "org-akash-01",
-    "organizationName": "Akash Technolabs",
-    "organizationType": "CORPORATE",
-    "createdAt": "2026-10-26T05:45:49.390Z"
-  },
-  {
     "id": "usr-1793103685484-528",
     "email": "fenil8160@gmail.com",
     "passwordHash": "61118a65597ccd1021c8e499a90d5628b61a1235ba78dbeec98a3300e5507f51",
@@ -60,16 +24,16 @@
     "createdAt": "2026-11-02T06:42:50.409Z"
   },
   {
-    "id": "usr-1793106423924-750",
-    "email": "akshatnayak0910@gmail.com",
-    "passwordHash": "4361aad0b6993a442fb78f0ae05cb6df3a04c9563b8c4f9b5ba9a9fc76751ad0",
-    "salt": "050d0a4b69683498c7aba78757a947a0",
-    "name": "Akshat Nayak",
+    "id": "usr-student-fenil",
+    "email": "fenil.patel@akashtechnolabs.com",
+    "passwordHash": "6f871e4133d7b3ef810406965bad0fee86e71ba627885b2af8b57f221fd3ab90",
+    "salt": "92bfc61c87f59bddeae31e069bf3d855",
+    "name": "Fenil Patel",
     "role": "STUDENT",
     "organizationId": "org-akash-01",
     "organizationName": "Akash Technolabs",
     "organizationType": "CORPORATE",
-    "createdAt": "2026-10-27T13:07:04.067Z"
+    "createdAt": "2026-10-26T05:45:49.390Z"
   },
   {
     "id": "usr-1793251075106-352",
@@ -82,5 +46,17 @@
     "organizationName": "Akash Technolabs",
     "organizationType": "CORPORATE",
     "createdAt": "2026-10-29T05:17:55.287Z"
+  },
+  {
+    "id": "usr-student-priya",
+    "email": "priya.sharma@akashtechnolabs.com",
+    "passwordHash": "3a9646c5c4ac6576eb044870130a2e69cf25611805ee2ed03564b3dc82356596",
+    "salt": "dcb03535a0836f2b005d0c4de0f80f66",
+    "name": "Priya Sharma",
+    "role": "STUDENT",
+    "organizationId": "org-akash-01",
+    "organizationName": "Akash Technolabs",
+    "organizationType": "CORPORATE",
+    "createdAt": "2026-10-27T09:12:30.094Z"
   }
 ]

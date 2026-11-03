@@ -135,55 +135,90 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* 8 Top Stat Cards with LIVE real numbers */}
+        {/* 8 Top Stat Cards with LIVE real numbers & interactive navigation */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="p-4 border-slate-200/90 shadow-2xs bg-white rounded-2xl">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Students</span>
-            <div className="text-2xl font-black text-slate-900 mt-1">{metrics.totalStudents}</div>
-            <span className="text-[10px] text-emerald-600 font-semibold">↑ {metrics.totalStudents} verified accounts</span>
-          </Card>
+          <Link href="/admin/students" className="block group">
+            <Card className="p-4 border-slate-200/90 shadow-2xs bg-white rounded-2xl transition-all duration-200 group-hover:border-blue-400 group-hover:shadow-md cursor-pointer">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-blue-600 transition-colors">
+                Total Students
+              </span>
+              <div className="text-2xl font-black text-slate-900 mt-1">{metrics.totalStudents}</div>
+              <span className="text-[10px] text-emerald-600 font-semibold">↑ {metrics.totalStudents} verified accounts</span>
+            </Card>
+          </Link>
 
-          <Card className="p-4 border-slate-200/90 shadow-2xs bg-white rounded-2xl">
-            <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">Pending Approvals</span>
-            <div className="text-2xl font-black text-amber-600 mt-1">{metrics.pendingApprovals}</div>
-            <span className="text-[10px] text-amber-600 font-semibold">Requires verification</span>
-          </Card>
+          <Link href="/admin/activities?tab=SUBMISSIONS&status=SUBMITTED" className="block group">
+            <Card className="p-4 border-slate-200/90 shadow-2xs bg-white rounded-2xl transition-all duration-200 group-hover:border-amber-400 group-hover:shadow-md cursor-pointer">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">Pending Approvals</span>
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              </div>
+              <div className="text-2xl font-black text-amber-600 mt-1">{metrics.pendingApprovals}</div>
+              <span className="text-[10px] text-amber-600 font-semibold flex items-center gap-1">
+                Requires review &amp; grading →
+              </span>
+            </Card>
+          </Link>
 
-          <Card className="p-4 border-slate-200/90 shadow-2xs bg-white rounded-2xl">
-            <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">Active Interns</span>
-            <div className="text-2xl font-black text-blue-600 mt-1">{metrics.activeInterns}</div>
-            <span className="text-[10px] text-blue-600 font-semibold">Active in cohorts</span>
-          </Card>
+          <Link href="/admin/attendance" className="block group">
+            <Card className="p-4 border-slate-200/90 shadow-2xs bg-white rounded-2xl transition-all duration-200 group-hover:border-blue-400 group-hover:shadow-md cursor-pointer">
+              <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider group-hover:text-blue-600 transition-colors">
+                Active Interns
+              </span>
+              <div className="text-2xl font-black text-blue-600 mt-1">{metrics.activeInterns}</div>
+              <span className="text-[10px] text-blue-600 font-semibold">Live shift tracking →</span>
+            </Card>
+          </Link>
 
-          <Card className="p-4 border-slate-200/90 shadow-2xs bg-white rounded-2xl">
-            <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Completed Internships</span>
-            <div className="text-2xl font-black text-emerald-600 mt-1">{metrics.completedInternships}</div>
-            <span className="text-[10px] text-emerald-600 font-semibold">Graduated cohorts</span>
-          </Card>
+          <Link href="/admin/reports" className="block group">
+            <Card className="p-4 border-slate-200/90 shadow-2xs bg-white rounded-2xl transition-all duration-200 group-hover:border-emerald-400 group-hover:shadow-md cursor-pointer">
+              <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider group-hover:text-emerald-600 transition-colors">
+                Completed Internships
+              </span>
+              <div className="text-2xl font-black text-emerald-600 mt-1">{metrics.completedInternships}</div>
+              <span className="text-[10px] text-emerald-600 font-semibold">Cohort analytics →</span>
+            </Card>
+          </Link>
 
-          <Card className="p-4 border-slate-200/90 shadow-2xs bg-white rounded-2xl">
-            <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">Active Programs</span>
-            <div className="text-2xl font-black text-indigo-600 mt-1">{metrics.activePrograms}</div>
-            <span className="text-[10px] text-indigo-600 font-semibold">All published</span>
-          </Card>
+          <Link href="/admin/programs" className="block group">
+            <Card className="p-4 border-slate-200/90 shadow-2xs bg-white rounded-2xl transition-all duration-200 group-hover:border-indigo-400 group-hover:shadow-md cursor-pointer">
+              <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider group-hover:text-indigo-600 transition-colors">
+                Active Programs
+              </span>
+              <div className="text-2xl font-black text-indigo-600 mt-1">{metrics.activePrograms}</div>
+              <span className="text-[10px] text-indigo-600 font-semibold">Manage curriculum →</span>
+            </Card>
+          </Link>
 
-          <Card className="p-4 border-slate-200/90 shadow-2xs bg-white rounded-2xl">
-            <span className="text-[11px] font-bold text-cyan-700 uppercase tracking-wider">Enrollments</span>
-            <div className="text-2xl font-black text-cyan-600 mt-1">{metrics.enrollments}</div>
-            <span className="text-[10px] text-cyan-600 font-semibold">Current students</span>
-          </Card>
+          <Link href="/admin/registrations" className="block group">
+            <Card className="p-4 border-slate-200/90 shadow-2xs bg-white rounded-2xl transition-all duration-200 group-hover:border-cyan-400 group-hover:shadow-md cursor-pointer">
+              <span className="text-[11px] font-bold text-cyan-700 uppercase tracking-wider group-hover:text-cyan-600 transition-colors">
+                Enrollments
+              </span>
+              <div className="text-2xl font-black text-cyan-600 mt-1">{metrics.enrollments}</div>
+              <span className="text-[10px] text-cyan-600 font-semibold">Registered students →</span>
+            </Card>
+          </Link>
 
-          <Card className="p-4 border-slate-200/90 shadow-2xs bg-white rounded-2xl">
-            <span className="text-[11px] font-bold text-violet-700 uppercase tracking-wider">Attendance Compliance</span>
-            <div className="text-2xl font-black text-violet-600 mt-1">{metrics.attendanceCompliance}</div>
-            <span className="text-[10px] text-violet-600 font-semibold">Hours monitored</span>
-          </Card>
+          <Link href="/admin/attendance" className="block group">
+            <Card className="p-4 border-slate-200/90 shadow-2xs bg-white rounded-2xl transition-all duration-200 group-hover:border-violet-400 group-hover:shadow-md cursor-pointer">
+              <span className="text-[11px] font-bold text-violet-700 uppercase tracking-wider group-hover:text-violet-600 transition-colors">
+                Attendance Compliance
+              </span>
+              <div className="text-2xl font-black text-violet-600 mt-1">{metrics.attendanceCompliance}</div>
+              <span className="text-[10px] text-violet-600 font-semibold">View attendance log →</span>
+            </Card>
+          </Link>
 
-          <Card className="p-4 border-slate-200/90 shadow-2xs bg-white rounded-2xl">
-            <span className="text-[11px] font-bold text-rose-700 uppercase tracking-wider">Certificates</span>
-            <div className="text-2xl font-black text-rose-600 mt-1">{metrics.certificates}</div>
-            <span className="text-[10px] text-rose-600 font-semibold">Cryptographically signed</span>
-          </Card>
+          <Link href="/admin/documents" className="block group">
+            <Card className="p-4 border-slate-200/90 shadow-2xs bg-white rounded-2xl transition-all duration-200 group-hover:border-rose-400 group-hover:shadow-md cursor-pointer">
+              <span className="text-[11px] font-bold text-rose-700 uppercase tracking-wider group-hover:text-rose-600 transition-colors">
+                Certificates
+              </span>
+              <div className="text-2xl font-black text-rose-600 mt-1">{metrics.certificates}</div>
+              <span className="text-[10px] text-rose-600 font-semibold">Issued credentials →</span>
+            </Card>
+          </Link>
         </div>
 
         {/* Middle 2 Cards: Live Attendance Overview & Filters */}

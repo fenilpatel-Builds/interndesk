@@ -105,29 +105,12 @@ const INITIAL_TASKS: TaskItem[] = [
       "huntarmy001@gmail.com",
       "fenil.patel@akashtechnolabs.com",
       "priya.sharma@akashtechnolabs.com",
-      "harshit.mehta@akashtechnolabs.com",
     ],
     progress: 60,
     completionNotes: "Initial modules and document generation completed. Currently completing group coordination.",
     createdBy: "Akash Padhiyar (CEO)",
     createdAt: "2026-10-25T10:00:00.000Z",
     updatedAt: "2026-11-02T16:00:00.000Z",
-  },
-  {
-    id: "tsk-akt-05",
-    title: "Cloud Infrastructure CI/CD Pipeline Lab",
-    description: "Configure AWS ECS task definitions and zero-downtime blue/green deployment scripts.",
-    priority: "MEDIUM",
-    status: "PENDING",
-    dueAt: "2026-11-28",
-    technology: "Docker & AWS ECS",
-    assignedToEmail: "harshit.mehta@akashtechnolabs.com",
-    assignedToName: "Harshit Mehta",
-    isGroupTask: false,
-    progress: 0,
-    createdBy: "Akash Padhiyar (CEO)",
-    createdAt: "2026-10-28T10:00:00.000Z",
-    updatedAt: "2026-10-28T10:00:00.000Z",
   },
 ];
 
@@ -286,3 +269,4 @@ export class TaskStore {
 }
 
 export const taskStore = new TaskStore();
+

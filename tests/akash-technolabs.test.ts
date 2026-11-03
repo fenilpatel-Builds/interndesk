@@ -39,11 +39,11 @@ describe("Akash Technolabs Integration & Accounts", () => {
     expect(priyaAcc?.name).toBe("Priya Sharma");
     expect(priyaAcc?.role).toBe("STUDENT");
 
-    // 4. Harshit Mehta (Cloud & Python Intern)
-    const harshitAcc = credentialsStore.findByEmail("harshit.mehta@akashtechnolabs.com");
-    expect(harshitAcc).toBeDefined();
-    expect(harshitAcc?.name).toBe("Harshit Mehta");
-    expect(harshitAcc?.role).toBe("STUDENT");
+    // 4. Fenil Patel (huntarmy001@gmail.com)
+    const huntAcc = credentialsStore.findByEmail("huntarmy001@gmail.com");
+    expect(huntAcc).toBeDefined();
+    expect(huntAcc?.name).toBe("Fenil Patel");
+    expect(huntAcc?.role).toBe("STUDENT");
   });
 
   it("should have official offer letter matching the provided PDF format for Fenil Patel", () => {

@@ -302,8 +302,6 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
           { id: "usr-1793251075106-352", name: "Fenil Patel", email: "huntarmy001@gmail.com", technology: "AI/ML" },
           { id: "usr-student-fenil", name: "Fenil Patel", email: "fenil.patel@akashtechnolabs.com", technology: "AI/ML" },
           { id: "usr-student-priya", name: "Priya Sharma", email: "priya.sharma@akashtechnolabs.com", technology: "PHP / Laravel" },
-          { id: "usr-student-harshit", name: "Harshit Mehta", email: "harshit.mehta@akashtechnolabs.com", technology: "Cloud & DevOps" },
-          { id: "usr-1793106423924-750", name: "Akshat Nayak", email: "akshatnayak0910@gmail.com", technology: "Cybersecurity" },
         ]);
       });
   }, []);
