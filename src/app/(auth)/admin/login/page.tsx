@@ -29,7 +29,7 @@ import { isUserAdmin } from "@/lib/auth/admin-whitelist";
 export default function AdminLoginPage() {
   const router = useRouter();
 
-  const [email, setEmail] = useState("fenil8160@gmail.com");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [authMode, setAuthMode] = useState<"PASSWORD" | "OTP">("PASSWORD");
@@ -46,11 +46,30 @@ export default function AdminLoginPage() {
 
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  // Guarantee clean fields on load (prevents browser autofill leakage of previous credentials/OTPs)
+  useEffect(() => {
+    setEmail("");
+    setPassword("");
+    setOtpDigits(["", "", "", "", "", ""]);
+    setOtpSent(false);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+  }, []);
+
   useEffect(() => {
     if (resendCooldown <= 0) return;
     const timer = setInterval(() => setResendCooldown((p) => p - 1), 1000);
     return () => clearInterval(timer);
   }, [resendCooldown]);
+
+  const switchAuthMode = (mode: "PASSWORD" | "OTP") => {
+    setAuthMode(mode);
+    setPassword("");
+    setOtpDigits(["", "", "", "", "", ""]);
+    setOtpSent(false);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+  };
 
   const handleAdminPasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,7 +79,7 @@ export default function AdminLoginPage() {
     const cleanEmail = email.trim().toLowerCase();
     if (!isUserAdmin(cleanEmail)) {
       setErrorMessage(
-        "Access Denied: This administrative portal is restricted exclusively to authorized administrators (fenil8160@gmail.com). Please use the student portal for intern logins."
+        "Access Denied: This administrative portal is restricted exclusively to authorized administrators. Please use the student portal for intern logins."
       );
       setLoading(false);
       return;
@@ -72,6 +91,7 @@ export default function AdminLoginPage() {
         if (result.requiresOtp) {
           setAuthMode("OTP");
           setOtpSent(true);
+          setOtpDigits(["", "", "", "", "", ""]);
           if (result.forwardedTo) setForwardedTo(result.forwardedTo);
           setSuccessMessage(
             result.message || "2-Factor Authentication Code dispatched. Enter your 6-digit code below."
@@ -98,7 +118,7 @@ export default function AdminLoginPage() {
     const cleanEmail = email.trim().toLowerCase();
     if (!isUserAdmin(cleanEmail)) {
       setErrorMessage(
-        "Access Denied: OTP codes can only be requested for verified administrators (fenil8160@gmail.com)."
+        "Access Denied: Verification codes are issued exclusively to verified administrators."
       );
       return;
     }
@@ -106,11 +126,13 @@ export default function AdminLoginPage() {
     setLoading(true);
     setErrorMessage(null);
     setSuccessMessage(null);
+    setOtpDigits(["", "", "", "", "", ""]);
 
     try {
       const res = await sendEmailOtp(cleanEmail);
       if (res.success) {
         setOtpSent(true);
+        setOtpDigits(["", "", "", "", "", ""]);
         if (res.forwardedTo) setForwardedTo(res.forwardedTo);
         setSuccessMessage(res.message);
         setResendCooldown(30);
@@ -173,9 +195,15 @@ export default function AdminLoginPage() {
       const cleanEmail = email.trim().toLowerCase();
       const res = await verifyEmailOtp(cleanEmail, fullOtp);
       if (res.success) {
+        setOtpDigits(["", "", "", "", "", ""]);
+        setPassword("");
         router.push("/admin/dashboard");
       } else {
         setErrorMessage(res.error || res.message || "Invalid or expired admin verification code.");
+        setOtpDigits(["", "", "", "", "", ""]);
+        setTimeout(() => {
+          otpInputRefs.current[0]?.focus();
+        }, 100);
       }
     } catch {
       setErrorMessage("An unexpected verification error occurred.");
@@ -233,7 +261,7 @@ export default function AdminLoginPage() {
                 <span className="text-xs font-bold text-slate-800 leading-tight">
                   Whitelisted Access
                 </span>
-                <span className="text-[10px] text-slate-400 mt-0.5">fenil8160@gmail.com</span>
+                <span className="text-[10px] text-slate-400 mt-0.5">Executive Staff Only</span>
               </div>
 
               <div className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs flex flex-col items-center text-center">
@@ -299,10 +327,7 @@ export default function AdminLoginPage() {
               <div className="grid grid-cols-2 p-1 rounded-xl bg-slate-100 border border-slate-200/80 text-xs font-bold">
                 <button
                   type="button"
-                  onClick={() => {
-                    setAuthMode("PASSWORD");
-                    setErrorMessage(null);
-                  }}
+                  onClick={() => switchAuthMode("PASSWORD")}
                   className={`py-1.5 rounded-lg transition-all cursor-pointer ${
                     authMode === "PASSWORD"
                       ? "bg-white text-slate-900 shadow-2xs font-extrabold"
@@ -313,10 +338,7 @@ export default function AdminLoginPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setAuthMode("OTP");
-                    setErrorMessage(null);
-                  }}
+                  onClick={() => switchAuthMode("OTP")}
                   className={`py-1.5 rounded-lg transition-all cursor-pointer ${
                     authMode === "OTP"
                       ? "bg-white text-[#0F4C81] shadow-2xs font-extrabold"
@@ -343,7 +365,7 @@ export default function AdminLoginPage() {
 
               {/* PASSWORD LOGIN FORM */}
               {authMode === "PASSWORD" ? (
-                <form onSubmit={handleAdminPasswordLogin} className="space-y-4">
+                <form onSubmit={handleAdminPasswordLogin} autoComplete="off" className="space-y-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
                       Administrator Email <span className="text-red-500">*</span>
@@ -354,7 +376,8 @@ export default function AdminLoginPage() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
-                        placeholder="fenil8160@gmail.com"
+                        autoComplete="off"
+                        placeholder="admin@akashtechnolabs.com"
                         className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-red-500 text-slate-900 bg-white placeholder-slate-400 font-medium"
                       />
                       <Mail className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -369,8 +392,10 @@ export default function AdminLoginPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          setAuthMode("OTP");
-                          handleRequestOtp();
+                          switchAuthMode("OTP");
+                          if (email.trim()) {
+                            handleRequestOtp();
+                          }
                         }}
                         className="text-[11px] font-bold text-[#0F4C81] hover:underline cursor-pointer"
                       >
@@ -383,6 +408,7 @@ export default function AdminLoginPage() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
+                        autoComplete="new-password"
                         placeholder="Enter administrator password"
                         className="w-full pl-3.5 pr-10 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-red-500 text-slate-900 bg-white placeholder-slate-400 font-medium"
                       />
@@ -418,8 +444,9 @@ export default function AdminLoginPage() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
-                        placeholder="fenil8160@gmail.com"
-                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white font-medium"
+                        autoComplete="off"
+                        placeholder="admin@akashtechnolabs.com"
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white placeholder-slate-400 font-medium"
                       />
                       <Mail className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
@@ -436,7 +463,7 @@ export default function AdminLoginPage() {
                       <span>{loading ? "Sending OTP..." : "Send Verification OTP to Admin Email"}</span>
                     </Button>
                   ) : (
-                    <form onSubmit={handleVerifyOtp} className="space-y-3.5">
+                    <form onSubmit={handleVerifyOtp} autoComplete="off" className="space-y-3.5">
                       <div>
                         <label className="block text-xs font-bold text-slate-700 mb-2 text-center">
                           Enter 6-Digit Admin Security Code
@@ -450,6 +477,10 @@ export default function AdminLoginPage() {
                               }}
                               type="text"
                               inputMode="numeric"
+                              autoComplete="off"
+                              data-lpignore="true"
+                              data-1p-ignore="true"
+                              data-form-type="other"
                               maxLength={1}
                               value={digit}
                               onChange={(e) => handleOtpChange(idx, e.target.value)}
