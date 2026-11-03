@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { safeParseSession } from "./lib/auth/session-token";
+import { isUserAdmin } from "./lib/auth/admin-whitelist";
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
@@ -42,13 +43,21 @@ export async function proxy(request: NextRequest) {
   const userRole = parsedSession?.role || "STUDENT";
   const path = request.nextUrl.pathname;
 
+  // Allow dedicated admin login page
+  if (path === "/admin/login") {
+    if (parsedSession && (isUserAdmin(parsedSession.email) || userRole === "SUPER_ADMIN" || userRole === "ORG_OWNER" || userRole === "HR_COORDINATOR")) {
+      return NextResponse.redirect(new URL("/admin/dashboard", request.url));
+    }
+    return response;
+  }
+
   // Unauthenticated users attempting to access protected admin/workspace routes must sign in
-  if (!parsedSession && (path.startsWith("/workspace") || path.startsWith("/admin") || path.startsWith("/super-admin"))) {
+  if (!parsedSession && (path.startsWith("/workspace") || (path.startsWith("/admin") && path !== "/admin/login") || path.startsWith("/super-admin"))) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
   // Prevent students from accessing admin console
-  if ((path.startsWith("/workspace") || path.startsWith("/admin")) && userRole === "STUDENT") {
+  if ((path.startsWith("/workspace") || (path.startsWith("/admin") && path !== "/admin/login")) && userRole === "STUDENT") {
     return NextResponse.redirect(new URL("/unauthorized", request.url));
   }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { StudentTopbar } from "@/components/student/topbar";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -16,8 +16,14 @@ import {
   Clock,
   Sparkles,
   Trash2,
+  Users,
+  User,
+  Sliders,
+  Check,
+  Percent,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { parseClientSessionCookie } from "@/lib/auth/client-session";
 
 export interface TaskItem {
   id: string;
@@ -26,223 +32,263 @@ export interface TaskItem {
   priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
   status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "OVERDUE";
   dueAt: string;
-  assignedTo: string;
   technology: string;
-  progress: number;
+  assignedToEmail: string;
+  assignedToName: string;
+  isGroupTask: boolean;
+  groupId?: string;
+  groupName?: string;
+  groupMembers?: string[];
+  progress: number; // 0 to 100%
   completionNotes?: string;
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-const INITIAL_TASKS: TaskItem[] = [
+const FALLBACK_TASKS: TaskItem[] = [
   {
-    id: "t1",
+    id: "tsk-akt-01",
     title: "Implement Supabase Auth with Row Level Security",
     description: "Write zero-trust PostgreSQL policies ensuring students can query only their own profile and records.",
     priority: "HIGH",
     status: "COMPLETED",
-    dueAt: "2026-10-05",
-    assignedTo: "Fenil Patel",
+    dueAt: "2026-11-10",
     technology: "PostgreSQL & RLS",
+    assignedToEmail: "huntarmy001@gmail.com",
+    assignedToName: "Fenil Patel",
+    isGroupTask: false,
     progress: 100,
     completionNotes: "Completed RLS migrations with policy helper functions.",
+    createdBy: "Akash Padhiyar (CEO)",
   },
   {
-    id: "t2",
+    id: "tsk-akt-02",
     title: "Build Responsive Multi-Step Registration Flow",
     description: "Capture personal, academic, and internship specialization preferences with client & server Zod validation.",
     priority: "HIGH",
-    status: "COMPLETED",
-    dueAt: "2026-10-06",
-    assignedTo: "Fenil Patel",
+    status: "IN_PROGRESS",
+    dueAt: "2026-11-15",
     technology: "Next.js & Zod",
-    progress: 100,
-    completionNotes: "Created 4-step free registration flow with email OTP verification.",
+    assignedToEmail: "huntarmy001@gmail.com",
+    assignedToName: "Fenil Patel",
+    isGroupTask: false,
+    progress: 75,
+    completionNotes: "Created 4-step registration flow with email OTP verification.",
+    createdBy: "Akash Padhiyar (CEO)",
   },
   {
-    id: "t3",
-    title: "Real-Time Work Session & Timer Engine",
-    description: "Connect attendance timers, break switchers, and server-side duration computation.",
+    id: "tsk-akt-04",
+    title: "Full-Stack Enterprise Practicum Capstone — Group Project",
+    description: "Collaborative project to architect a microservices-based activity system with live attendance clocking, encrypted tokens, and public cryptographic credentials.",
     priority: "URGENT",
     status: "IN_PROGRESS",
-    dueAt: "2026-10-10",
-    assignedTo: "Fenil Patel",
-    technology: "TypeScript & Web Audio",
-    progress: 75,
-  },
-  {
-    id: "t4",
-    title: "Take Module 3 JavaScript & React Assessment",
-    description: "Complete the 30-minute timed MCQ test on state management, hooks, and async rendering.",
-    priority: "MEDIUM",
-    status: "PENDING",
-    dueAt: "2026-10-12",
-    assignedTo: "Fenil Patel",
-    technology: "React & Next.js",
-    progress: 0,
-  },
-  {
-    id: "t5",
-    title: "Submit Daily Work Log for Capstone Milestone",
-    description: "Itemize work blocks, time distribution, and push commits to GitHub.",
-    priority: "LOW",
-    status: "OVERDUE",
-    dueAt: "2026-10-04",
-    assignedTo: "Fenil Patel",
-    technology: "Git & Documentation",
-    progress: 40,
+    dueAt: "2026-11-25",
+    technology: "Next.js 16, TypeScript & Postgres",
+    assignedToEmail: "huntarmy001@gmail.com",
+    assignedToName: "Fenil Patel",
+    isGroupTask: true,
+    groupName: "Alpha Enterprise Architecture Squad",
+    groupMembers: [
+      "huntarmy001@gmail.com",
+      "fenil.patel@akashtechnolabs.com",
+      "student@akashtechnolabs.com",
+    ],
+    progress: 60,
+    completionNotes: "Architecture diagrams drafted and API contracts established.",
+    createdBy: "Akash Padhiyar (CEO)",
   },
 ];
 
 export default function StudentTasksPage() {
   const [viewMode, setViewMode] = useState<"BOARD" | "LIST">("BOARD");
+  const [scopeFilter, setScopeFilter] = useState<"ALL" | "PRIVATE" | "GROUP">("ALL");
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [userEmail, setUserEmail] = useState("");
   const [userName, setUserName] = useState("Me (Intern)");
+  const [loading, setLoading] = useState(true);
 
+  // Detail & Update Modal State
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
+  const [sliderProgress, setSliderProgress] = useState(0);
   const [notes, setNotes] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("ALL");
+  const [isUpdatingProgress, setIsUpdatingProgress] = useState(false);
 
-  // Create Task Modal State
+  // Create Task Modal State (Client notes/milestones)
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [newPriority, setNewPriority] = useState<TaskItem["priority"]>("MEDIUM");
   const [newStatus, setNewStatus] = useState<TaskItem["status"]>("PENDING");
-  const [newDue, setNewDue] = useState("2026-10-28");
+  const [newDue, setNewDue] = useState("2026-11-20");
   const [newTech, setNewTech] = useState("Full Stack Web");
-  const [newAssignee, setNewAssignee] = useState("Me (Intern)");
 
-  React.useEffect(() => {
+  const loadTasks = useCallback(async (email?: string) => {
     try {
-      const match = document.cookie.match(/(?:^|;\s*)(?:interndesk_user|akash_user)=([^;]+)/);
-      if (match) {
-        const raw = decodeURIComponent(match[1]).trim();
-        let payload: { email?: string; name?: string } | null = null;
-        if (raw.includes(".")) {
-          const parts = raw.split(".");
-          if (parts.length >= 2) {
-            let b64 = parts[0].replace(/-/g, "+").replace(/_/g, "/");
-            while (b64.length % 4) b64 += "=";
-            payload = JSON.parse(atob(b64));
-          }
-        } else {
-          payload = JSON.parse(raw);
-        }
-
-        if (payload?.email) {
-          const email = payload.email.toLowerCase().trim();
-          setUserEmail(email);
-          if (payload.name) {
-            setUserName(payload.name);
-            setNewAssignee(payload.name);
-          }
-
-          // User-scoped storage
-          const userKey = `interndesk_student_tasks_${email}`;
-          const stored = localStorage.getItem(userKey);
-          if (stored) {
-            try {
-              const parsed = JSON.parse(stored);
-              if (Array.isArray(parsed)) {
-                setTasks(parsed);
-                return;
-              }
-            } catch {
-              // Ignore
-            }
-          }
-          // For legacy / demo accounts like fenil.patel, provide initial tasks if empty
-          if (email.includes("fenil")) {
-            setTasks(INITIAL_TASKS);
-            localStorage.setItem(userKey, JSON.stringify(INITIAL_TASKS));
-            return;
-          }
-          // For any new registered student, start with 0 tasks!
-          setTasks([]);
+      const query = email ? `?email=${encodeURIComponent(email)}` : "";
+      const res = await fetch(`/api/tasks${query}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.tasks)) {
+          setTasks(data.tasks);
+          setLoading(false);
+          return;
         }
       }
     } catch {
-      // Ignored
+      // Fallback
     }
 
-    // Authoritative name from server session
-    fetch("/api/auth/me")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.user?.name) {
-          setUserName(data.user.name);
-          setNewAssignee(data.user.name);
-          if (data.user.email) setUserEmail(data.user.email);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  const saveTasks = (updated: TaskItem[]) => {
-    setTasks(updated);
+    // Local storage fallback if offline
     if (typeof window !== "undefined") {
       try {
-        const key = userEmail ? `interndesk_student_tasks_${userEmail}` : "interndesk_student_tasks_guest";
-        localStorage.setItem(key, JSON.stringify(updated));
-      } catch {
-        // Ignored
-      }
+        const key = email ? `interndesk_student_tasks_${email}` : "interndesk_student_tasks_fallback";
+        const stored = localStorage.getItem(key);
+        if (stored) {
+          setTasks(JSON.parse(stored));
+          setLoading(false);
+          return;
+        }
+      } catch {}
+    }
+
+    setTasks(FALLBACK_TASKS);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    const session = parseClientSessionCookie();
+    if (session?.email) {
+      setUserEmail(session.email);
+      if (session.name) setUserName(session.name);
+      loadTasks(session.email);
+    } else {
+      loadTasks();
+    }
+  }, [loadTasks]);
+
+  // Handle live progress and status updating via PATCH /api/tasks/[id]
+  const handleUpdateTaskProgress = async (
+    taskId: string,
+    newProgress: number,
+    forcedStatus?: TaskItem["status"],
+    customNotes?: string
+  ) => {
+    setIsUpdatingProgress(true);
+    const targetStatus =
+      forcedStatus ||
+      (newProgress >= 100
+        ? "COMPLETED"
+        : newProgress > 0
+        ? "IN_PROGRESS"
+        : "PENDING");
+
+    // Optimistically update state
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId
+          ? {
+              ...t,
+              progress: newProgress,
+              status: targetStatus,
+              completionNotes: customNotes !== undefined ? customNotes : t.completionNotes,
+            }
+          : t
+      )
+    );
+
+    if (selectedTask && selectedTask.id === taskId) {
+      setSelectedTask((prev) =>
+        prev
+          ? {
+              ...prev,
+              progress: newProgress,
+              status: targetStatus,
+              completionNotes: customNotes !== undefined ? customNotes : prev.completionNotes,
+            }
+          : null
+      );
+    }
+
+    try {
+      await fetch(`/api/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          progress: newProgress,
+          status: targetStatus,
+          completionNotes: customNotes !== undefined ? customNotes : notes,
+        }),
+      });
+    } catch (err) {
+      console.error("Failed to update task progress on server:", err);
+    } finally {
+      setIsUpdatingProgress(false);
     }
   };
 
-  const handleCreateTask = (e: React.FormEvent) => {
+  const handleOpenDetailModal = (task: TaskItem) => {
+    setSelectedTask(task);
+    setSliderProgress(task.progress || 0);
+    setNotes(task.completionNotes || "");
+  };
+
+  // Local helper to create a student personal milestone/ticket
+  const handleCreatePersonalTask = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
 
     const newTask: TaskItem = {
-      id: `task-${Date.now()}`,
+      id: `task-local-${Date.now()}`,
       title: newTitle.trim(),
-      description: newDesc.trim() || "Assigned task deliverable.",
+      description: newDesc.trim() || "Internship deliverable note.",
       priority: newPriority,
       status: newStatus,
       dueAt: newDue,
-      assignedTo: newAssignee,
       technology: newTech,
-      progress: newStatus === "COMPLETED" ? 100 : newStatus === "IN_PROGRESS" ? 60 : 0,
+      assignedToEmail: userEmail || "intern@akashtechnolabs.com",
+      assignedToName: userName || "Me (Intern)",
+      isGroupTask: false,
+      progress: newStatus === "COMPLETED" ? 100 : newStatus === "IN_PROGRESS" ? 50 : 0,
+      createdBy: `${userName} (Self-Assigned)`,
     };
 
-    saveTasks([newTask, ...tasks]);
+    const updated = [newTask, ...tasks];
+    setTasks(updated);
+    if (typeof window !== "undefined") {
+      try {
+        const key = userEmail ? `interndesk_student_tasks_${userEmail}` : "interndesk_student_tasks_fallback";
+        localStorage.setItem(key, JSON.stringify(updated));
+      } catch {}
+    }
+
     setIsNewTaskOpen(false);
     setNewTitle("");
     setNewDesc("");
     setNewStatus("PENDING");
   };
 
-  const handleUpdateStatus = (taskId: string, newStatus: TaskItem["status"]) => {
-    const updated = tasks.map((t) =>
-      t.id === taskId
-        ? {
-            ...t,
-            status: newStatus,
-            progress: newStatus === "COMPLETED" ? 100 : newStatus === "IN_PROGRESS" ? 60 : 0,
-            completionNotes: notes || t.completionNotes,
-          }
-        : t
-    );
-    saveTasks(updated);
-    setSelectedTask(null);
-  };
-
-  const handleDeleteTask = (taskId: string) => {
-    const updated = tasks.filter((t) => t.id !== taskId);
-    saveTasks(updated);
-    setSelectedTask(null);
-  };
-
   const filteredTasks = tasks.filter((t) => {
     const matchesSearch =
       t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.technology.toLowerCase().includes(searchQuery.toLowerCase());
+      t.technology.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (t.groupName && t.groupName.toLowerCase().includes(searchQuery.toLowerCase()));
+
     const matchesPriority = priorityFilter === "ALL" || t.priority === priorityFilter;
-    return matchesSearch && matchesPriority;
+
+    const matchesScope =
+      scopeFilter === "ALL" ||
+      (scopeFilter === "PRIVATE" && !t.isGroupTask) ||
+      (scopeFilter === "GROUP" && t.isGroupTask);
+
+    return matchesSearch && matchesPriority && matchesScope;
   });
+
+  const privateTasksCount = tasks.filter((t) => !t.isGroupTask).length;
+  const groupTasksCount = tasks.filter((t) => t.isGroupTask).length;
 
   const columns: { id: TaskItem["status"]; title: string; color: string }[] = [
     { id: "PENDING", title: "Pending", color: "bg-slate-100 text-slate-700" },
@@ -253,7 +299,7 @@ export default function StudentTasksPage() {
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
-      <StudentTopbar title="Task Management" />
+      <StudentTopbar title="Task Management" studentName={userName} />
 
       <main className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Header with Switcher and New Task Button */}
@@ -262,11 +308,11 @@ export default function StudentTasksPage() {
             <h2 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
               Internship Task Board
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold font-mono">
-                {tasks.length} Total ({filteredTasks.length} Visible)
+                {tasks.length} Assigned ({filteredTasks.length} Visible)
               </span>
             </h2>
             <p className="text-xs text-slate-500">
-              Manage your project deliverables, sprint tickets, and submit code solutions for review.
+              Assigned individual milestones and group project deliverables by Akash Technolabs supervisors.
             </p>
           </div>
 
@@ -274,10 +320,10 @@ export default function StudentTasksPage() {
             <Button
               size="sm"
               onClick={() => setIsNewTaskOpen(true)}
-              className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold rounded-xl shadow-md shadow-red-500/20 flex items-center gap-1.5 transition-transform hover:scale-[1.02] cursor-pointer"
+              className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold rounded-xl shadow-md shadow-red-500/20 flex items-center gap-1.5 transition-transform hover:scale-[1.02] cursor-pointer text-xs"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Create / Assign Task</span>
+              <span>Personal Note / Milestone</span>
             </Button>
 
             <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/80">
@@ -307,13 +353,60 @@ export default function StudentTasksPage() {
           </div>
         </div>
 
+        {/* Scope Filter Tabs: All, Private Tasks (Me Only), Group Projects */}
+        <div className="flex items-center gap-2 border-b border-slate-200 pb-2 flex-wrap">
+          <button
+            onClick={() => setScopeFilter("ALL")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              scopeFilter === "ALL"
+                ? "bg-white text-slate-900 shadow-2xs border border-slate-200"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <span>All Tasks</span>
+            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600">
+              {tasks.length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setScopeFilter("PRIVATE")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              scopeFilter === "PRIVATE"
+                ? "bg-white text-emerald-700 shadow-2xs border border-slate-200"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <User className="w-3.5 h-3.5 text-emerald-600" />
+            <span>My Private Tasks</span>
+            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-50 text-emerald-700 font-bold">
+              {privateTasksCount}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setScopeFilter("GROUP")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              scopeFilter === "GROUP"
+                ? "bg-white text-blue-700 shadow-2xs border border-slate-200"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <Users className="w-3.5 h-3.5 text-blue-600" />
+            <span>Group Projects</span>
+            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-blue-50 text-blue-700 font-bold">
+              {groupTasksCount}
+            </span>
+          </button>
+        </div>
+
         {/* Filter and Search Bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200/90 shadow-2xs">
           <div className="relative w-full sm:w-72">
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search tasks, tech, or tickets..."
+              placeholder="Search tasks, technology, group..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -352,21 +445,10 @@ export default function StudentTasksPage() {
                       <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
                         {col.title}
                       </span>
-                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white text-slate-600 shadow-2xs">
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white text-slate-600 shadow-2xs font-mono">
                         {colTasks.length}
                       </span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setNewStatus(col.id);
-                        setIsNewTaskOpen(true);
-                      }}
-                      className="p-1 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-white transition-all cursor-pointer"
-                      title={`Add task to ${col.title}`}
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
                   </div>
 
                   {/* Column Body */}
@@ -374,13 +456,23 @@ export default function StudentTasksPage() {
                     {colTasks.map((task) => (
                       <Card
                         key={task.id}
-                        onClick={() => {
-                          setSelectedTask(task);
-                          setNotes(task.completionNotes || "");
-                        }}
+                        onClick={() => handleOpenDetailModal(task)}
                         className="border-slate-200/90 shadow-2xs hover:border-blue-400 hover:shadow-md transition-all cursor-pointer rounded-xl bg-white p-4 space-y-3"
                       >
-                        <div className="flex items-start justify-between gap-2">
+                        {/* Scope Indicator Badge: Private vs Group */}
+                        <div className="flex items-center justify-between gap-1.5">
+                          {task.isGroupTask ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200/80">
+                              <Users className="w-3 h-3 text-blue-600" />
+                              <span>Group: {task.groupName || "Team Alpha"}</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+                              <User className="w-3 h-3 text-emerald-600" />
+                              <span>Private Task (Me Only)</span>
+                            </span>
+                          )}
+
                           <span
                             className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded ${
                               task.priority === "URGENT"
@@ -391,9 +483,6 @@ export default function StudentTasksPage() {
                             }`}
                           >
                             {task.priority}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-semibold">
-                            {formatDate(task.dueAt)}
                           </span>
                         </div>
 
@@ -406,15 +495,20 @@ export default function StudentTasksPage() {
                           </p>
                         </div>
 
-                        {/* Progress Bar */}
+                        {/* Interactive Progress Bar */}
                         <div className="space-y-1">
                           <div className="flex justify-between text-[10px] font-semibold text-slate-400">
-                            <span>Progress</span>
-                            <span>{task.progress}%</span>
+                            <span className="flex items-center gap-1">
+                              <span>Progress</span>
+                              <span className="text-[9px] font-mono font-bold text-slate-600">
+                                ({task.progress}%)
+                              </span>
+                            </span>
+                            <span>Due: {formatDate(task.dueAt)}</span>
                           </div>
                           <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                             <div
-                              className={`h-full rounded-full transition-all ${
+                              className={`h-full rounded-full transition-all duration-300 ${
                                 task.status === "COMPLETED"
                                   ? "bg-emerald-500"
                                   : task.status === "OVERDUE"
@@ -426,46 +520,36 @@ export default function StudentTasksPage() {
                           </div>
                         </div>
 
-                        {/* Card Footer: Tech, Quick Move & Delete */}
+                        {/* Quick Progress Snapper (25%, 50%, 75%, 100%) */}
+                        <div
+                          className="flex items-center gap-1 pt-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {[25, 50, 75, 100].map((pct) => (
+                            <button
+                              key={pct}
+                              type="button"
+                              onClick={() => handleUpdateTaskProgress(task.id, pct)}
+                              className={`flex-1 py-0.5 rounded text-[9px] font-bold font-mono transition-colors cursor-pointer border ${
+                                task.progress >= pct
+                                  ? "bg-blue-50 text-blue-700 border-blue-200"
+                                  : "bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100"
+                              }`}
+                              title={`Set progress to ${pct}%`}
+                            >
+                              {pct}%
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Card Footer: Tech Stack & Creator */}
                         <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500 font-medium">
-                          <span className="px-1.5 py-0.5 rounded bg-slate-50 text-slate-600 font-semibold">
+                          <span className="px-1.5 py-0.5 rounded bg-slate-50 text-slate-600 font-semibold truncate max-w-[140px]">
                             {task.technology}
                           </span>
-                          <div className="flex items-center gap-1.5">
-                            {task.status !== "COMPLETED" ? (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const next =
-                                    task.status === "PENDING"
-                                      ? "IN_PROGRESS"
-                                      : "COMPLETED";
-                                  handleUpdateStatus(task.id, next);
-                                }}
-                                className="px-2 py-0.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[10px] transition-colors cursor-pointer"
-                              >
-                                {task.status === "PENDING"
-                                  ? "Start →"
-                                  : "✓ Complete"}
-                              </button>
-                            ) : (
-                              <span className="text-emerald-600 font-bold text-[10px] flex items-center gap-0.5">
-                                <CheckCircle2 className="w-3 h-3" /> Done
-                              </span>
-                            )}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteTask(task.id);
-                              }}
-                              className="p-1 text-slate-300 hover:text-red-500 rounded transition-colors cursor-pointer"
-                              title="Delete task"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            {task.createdBy ? task.createdBy.split(" ")[0] : "Supervisor"}
+                          </span>
                         </div>
                       </Card>
                     ))}
@@ -476,17 +560,6 @@ export default function StudentTasksPage() {
                         <p className="text-xs font-semibold text-slate-400">
                           No {col.title.toLowerCase()} tasks
                         </p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setNewStatus(col.id);
-                            setIsNewTaskOpen(true);
-                          }}
-                          className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-700 cursor-pointer"
-                        >
-                          <Plus className="w-3 h-3" />
-                          <span>Add Task</span>
-                        </button>
                       </div>
                     )}
                   </div>
@@ -504,61 +577,72 @@ export default function StudentTasksPage() {
                 <CheckCircle2 className="w-7 h-7" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-base font-bold text-slate-900">No tasks found</h3>
+                <h3 className="text-base font-bold text-slate-900">No tasks in this view</h3>
                 <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
-                  Your task board is clear! Create your first internship milestone, assignment ticket, or project deliverable.
+                  Tasks assigned by your coordinator will appear here once allocated.
                 </p>
               </div>
-              <Button
-                onClick={() => setIsNewTaskOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl px-5 py-2.5 shadow-xs cursor-pointer inline-flex items-center gap-1.5"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Create First Task</span>
-              </Button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {filteredTasks.map((task) => (
                 <Card
                   key={task.id}
-                  className="border-slate-200/90 shadow-2xs hover:border-blue-300 transition-all rounded-2xl bg-white p-5 flex flex-col justify-between"
+                  className="border-slate-200/90 shadow-2xs hover:border-blue-300 transition-all rounded-2xl bg-white p-5 flex flex-col justify-between cursor-pointer space-y-3"
+                  onClick={() => handleOpenDetailModal(task)}
                 >
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        {task.isGroupTask ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                            <Users className="w-3 h-3 text-blue-600" />
+                            <span>Group: {task.groupName || "Team"}</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <User className="w-3 h-3 text-emerald-600" />
+                            <span>Private Task</span>
+                          </span>
+                        )}
+                        <StatusBadge status={task.status} />
+                      </div>
+                      <span className="text-xs font-mono font-bold text-slate-500">
+                        {task.progress}% Done
+                      </span>
+                    </div>
+
+                    <div>
                       <h3 className="text-sm font-bold text-slate-900 tracking-tight">
                         {task.title}
                       </h3>
-                      <StatusBadge status={task.status} />
+                      <p className="text-xs text-slate-600 leading-relaxed mt-1">
+                        {task.description}
+                      </p>
                     </div>
 
-                    <p className="text-xs text-slate-600 leading-relaxed">
-                      {task.description}
-                    </p>
-
                     <div className="flex items-center gap-3 text-xs text-slate-500 pt-1">
-                      <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px]">
+                      <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-semibold">
                         {task.technology}
                       </span>
                       <span>Due: {formatDate(task.dueAt)}</span>
                     </div>
                   </div>
 
-                  <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-500">
-                      Progress: {task.progress}%
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-xs rounded-xl"
-                      onClick={() => {
-                        setSelectedTask(task);
-                        setNotes(task.completionNotes || "");
-                      }}
-                    >
-                      Update Status
-                    </Button>
+                  {/* Progress Slider Bar */}
+                  <div className="space-y-1 pt-2 border-t border-slate-100">
+                    <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          task.status === "COMPLETED"
+                            ? "bg-emerald-500"
+                            : task.status === "OVERDUE"
+                            ? "bg-red-500"
+                            : "bg-blue-600"
+                        }`}
+                        style={{ width: `${task.progress}%` }}
+                      />
+                    </div>
                   </div>
                 </Card>
               ))}
@@ -566,18 +650,93 @@ export default function StudentTasksPage() {
           ))}
       </main>
 
-      {/* DETAIL / UPDATE MODAL */}
+      {/* DETAIL & INTERACTIVE PROGRESS MODAL */}
       {selectedTask && (
         <Modal
           isOpen={!!selectedTask}
           onClose={() => setSelectedTask(null)}
           title={selectedTask.title}
-          description={`Assigned to: ${selectedTask.assignedTo} • Due: ${formatDate(selectedTask.dueAt)}`}
+          description={`Assigned to: ${selectedTask.assignedToName} • Due: ${formatDate(selectedTask.dueAt)}`}
           maxWidth="md"
         >
           <div className="space-y-4 text-xs">
+            {/* Task Scope Banner */}
+            {selectedTask.isGroupTask ? (
+              <div className="p-3 rounded-xl bg-blue-50 border border-blue-200/90 text-blue-900 space-y-1.5">
+                <div className="flex items-center gap-1.5 font-bold text-xs">
+                  <Users className="w-4 h-4 text-blue-600" />
+                  <span>Group Project: {selectedTask.groupName || "Team Alpha"}</span>
+                </div>
+                <p className="text-[11px] text-blue-700">
+                  Shared collaborative project. Progress updates are synced live across all group members.
+                </p>
+                {Array.isArray(selectedTask.groupMembers) && selectedTask.groupMembers.length > 0 && (
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {selectedTask.groupMembers.map((m) => (
+                      <span
+                        key={m}
+                        className="px-2 py-0.5 rounded bg-white text-blue-800 font-mono text-[10px] border border-blue-200"
+                      >
+                        {m}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200/90 text-emerald-900 space-y-1">
+                <div className="flex items-center gap-1.5 font-bold text-xs">
+                  <User className="w-4 h-4 text-emerald-600" />
+                  <span>Individual Private Task (Strictly Visible to You &amp; Admin)</span>
+                </div>
+                <p className="text-[11px] text-emerald-700">
+                  This task is strictly assigned to {selectedTask.assignedToName} ({selectedTask.assignedToEmail}). Other interns cannot see or access this task.
+                </p>
+              </div>
+            )}
+
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 leading-relaxed">
               {selectedTask.description}
+            </div>
+
+            {/* Interactive Progress Slider */}
+            <div className="space-y-2 p-3.5 rounded-xl bg-white border border-slate-200 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <label className="font-bold text-slate-800 flex items-center gap-1.5">
+                  <Sliders className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Update Work Completion Percentage</span>
+                </label>
+                <span className="text-sm font-black font-mono text-blue-600">
+                  {sliderProgress}%
+                </span>
+              </div>
+
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value={sliderProgress}
+                onChange={(e) => setSliderProgress(Number(e.target.value))}
+                className="w-full accent-blue-600 cursor-pointer"
+              />
+
+              <div className="flex items-center justify-between gap-1 pt-1">
+                {[0, 25, 50, 75, 100].map((step) => (
+                  <button
+                    key={step}
+                    type="button"
+                    onClick={() => setSliderProgress(step)}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold font-mono transition-colors cursor-pointer border ${
+                      sliderProgress === step
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                    }`}
+                  >
+                    {step}%
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="space-y-1.5">
@@ -586,7 +745,7 @@ export default function StudentTasksPage() {
               </label>
               <textarea
                 rows={3}
-                placeholder="Add pull request link, deployment URL, or notes..."
+                placeholder="Add pull request link, deployment URL, or sprint notes..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 className="w-full rounded-xl border border-slate-300 p-2.5 text-xs focus:outline-none focus:border-blue-600"
@@ -597,28 +756,29 @@ export default function StudentTasksPage() {
               <div className="flex items-center gap-1.5">
                 <Button
                   size="sm"
-                  variant="outline"
-                  onClick={() => handleUpdateStatus(selectedTask.id, "IN_PROGRESS")}
-                  disabled={selectedTask.status === "IN_PROGRESS"}
+                  onClick={() =>
+                    handleUpdateTaskProgress(
+                      selectedTask.id,
+                      sliderProgress,
+                      sliderProgress >= 100 ? "COMPLETED" : "IN_PROGRESS",
+                      notes
+                    )
+                  }
+                  disabled={isUpdatingProgress}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold"
                 >
-                  Mark In Progress
+                  {isUpdatingProgress ? "Syncing..." : "Save Progress & Status"}
                 </Button>
-                <Button
-                  size="sm"
-                  onClick={() => handleUpdateStatus(selectedTask.id, "COMPLETED")}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                  disabled={selectedTask.status === "COMPLETED"}
-                >
-                  Mark Completed
-                </Button>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteTask(selectedTask.id)}
-                  className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer ml-1"
-                  title="Delete Task"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {selectedTask.status !== "COMPLETED" && (
+                  <Button
+                    size="sm"
+                    onClick={() => handleUpdateTaskProgress(selectedTask.id, 100, "COMPLETED", notes)}
+                    disabled={isUpdatingProgress}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    Mark 100% Done
+                  </Button>
+                )}
               </div>
 
               <Button variant="outline" size="sm" onClick={() => setSelectedTask(null)}>
@@ -629,15 +789,15 @@ export default function StudentTasksPage() {
         </Modal>
       )}
 
-      {/* CREATE / ASSIGN TASK MODAL */}
+      {/* CREATE PERSONAL NOTE / MILESTONE MODAL */}
       <Modal
         isOpen={isNewTaskOpen}
         onClose={() => setIsNewTaskOpen(false)}
-        title="Create & Assign New Task"
-        description="Assign a project deliverable or sprint milestone to an intern, student, or team member."
+        title="Create Personal Note / Milestone"
+        description="Add a work task or deliverable note to your personal board."
         maxWidth="md"
       >
-        <form onSubmit={handleCreateTask} className="space-y-4 text-xs">
+        <form onSubmit={handleCreatePersonalTask} className="space-y-4 text-xs">
           <div>
             <label className="block font-semibold text-slate-700 mb-1">
               Task Title <span className="text-red-500">*</span>
@@ -654,7 +814,7 @@ export default function StudentTasksPage() {
 
           <div>
             <label className="block font-semibold text-slate-700 mb-1">
-              Description & Acceptance Criteria
+              Description &amp; Acceptance Criteria
             </label>
             <textarea
               rows={3}
@@ -676,7 +836,6 @@ export default function StudentTasksPage() {
                 <option value="PENDING">Pending</option>
                 <option value="IN_PROGRESS">In Progress</option>
                 <option value="COMPLETED">Completed</option>
-                <option value="OVERDUE">Overdue</option>
               </select>
             </div>
 
@@ -705,33 +864,6 @@ export default function StudentTasksPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Technology / Stack</label>
-              <input
-                type="text"
-                placeholder="e.g. Next.js, Node, PyTorch"
-                value={newTech}
-                onChange={(e) => setNewTech(e.target.value)}
-                className="w-full rounded-xl border border-slate-300 p-2 text-xs focus:outline-none focus:border-blue-600"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Assignee</label>
-              <select
-                value={newAssignee}
-                onChange={(e) => setNewAssignee(e.target.value)}
-                className="w-full rounded-xl border border-slate-300 p-2 text-xs focus:outline-none focus:border-blue-600 bg-white"
-              >
-                <option value={newAssignee}>{newAssignee} (Assigned to Me)</option>
-                <option value="Mentor Reviewer">Engineering Lead (Sprint Mentor)</option>
-                <option value="Company Admin">Corporate Administrator</option>
-                <option value="Dean / Supervisor">Academic Supervisor</option>
-              </select>
-            </div>
-          </div>
-
           <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
             <Button
               type="button"
@@ -746,7 +878,7 @@ export default function StudentTasksPage() {
               size="sm"
               className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold rounded-xl shadow-md shadow-red-500/20 cursor-pointer"
             >
-              Create Task
+              Add to Board
             </Button>
           </div>
         </form>

@@ -225,6 +225,13 @@ export default function LoginPage() {
             </nav>
 
             <div className="flex items-center gap-3">
+              <Link
+                href="/admin/login"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-700 transition-colors shadow-2xs"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-[#0F4C81]" />
+                <span>Admin Portal</span>
+              </Link>
               <Link href="/register">
                 <Button
                   size="sm"
@@ -594,6 +601,18 @@ export default function LoginPage() {
                   className="font-bold text-[#E52329] hover:underline"
                 >
                   Register now
+                </Link>
+              </div>
+
+              {/* Dedicated Administrator Portal Gateway */}
+              <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium px-1">
+                <span>Institute Administrator?</span>
+                <Link
+                  href="/admin/login"
+                  className="font-bold text-[#0F4C81] hover:text-[#0C3D68] hover:underline inline-flex items-center gap-1"
+                >
+                  <Shield className="w-3 h-3 text-[#0F4C81]" />
+                  Admin Login Portal →
                 </Link>
               </div>
             </div>

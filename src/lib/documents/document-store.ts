@@ -330,6 +330,114 @@ export class DocumentStore {
     saveToDisk(this.docs);
     return doc;
   }
+
+  public hasStudentRequestedInternshipLetter(email?: string): boolean {
+    if (!email) return false;
+    this.docs = loadFromDisk();
+    const cleanEmail = email.toLowerCase().trim();
+    return this.docs.some(
+      (d) =>
+        d.document_type === "INTERNSHIP_LETTER" &&
+        d.recipient_email?.toLowerCase().trim() === cleanEmail
+    );
+  }
+
+  public getInternshipLetterForStudent(email?: string): OfficialOfferLetter | null {
+    if (!email) return null;
+    this.docs = loadFromDisk();
+    const cleanEmail = email.toLowerCase().trim();
+    return (
+      this.docs.find(
+        (d) =>
+          d.document_type === "INTERNSHIP_LETTER" &&
+          d.recipient_email?.toLowerCase().trim() === cleanEmail
+      ) || null
+    );
+  }
+
+  public requestOneTimeInternshipLetter(params: {
+    studentEmail: string;
+    studentName: string;
+    purpose?: string;
+    technology?: string;
+    salutation?: "Mr." | "Ms.";
+  }): OfficialOfferLetter {
+    this.docs = loadFromDisk();
+    const cleanEmail = params.studentEmail.toLowerCase().trim();
+
+    // Strict constraint: ONE-TIME REQUEST ONLY
+    const existing = this.docs.find(
+      (d) =>
+        d.document_type === "INTERNSHIP_LETTER" &&
+        d.recipient_email?.toLowerCase().trim() === cleanEmail
+    );
+
+    if (existing) {
+      throw new Error(
+        "Single-Issuance Policy: You have already requested your official internship letter. Each student is permitted only one internship letter."
+      );
+    }
+
+    const docCount = this.docs.filter((d) => d.document_type === "INTERNSHIP_LETTER").length + 1;
+    const documentNumber = `ID-AKT-2026-INTR${docCount.toString().padStart(2, "0")}`;
+    const verificationCode = `VRF-AKT-${Date.now().toString().slice(-4)}-INT`;
+    const cleanTech = params.technology?.trim() || "AI & Full Stack Enterprise Systems";
+    const cleanSalutation = params.salutation || "Mr.";
+
+    const newDoc: OfficialOfferLetter = {
+      id: `doc-akt-intern-${Date.now()}`,
+      organization_id: "org-akash-01",
+      organization_name: "Akash Technolabs",
+      member_id: cleanEmail,
+      recipient_email: cleanEmail,
+      document_number: documentNumber,
+      document_type: "INTERNSHIP_LETTER",
+      title: "OFFICIAL INTERNSHIP APPOINTMENT & ENROLLMENT LETTER",
+      recipient_name: `${cleanSalutation} ${params.studentName.replace(/^(Mr\.|Ms\.)\s*/i, "").trim()}`,
+      recipient_role: `${cleanTech} Intern`,
+      issued_date: new Date()
+        .toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        })
+        .replace(/\//g, "-"),
+      status: "ISSUED",
+      approval_status: "APPROVED",
+      approved_by: "Akash Padhiyar",
+      approved_at: new Date().toISOString(),
+      verification_code: verificationCode,
+      template_type: "INTERNSHIP APPOINTMENT LETTER",
+      description_content: `This officially certifies that ${cleanSalutation} ${params.studentName} has been enrolled in the corporate internship program at Akash Technolabs.`,
+      template_data: {
+        salutation: cleanSalutation,
+        student_name: params.studentName.trim(),
+        organization_name: "Akash Technolabs",
+        organization_type: "CORPORATE",
+        organization_logo: "/images/akash-technolabs-header-logo.png",
+        organization_address:
+          "202, Aarya Arcade, Above Passport Seva Kendra, Mithakhali Six Road, Navrangpura, Ahmedabad-09.",
+        organization_website: "www.akashtechnolabs.com",
+        contact_email: "info@akashtechnolabs.com",
+        contact_phone: "+91 99786 21654",
+        signatory_name: "Akash Padhiyar",
+        signatory_title: "CEO",
+        program_or_track: `${cleanTech} Practicum`,
+        commencement_date: "1st October 2026",
+        continue_until_date: "30th April 2027",
+        technology: cleanTech,
+        brand_color: "#dc2626",
+        secondary_color: "#1e3a8a",
+        is_akash_template: true,
+        validity: "Active / Verified Credential",
+      },
+      created_at: new Date().toISOString(),
+    };
+
+    this.docs.unshift(newDoc);
+    saveToDisk(this.docs);
+    return newDoc;
+  }
 }
 
 export const documentStore = new DocumentStore();

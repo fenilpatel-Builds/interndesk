@@ -171,6 +171,14 @@ export default function StudentDocumentsPage() {
   const [currentUser, setCurrentUser] = useState(() => parseClientSessionCookie());
   const [studentName, setStudentName] = useState(() => parseClientSessionCookie()?.name || "Fenil Patel");
   const [apiDocs, setApiDocs] = useState<IssuedDocument[]>([]);
+  const [internshipRequestStatus, setInternshipRequestStatus] = useState<{
+    hasRequested: boolean;
+    canRequest: boolean;
+    letter: IssuedDocument | null;
+  } | null>(null);
+  const [showRequestDialog, setShowRequestDialog] = useState(false);
+  const [isRequesting, setIsRequesting] = useState(false);
+  const [requestMessage, setRequestMessage] = useState<string | null>(null);
 
   React.useEffect(() => {
     const session = parseClientSessionCookie();
@@ -185,6 +193,24 @@ export default function StudentDocumentsPage() {
       .then((data) => {
         if (active && Array.isArray(data.documents) && data.documents.length > 0) {
           setApiDocs(data.documents);
+        }
+      })
+      .catch(() => {});
+
+    // Check one-time internship letter status
+    fetch("/api/student/documents/internship-letter")
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Failed to load letter status"))))
+      .then((data) => {
+        if (active && data) {
+          setInternshipRequestStatus(data);
+          if (data.letter) {
+            setApiDocs((prev) => {
+              if (prev.some((d) => d.id === data.letter.id || d.document_number === data.letter.document_number)) {
+                return prev;
+              }
+              return [data.letter, ...prev];
+            });
+          }
         }
       })
       .catch(() => {});
@@ -228,8 +254,36 @@ export default function StudentDocumentsPage() {
   const approvedCount = docsList.filter((d) => d.status === "ISSUED").length;
   const pendingCount = docsList.filter((d) => d.status === "PENDING_APPROVAL").length;
 
+  const handleConfirmInternshipLetterRequest = async () => {
+    setIsRequesting(true);
+    setRequestMessage(null);
+    try {
+      const res = await fetch("/api/student/documents/internship-letter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (data.success && data.document) {
+        setInternshipRequestStatus({
+          hasRequested: true,
+          canRequest: false,
+          letter: data.document,
+        });
+        setApiDocs((prev) => [data.document, ...prev.filter((d) => d.id !== data.document.id)]);
+        setShowRequestDialog(false);
+      } else {
+        setRequestMessage(data.error || "Failed to issue internship letter");
+      }
+    } catch {
+      setRequestMessage("Network error requesting internship letter.");
+    } finally {
+      setIsRequesting(false);
+    }
+  };
+
   const handleDirectStudentDownload = async (doc: IssuedDocument) => {
-    if (doc.document_type === "OFFER_LETTER") {
+    if (doc.document_type === "OFFER_LETTER" || doc.document_type === "INTERNSHIP_LETTER") {
       const isFemale = isFemaleCandidate(doc.recipient_name, (doc.template_data as any)?.salutation);
       const cleanTech = deriveTrackTechnology(
         doc.recipient_role,
@@ -243,7 +297,7 @@ export default function StudentDocumentsPage() {
         commencementDate: (doc.template_data as any)?.commencement_date || "3rd July 2026",
         continueUntilDate: (doc.template_data as any)?.continue_until_date || "30th April 2027",
         letterDate: doc.issued_date,
-        title: doc.title,
+        title: doc.document_type === "INTERNSHIP_LETTER" ? "INTERNSHIP APPOINTMENT LETTER" : doc.title,
       });
     } else {
       setSelectedStudioDoc(doc);
@@ -341,6 +395,66 @@ export default function StudentDocumentsPage() {
             </button>
           ))}
         </div>
+
+        {/* One-Time Official Internship Letter Request Banner */}
+        {(activeTab === "ALL" || activeTab === "INTERN") && (
+          <div className="p-4 sm:p-5 rounded-2xl border border-slate-800 bg-gradient-to-r from-slate-900 via-[#0B192C] to-[#0F4C81] text-white shadow-md relative overflow-hidden">
+            <div className="absolute right-0 top-0 translate-x-12 -translate-y-8 w-60 h-60 bg-[#E52329]/15 rounded-full blur-3xl pointer-events-none" />
+            <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="space-y-1 max-w-xl">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-red-500/20 text-red-200 border border-red-500/30">
+                    Official Appointment Letter
+                  </span>
+                  <span className="text-[11px] text-slate-300 font-semibold">
+                    • Strictly 1 Issuance Per Student
+                  </span>
+                </div>
+                <h3 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-2">
+                  Akash Technolabs Official Internship Letter
+                </h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  {internshipRequestStatus?.hasRequested
+                    ? `Your official internship appointment letter has been issued and permanently verified on ${
+                        internshipRequestStatus.letter?.issued_date || "record"
+                      }. Under institutional policy, each intern can obtain this letter exactly once.`
+                    : "Request your certified appointment and enrollment letter endorsed by CEO Akash Padhiyar. This official document is permitted exactly one time per enrolled student."}
+                </p>
+              </div>
+
+              <div className="shrink-0 flex items-center gap-2 w-full md:w-auto">
+                {internshipRequestStatus?.hasRequested ? (
+                  <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        internshipRequestStatus.letter &&
+                        handleDirectStudentDownload(internshipRequestStatus.letter)
+                      }
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl h-9 px-4 shadow-xs cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download Letter (PDF)</span>
+                    </Button>
+                    <div className="px-3 py-1.5 rounded-xl bg-white/10 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>1-Time Limit Used</span>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={() => setShowRequestDialog(true)}
+                    className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold text-xs rounded-xl h-9 px-5 shadow-md shadow-red-500/20 transition-transform hover:scale-[1.02] cursor-pointer flex items-center gap-2 w-full md:w-auto justify-center"
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>Request Internship Letter (1-Time)</span>
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 2-Column Layout: Documents List (Left) & Certificate Preview (Right) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -734,6 +848,71 @@ export default function StudentDocumentsPage() {
                 className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold"
               >
                 Done
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ONE-TIME INTERNSHIP LETTER CONFIRMATION MODAL */}
+      {showRequestDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-red-50 text-[#E52329] border border-red-100 flex items-center justify-center">
+              <FileText className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-black text-slate-900 tracking-tight">
+                Request Official Internship Letter
+              </h3>
+              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                You are requesting your official Akash Technolabs Internship Appointment Letter.
+                Under institutional compliance rules, <strong>students can generate this letter exactly ONE time</strong>.
+                Once generated, it will be permanently attached to your portfolio with an immutable cryptographic ID.
+              </p>
+            </div>
+
+            {requestMessage && (
+              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700">
+                {requestMessage}
+              </div>
+            )}
+
+            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 space-y-1">
+              <div className="flex justify-between">
+                <span className="font-semibold text-slate-500">Student Name:</span>
+                <span className="font-bold text-slate-800">{studentName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-semibold text-slate-500">Issuer Authority:</span>
+                <span className="font-bold text-slate-800">Akash Technolabs</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-semibold text-slate-500">Allowed Issuances:</span>
+                <span className="font-bold text-red-600">Strictly 1 Time Only</span>
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowRequestDialog(false);
+                  setRequestMessage(null);
+                }}
+                disabled={isRequesting}
+                className="rounded-xl text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleConfirmInternshipLetterRequest}
+                disabled={isRequesting}
+                className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold rounded-xl text-xs px-4"
+              >
+                {isRequesting ? "Generating Official Letter..." : "Confirm & Issue (1-Time)"}
               </Button>
             </div>
           </div>

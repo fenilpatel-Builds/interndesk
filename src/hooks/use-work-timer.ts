@@ -76,6 +76,24 @@ interface StoredTimerData {
   clockOutVerification?: PunchVerificationData | null;
 }
 
+function notifyLiveAttendance(data: {
+  status: SessionStatus;
+  clockInTime?: string;
+  clockOutTime?: string;
+  currentBreak?: string;
+  breakDurationMinutes?: number;
+  workedMinutes?: number;
+}) {
+  if (typeof window === "undefined") return;
+  try {
+    fetch("/api/attendance/live", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }).catch(() => {});
+  } catch {}
+}
+
 // Gentle Web Audio API chime (zero external dependencies)
 function playChime(type: "start" | "break" | "stop") {
   if (typeof window === "undefined") return;
@@ -285,6 +303,7 @@ export function useWorkTimer() {
     const isPunchData = verification && typeof verification === "object" && "hash" in (verification as object);
     const validVerification = isPunchData ? (verification as PunchVerificationData) : null;
     playChime("start");
+    notifyLiveAttendance({ status: "WORKING", clockInTime: timeStr });
 
     setState((prev) => ({
       ...prev,
@@ -315,6 +334,10 @@ export function useWorkTimer() {
     const timeNow = Date.now();
     const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     playChime("break");
+    notifyLiveAttendance({
+      status: "ON_BREAK",
+      currentBreak: type === "LUNCH" ? "Lunch Break" : type === "COFFEE" ? "Coffee Break" : "Short Rest",
+    });
 
     setState((prev) => {
       const updatedTimeline = prev.timeline.map((entry, idx) => {
@@ -361,6 +384,7 @@ export function useWorkTimer() {
     const timeNow = Date.now();
     const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     playChime("start");
+    notifyLiveAttendance({ status: "WORKING" });
 
     setState((prev) => {
       const addedBreak = prev.breakStartTime
@@ -406,6 +430,11 @@ export function useWorkTimer() {
     const isPunchData = verification && typeof verification === "object" && "hash" in (verification as object);
     const validVerification = isPunchData ? (verification as PunchVerificationData) : null;
     playChime("stop");
+    notifyLiveAttendance({
+      status: "COMPLETED",
+      clockOutTime: timeStr,
+      workedMinutes: Math.max(1, Math.floor(currentElapsedSeconds / 60)),
+    });
 
     setState((prev) => {
       const totalSecondsSinceStart = prev.startTime
