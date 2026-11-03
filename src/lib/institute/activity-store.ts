@@ -11,8 +11,15 @@ import { INSTITUTE_CONFIG } from "./config";
 import { createAdminClient } from "../supabase/admin";
 
 const DATA_DIR = path.join(process.cwd(), "src", "lib", "data");
-const ACTIVITIES_FILE = path.join(DATA_DIR, "institute-activities.json");
-const SUBMISSIONS_FILE = path.join(DATA_DIR, "activity-submissions.json");
+const isTestEnv = process.env.NODE_ENV === "test" || process.env.VITEST === "true";
+const ACTIVITIES_FILE = path.join(
+  DATA_DIR,
+  isTestEnv ? "institute-activities.test.json" : "institute-activities.json"
+);
+const SUBMISSIONS_FILE = path.join(
+  DATA_DIR,
+  isTestEnv ? "activity-submissions.test.json" : "activity-submissions.json"
+);
 
 function ensureDirectoryExists() {
   if (!fs.existsSync(DATA_DIR)) {
