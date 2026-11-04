@@ -31,135 +31,35 @@ import {
   deriveTrackTechnology,
 } from "@/lib/documents/akash-pdf-generator";
 
-const STUDENT_DOCUMENTS: IssuedDocument[] = [
-  {
-    id: "doc-akash-offer-fenil",
-    organization_id: "org-akash-01",
-    member_id: "usr-student-fenil",
-    document_number: "ID-AKT-2026-0701",
-    document_type: "OFFER_LETTER",
-    title: "Official Internship Offer Letter",
-    recipient_name: "Mr. Fenil Patel",
-    recipient_role: "AI/ML Intern",
-    issued_date: "01-07-2026",
-    status: "ISSUED",
-    approval_status: "APPROVED",
-    approved_by: "Akash Padhiyar",
-    approved_at: "2026-07-01T09:00:00Z",
-    verification_code: "VRF-AKT-0701-OFR",
-    template_data: {
-      organization_name: "Akash Technolabs",
-      organization_type: "CORPORATE",
-      organization_logo: "/images/akash-technolabs-header-logo.png",
-      organization_address: "202, Aarya Arcade, Above Passport Seva Kendra, Mithakhali Six Road, Navrangpura, Ahmedabad-09.",
-      organization_website: "www.akashtechnolabs.com",
-      contact_email: "info@akashtechnolabs.com",
-      contact_phone: "+91 99786 21654",
-      signatory_name: "Akash Padhiyar",
-      signatory_title: "CEO",
-      program_or_track: "AI/ML technology",
-      commencement_date: "3rd July 2026",
-      continue_until_date: "30th April 2027",
-      technology: "AI/ML technology",
-      brand_color: "#dc2626",
-      secondary_color: "#1e3a8a",
-      is_akash_template: true,
-      validity: "Active / Verified",
-    },
-    created_at: "2026-07-01T09:00:00Z",
-  },
-  {
-    id: "doc-intern",
-    organization_id: "org-akash-01",
-    member_id: "usr-student-fenil",
-    document_number: "ID-AKT-2026-INTR01",
-    document_type: "INTERNSHIP_LETTER",
-    title: "Internship Appointment & Enrollment Letter",
-    recipient_name: "Mr. Fenil Patel",
-    recipient_role: "AI/ML & Full Stack Intern",
-    issued_date: "03-10-2026",
-    status: "ISSUED",
-    verification_code: "VRF-AKT-5591-INT",
-    template_data: {
-      organization_name: "Akash Technolabs",
-      organization_type: "CORPORATE",
-      signatory_name: "Akash Padhiyar",
-      signatory_title: "CEO",
-      program_or_track: "AI/ML & Enterprise Full Stack Practicum",
-      validity: "Active / Verified",
-      is_akash_template: true,
-    },
-    created_at: "2026-10-03T11:00:00Z",
-  },
-  {
-    id: "doc-cert",
-    organization_id: "org-akash-01",
-    member_id: "usr-student-fenil",
-    document_number: "ID-AKT-2026-CERT01",
-    document_type: "COMPLETION_CERTIFICATE",
-    title: "Certificate of Internship Excellence",
-    recipient_name: "Fenil Patel",
-    recipient_role: "AI/ML Intern",
-    issued_date: "15-10-2026",
-    status: "ISSUED",
-    verification_code: "VRF-AKT-8918-EXC",
-    template_data: {
-      organization_name: "Akash Technolabs",
-      organization_type: "CORPORATE",
-      signatory_name: "Akash Padhiyar",
-      signatory_title: "CEO",
-      program_or_track: "AI & Full Stack Cloud Platform Internship",
-      grade_or_evaluation: "Grade: Outstanding (98.4% Efficiency)",
-      validity: "Verified Permanent Credential",
-      is_akash_template: true,
-    },
-    created_at: "2026-10-15T12:00:00Z",
-  },
-  {
-    id: "doc-transcript",
-    organization_id: "org-akash-01",
-    member_id: "usr-student-fenil",
-    document_number: "ID-AKT-2026-TRSC01",
-    document_type: "PERFORMANCE_TRANSCRIPT",
-    title: "Official Internship Performance Transcript & Skill Dossier",
-    recipient_name: "Fenil Patel",
-    recipient_role: "AI/ML Intern",
-    issued_date: "22-10-2026",
-    status: "ISSUED",
-    verification_code: "VRF-AKT-9812-TRSC",
-    template_data: {
-      organization_name: "Akash Technolabs",
-      organization_type: "CORPORATE",
-      signatory_name: "Akash Padhiyar",
-      signatory_title: "CEO",
-      program_or_track: "AI & Full Stack Cloud Platform Internship",
-      grade_or_evaluation: "Grade: Outstanding (Grade Point 4.0 / 4.0)",
-      validity: "Verified Permanent Credential",
-      template_theme: "CLASSIC_IVY",
-      is_akash_template: true,
-      verified_work_hours: 160,
-      attendance_percentage: 99.2,
-      mentor_scores: {
-        technical: 98,
-        communication: 96,
-        initiative: 100,
-        overall: 98.4,
-      },
-      completed_tasks_count: 14,
-      assessments_passed_count: 2,
-      verified_skills: [
-        "Python & Machine Learning",
-        "Next.js 15 & React 19",
-        "TypeScript Strict Mode",
-        "REST & GraphQL Microservices",
-        "PostgreSQL & Multi-Tenancy",
-        "CI/CD Automated Pipelines",
-        "Cryptographic Credential Verification",
-      ],
-    },
-    created_at: "2026-10-22T08:00:00Z",
-  },
-];
+const STUDENT_DOCUMENTS: IssuedDocument[] = [];
+
+function formatDateOrdinal(isoDate: string): string {
+  if (!isoDate) return "";
+  try {
+    const parts = isoDate.split("-");
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const monthIdx = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const months = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+      ];
+      const suffix =
+        day === 1 || day === 21 || day === 31
+          ? "st"
+          : day === 2 || day === 22
+          ? "nd"
+          : day === 3 || day === 23
+          ? "rd"
+          : "th";
+      return `${day}${suffix} ${months[monthIdx]} ${year}`;
+    }
+    return isoDate;
+  } catch {
+    return isoDate;
+  }
+}
 
 import { parseClientSessionCookie } from "@/lib/auth/client-session";
 
@@ -174,11 +74,20 @@ export default function StudentDocumentsPage() {
   const [internshipRequestStatus, setInternshipRequestStatus] = useState<{
     hasRequested: boolean;
     canRequest: boolean;
+    isApproved: boolean;
     letter: IssuedDocument | null;
   } | null>(null);
   const [showRequestDialog, setShowRequestDialog] = useState(false);
   const [isRequesting, setIsRequesting] = useState(false);
   const [requestMessage, setRequestMessage] = useState<string | null>(null);
+
+  // Form states for Student Offer Letter Request
+  const [selectedTrack, setSelectedTrack] = useState("PHP / Laravel Web Development");
+  const [customTrack, setCustomTrack] = useState("");
+  const [startDate, setStartDate] = useState("2026-07-03");
+  const [endDate, setEndDate] = useState("2027-04-30");
+  const [salutation, setSalutation] = useState<"Mr." | "Ms.">("Mr.");
+  const [purpose, setPurpose] = useState("Academic Practicum & Degree Verification");
 
   React.useEffect(() => {
     const session = parseClientSessionCookie();
@@ -191,7 +100,7 @@ export default function StudentDocumentsPage() {
     fetch("/api/student/documents")
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Failed to load"))))
       .then((data) => {
-        if (active && Array.isArray(data.documents) && data.documents.length > 0) {
+        if (active && Array.isArray(data.documents)) {
           setApiDocs(data.documents);
         }
       })
@@ -202,13 +111,24 @@ export default function StudentDocumentsPage() {
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Failed to load letter status"))))
       .then((data) => {
         if (active && data) {
-          setInternshipRequestStatus(data);
-          if (data.letter) {
+          const doc = data.document || data.letter || null;
+          const isAppr =
+            !!data.isApproved ||
+            (doc ? doc.status === "ISSUED" || doc.approval_status === "APPROVED" : false);
+          setInternshipRequestStatus({
+            hasRequested: !!data.hasRequested,
+            canRequest: !data.hasRequested,
+            isApproved: isAppr,
+            letter: doc,
+          });
+          if (doc) {
             setApiDocs((prev) => {
-              if (prev.some((d) => d.id === data.letter.id || d.document_number === data.letter.document_number)) {
-                return prev;
+              if (prev.some((d) => d.id === doc.id || d.document_number === doc.document_number)) {
+                return prev.map((d) =>
+                  d.id === doc.id || d.document_number === doc.document_number ? doc : d
+                );
               }
-              return [data.letter, ...prev];
+              return [doc, ...prev];
             });
           }
         }
@@ -235,8 +155,10 @@ export default function StudentDocumentsPage() {
   });
 
   const filteredDocs = docsList.filter((doc) => {
-    if (activeTab === "OFFER") return doc.document_type === "OFFER_LETTER";
-    if (activeTab === "INTERN") return doc.document_type === "INTERNSHIP_LETTER";
+    if (activeTab === "OFFER")
+      return doc.document_type === "OFFER_LETTER" || doc.title.toLowerCase().includes("offer");
+    if (activeTab === "INTERN")
+      return doc.document_type === "INTERNSHIP_LETTER" || doc.title.toLowerCase().includes("internship");
     if (activeTab === "CERT") return doc.document_type === "COMPLETION_CERTIFICATE";
     if (activeTab === "TRANSCRIPT") return doc.document_type === "PERFORMANCE_TRANSCRIPT";
     return true;
@@ -258,22 +180,38 @@ export default function StudentDocumentsPage() {
     setIsRequesting(true);
     setRequestMessage(null);
     try {
+      const chosenTrack =
+        selectedTrack === "OTHER" ? customTrack.trim() || "Information Technology" : selectedTrack;
+      const formattedStart = formatDateOrdinal(startDate) || "3rd July 2026";
+      const formattedEnd = formatDateOrdinal(endDate) || "30th April 2027";
+
       const res = await fetch("/api/student/documents/internship-letter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify({
+          studentEmail: currentUser?.email,
+          studentName: studentName,
+          salutation,
+          technology: chosenTrack,
+          commencementDate: formattedStart,
+          continueUntilDate: formattedEnd,
+          purpose,
+        }),
       });
       const data = await res.json();
       if (data.success && data.document) {
+        const isAppr =
+          data.document.status === "ISSUED" || data.document.approval_status === "APPROVED";
         setInternshipRequestStatus({
           hasRequested: true,
           canRequest: false,
+          isApproved: isAppr,
           letter: data.document,
         });
         setApiDocs((prev) => [data.document, ...prev.filter((d) => d.id !== data.document.id)]);
         setShowRequestDialog(false);
       } else {
-        setRequestMessage(data.error || "Failed to issue internship letter");
+        setRequestMessage(data.error || "Failed to submit internship letter request");
       }
     } catch {
       setRequestMessage("Network error requesting internship letter.");
@@ -397,33 +335,74 @@ export default function StudentDocumentsPage() {
         </div>
 
         {/* One-Time Official Internship Letter Request Banner */}
-        {(activeTab === "ALL" || activeTab === "INTERN") && (
-          <div className="p-4 sm:p-5 rounded-2xl border border-slate-800 bg-gradient-to-r from-slate-900 via-[#0B192C] to-[#0F4C81] text-white shadow-md relative overflow-hidden">
+        {(activeTab === "ALL" || activeTab === "INTERN" || activeTab === "OFFER") && (
+          <div
+            className={`p-4 sm:p-5 rounded-2xl border text-white shadow-md relative overflow-hidden ${
+              internshipRequestStatus?.hasRequested && !internshipRequestStatus?.isApproved
+                ? "border-amber-800 bg-gradient-to-r from-slate-900 via-[#1C180B] to-[#3B2C0D]"
+                : internshipRequestStatus?.hasRequested && internshipRequestStatus?.isApproved
+                ? "border-emerald-800 bg-gradient-to-r from-slate-900 via-[#0B231A] to-[#0A3D28]"
+                : "border-slate-800 bg-gradient-to-r from-slate-900 via-[#0B192C] to-[#0F4C81]"
+            }`}
+          >
             <div className="absolute right-0 top-0 translate-x-12 -translate-y-8 w-60 h-60 bg-[#E52329]/15 rounded-full blur-3xl pointer-events-none" />
             <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div className="space-y-1 max-w-xl">
                 <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-red-500/20 text-red-200 border border-red-500/30">
-                    Official Appointment Letter
-                  </span>
+                  {internshipRequestStatus?.hasRequested && !internshipRequestStatus?.isApproved ? (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-amber-400" />
+                      Pending Admin Approval
+                    </span>
+                  ) : internshipRequestStatus?.hasRequested && internshipRequestStatus?.isApproved ? (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                      Approved &amp; Issued
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-red-500/20 text-red-200 border border-red-500/30">
+                      Official Appointment Letter
+                    </span>
+                  )}
                   <span className="text-[11px] text-slate-300 font-semibold">
                     • Strictly 1 Issuance Per Student
                   </span>
                 </div>
                 <h3 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-2">
-                  Akash Technolabs Official Internship Letter
+                  Akash Technolabs Official Internship Offer Letter
                 </h3>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  {internshipRequestStatus?.hasRequested
-                    ? `Your official internship appointment letter has been issued and permanently verified on ${
-                        internshipRequestStatus.letter?.issued_date || "record"
-                      }. Under institutional policy, each intern can obtain this letter exactly once.`
-                    : "Request your certified appointment and enrollment letter endorsed by CEO Akash Padhiyar. This official document is permitted exactly one time per enrolled student."}
+                  {internshipRequestStatus?.hasRequested && !internshipRequestStatus?.isApproved ? (
+                    <>
+                      Your internship letter request has been submitted for{" "}
+                      <strong className="text-amber-300">
+                        {(internshipRequestStatus.letter?.template_data as any)?.technology ||
+                          internshipRequestStatus.letter?.recipient_role ||
+                          "your selected track"}
+                      </strong>{" "}
+                      ({((internshipRequestStatus.letter?.template_data as any)?.commencement_date || "Start")} to{" "}
+                      {((internshipRequestStatus.letter?.template_data as any)?.continue_until_date || "End")}).
+                      The signed letterhead will be unlocked for preview and download immediately once approved by Akash Technolabs Admin.
+                    </>
+                  ) : internshipRequestStatus?.hasRequested && internshipRequestStatus?.isApproved ? (
+                    <>
+                      Your official internship appointment letter was verified and approved by CEO Akash Padhiyar on{" "}
+                      <strong className="text-emerald-300">{internshipRequestStatus.letter?.issued_date || "record"}</strong>.
+                      Under institutional policy, each intern can obtain this letter exactly once.
+                    </>
+                  ) : (
+                    "Request your certified appointment and enrollment letter endorsed by CEO Akash Padhiyar. You can select your technical field and commencement dates. This official document is permitted exactly one time per enrolled student."
+                  )}
                 </p>
               </div>
 
               <div className="shrink-0 flex items-center gap-2 w-full md:w-auto">
-                {internshipRequestStatus?.hasRequested ? (
+                {internshipRequestStatus?.hasRequested && !internshipRequestStatus?.isApproved ? (
+                  <div className="px-3.5 py-2 rounded-xl bg-amber-500/20 text-amber-200 border border-amber-500/40 text-xs font-bold flex items-center gap-2 shadow-xs">
+                    <Lock className="w-4 h-4 text-amber-300" />
+                    <span>Awaiting Admin Verification</span>
+                  </div>
+                ) : internshipRequestStatus?.hasRequested && internshipRequestStatus?.isApproved ? (
                   <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                     <Button
                       size="sm"
@@ -854,23 +833,38 @@ export default function StudentDocumentsPage() {
         </div>
       )}
 
-      {/* ONE-TIME INTERNSHIP LETTER CONFIRMATION MODAL */}
+      {/* ONE-TIME INTERNSHIP LETTER REQUEST MODAL */}
       {showRequestDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
-            <div className="w-12 h-12 rounded-2xl bg-red-50 text-[#E52329] border border-red-100 flex items-center justify-center">
-              <FileText className="w-6 h-6" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 my-8">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-red-50 text-[#E52329] border border-red-100 flex items-center justify-center shrink-0">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 tracking-tight">
+                    Request Official Internship Offer Letter
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Akash Technolabs • Single-Issuance Credential
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowRequestDialog(false);
+                  setRequestMessage(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <div>
-              <h3 className="text-base font-black text-slate-900 tracking-tight">
-                Request Official Internship Letter
-              </h3>
-              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                You are requesting your official Akash Technolabs Internship Appointment Letter.
-                Under institutional compliance rules, <strong>students can generate this letter exactly ONE time</strong>.
-                Once generated, it will be permanently attached to your portfolio with an immutable cryptographic ID.
-              </p>
-            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Customize your technical track and placement dates below. Your request will be routed directly to Akash Technolabs administration for verification. Once approved, your official letterhead PDF will unlock for instant download.
+            </p>
 
             {requestMessage && (
               <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700">
@@ -878,18 +872,122 @@ export default function StudentDocumentsPage() {
               </div>
             )}
 
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 space-y-1">
-              <div className="flex justify-between">
-                <span className="font-semibold text-slate-500">Student Name:</span>
-                <span className="font-bold text-slate-800">{studentName}</span>
+            <div className="space-y-3.5 pt-1">
+              {/* Salutation & Candidate Name */}
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Salutation *
+                  </label>
+                  <select
+                    value={salutation}
+                    onChange={(e) => setSalutation(e.target.value as "Mr." | "Ms.")}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white font-medium focus:outline-none focus:ring-2 focus:ring-red-500"
+                  >
+                    <option value="Mr.">Mr.</option>
+                    <option value="Ms.">Ms.</option>
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Student / Candidate Name
+                  </label>
+                  <input
+                    type="text"
+                    value={studentName}
+                    readOnly
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-100 text-slate-700 font-semibold cursor-not-allowed"
+                  />
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="font-semibold text-slate-500">Issuer Authority:</span>
-                <span className="font-bold text-slate-800">Akash Technolabs</span>
+
+              {/* Technical Track / Field Selection */}
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                  Technology Track / Field *
+                </label>
+                <select
+                  value={selectedTrack}
+                  onChange={(e) => setSelectedTrack(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white font-medium focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="PHP / Laravel Web Development">PHP / Laravel Web Development</option>
+                  <option value="AI & Machine Learning Engineering">AI &amp; Machine Learning Engineering</option>
+                  <option value="Full-Stack Web Development (Next.js & React)">Full-Stack Web Development (Next.js &amp; React)</option>
+                  <option value="Python & Data Science">Python &amp; Data Science</option>
+                  <option value="Cloud Computing & DevOps">Cloud Computing &amp; DevOps</option>
+                  <option value="Software Quality Assurance (QA) & Testing">Software Quality Assurance (QA) &amp; Testing</option>
+                  <option value="Cybersecurity & Systems Engineering">Cybersecurity &amp; Systems Engineering</option>
+                  <option value="Mobile App Development (Flutter / Android)">Mobile App Development (Flutter / Android)</option>
+                  <option value="OTHER">Other / Custom Technology...</option>
+                </select>
+
+                {selectedTrack === "OTHER" && (
+                  <input
+                    type="text"
+                    placeholder="Enter custom technology (e.g. Java Microservices)"
+                    value={customTrack}
+                    onChange={(e) => setCustomTrack(e.target.value)}
+                    className="mt-2 w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                )}
               </div>
-              <div className="flex justify-between">
-                <span className="font-semibold text-slate-500">Allowed Issuances:</span>
-                <span className="font-bold text-red-600">Strictly 1 Time Only</span>
+
+              {/* Dates: Commencement & Continue Until */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Starting Date (Commencement) *
+                  </label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white font-medium focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1 font-mono">
+                    Official: {formatDateOrdinal(startDate)}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Ending Date (Continue Until) *
+                  </label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white font-medium focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1 font-mono">
+                    Official: {formatDateOrdinal(endDate)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Purpose */}
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                  Practicum / Verification Purpose
+                </label>
+                <input
+                  type="text"
+                  value={purpose}
+                  onChange={(e) => setPurpose(e.target.value)}
+                  placeholder="Academic Practicum & Degree Verification"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 font-medium focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+              </div>
+
+              {/* Institutional Notice Box */}
+              <div className="p-3 rounded-2xl bg-amber-50/80 border border-amber-200 text-[11px] text-amber-900 space-y-1">
+                <div className="flex items-center gap-1.5 font-bold text-amber-800">
+                  <Lock className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Administrative Verification &amp; Single-Issuance</span>
+                </div>
+                <p className="text-[10.5px] leading-relaxed text-amber-800/90">
+                  This letter is strictly restricted to <strong>1 issuance per student</strong>. Upon submission, it will be placed in the Admin Verification Queue. The official letterhead and PDF download will unlock as soon as Akash Technolabs Admin accepts the request.
+                </p>
               </div>
             </div>
 
@@ -902,7 +1000,7 @@ export default function StudentDocumentsPage() {
                   setRequestMessage(null);
                 }}
                 disabled={isRequesting}
-                className="rounded-xl text-xs"
+                className="rounded-xl text-xs font-semibold cursor-pointer"
               >
                 Cancel
               </Button>
@@ -910,9 +1008,9 @@ export default function StudentDocumentsPage() {
                 size="sm"
                 onClick={handleConfirmInternshipLetterRequest}
                 disabled={isRequesting}
-                className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold rounded-xl text-xs px-4"
+                className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold rounded-xl text-xs px-5 shadow-md shadow-red-500/20 cursor-pointer"
               >
-                {isRequesting ? "Generating Official Letter..." : "Confirm & Issue (1-Time)"}
+                {isRequesting ? "Submitting for Admin Approval..." : "Submit Request to Admin (1-Time)"}
               </Button>
             </div>
           </div>

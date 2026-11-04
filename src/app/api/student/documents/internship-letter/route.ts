@@ -22,10 +22,15 @@ export async function GET(req: NextRequest) {
 
     const hasRequested = documentStore.hasStudentRequestedInternshipLetter(email);
     const document = documentStore.getInternshipLetterForStudent(email);
+    const isApproved = document
+      ? document.status === "ISSUED" || document.approval_status === "APPROVED"
+      : false;
 
     return NextResponse.json({
       success: true,
       hasRequested,
+      isApproved,
+      canRequest: !hasRequested,
       document,
     });
   } catch (err: unknown) {
@@ -50,7 +55,9 @@ export async function POST(req: NextRequest) {
     const name = body.studentName || session?.name || "Student Intern";
     const purpose = body.purpose || "Academic Verification & Degree Practicum Credit";
     const technology = body.technology || "AI & Full Stack Enterprise Systems";
-    const salutation = body.salutation || "Mr.";
+    const salutation = body.salutation === "Ms." ? "Ms." : "Mr.";
+    const commencementDate = body.commencementDate || "3rd July 2026";
+    const continueUntilDate = body.continueUntilDate || "30th April 2027";
 
     if (!email) {
       return NextResponse.json({ error: "Student email is required" }, { status: 400 });
@@ -72,11 +79,14 @@ export async function POST(req: NextRequest) {
       purpose,
       technology,
       salutation,
+      commencementDate,
+      continueUntilDate,
+      immediateApproval: false, // Strict: Requires Admin Verification & Approval
     });
 
     return NextResponse.json({
       success: true,
-      message: "Official Internship Letter successfully requested and issued.",
+      message: "Official Internship Offer Letter request submitted. Awaiting verification and sign-off by Akash Technolabs Admin.",
       document,
     });
   } catch (err: unknown) {

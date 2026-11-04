@@ -1,10 +1,14 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterAll } from "vitest";
 import { taskStore } from "../src/lib/tasks/task-store";
 import { documentStore } from "../src/lib/documents/document-store";
 import { liveAttendanceStore } from "../src/lib/attendance/live-attendance-store";
 
 describe("One-Time Internship Letter Issuance & Re-Request Gate", () => {
   const testStudentEmail = `test_student_${Date.now()}_${Math.random().toString(36).substring(2, 7)}@akashtechnolabs.com`;
+
+  afterAll(() => {
+    documentStore.deleteDocumentsForStudent(testStudentEmail);
+  });
 
   it("permits initial one-time internship letter request and records issuance", () => {
     // Ensure clean state for test student

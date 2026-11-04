@@ -25,13 +25,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    let docs = documentStore.getForStudent(email, name);
-
-    // If student has no specific documents yet, return the official Akash Technolabs documents
-    if (docs.length === 0) {
-      const allDocs = documentStore.getAll();
-      docs = allDocs.filter((d) => d.organization_id === "org-akash-01");
-    }
+    const docs = documentStore.getForStudent(email, name);
 
     return NextResponse.json({ documents: docs });
   } catch (err: unknown) {
