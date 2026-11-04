@@ -439,3 +439,250 @@ export function generateLetterContent(params: GenerateLetterParams): GeneratedLe
   };
 }
 
+export interface MarkdownToken {
+  text: string;
+  bold: boolean;
+  italic?: boolean;
+}
+
+/**
+ * Parses markdown bold (**text** or <b>text</b> or <strong>text</strong>) and italic (*text*)
+ * and optionally matches specific bold keywords (like student name, company name).
+ * Strips all raw markdown symbols (**, *, <b>, etc.) and returns structured tokens.
+ */
+export function tokenizeMarkdown(
+  text: string,
+  boldKeywords: string[] = []
+): MarkdownToken[] {
+  if (!text) return [];
+
+  const rawTokens: MarkdownToken[] = [];
+  // Match bold patterns: **...**, <b>...</b>, <strong>...</strong>
+  const boldRegex = /(\*\*[\s\S]*?\*\*|<b>[\s\S]*?<\/b>|<strong>[\s\S]*?<\/strong>)/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = boldRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      const reg = text.substring(lastIndex, match.index);
+      rawTokens.push({ text: reg, bold: false });
+    }
+    const inner = match[1]
+      .replace(/^\*\*|\*\*$/g, "")
+      .replace(/^<b>|<\/b>$/gi, "")
+      .replace(/^<strong>|<\/strong>$/gi, "");
+    rawTokens.push({ text: inner, bold: true });
+    lastIndex = boldRegex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    rawTokens.push({ text: text.substring(lastIndex), bold: false });
+  }
+
+  // Second pass: handle italic (*...* or <i>...</i> or <em>...</em>) on tokens
+  const italicProcessed: MarkdownToken[] = [];
+  const italicRegex = /(\*[\s\S]*?\*|<i>[\s\S]*?<\/i>|<em>[\s\S]*?<\/em>)/g;
+
+  for (const tok of rawTokens) {
+    if (tok.bold) {
+      italicProcessed.push(tok);
+      continue;
+    }
+    let itLastIdx = 0;
+    let itMatch: RegExpExecArray | null;
+    while ((itMatch = italicRegex.exec(tok.text)) !== null) {
+      if (itMatch.index > itLastIdx) {
+        italicProcessed.push({
+          text: tok.text.substring(itLastIdx, itMatch.index),
+          bold: false,
+        });
+      }
+      const innerItalic = itMatch[1]
+        .replace(/^\*|\*$/g, "")
+        .replace(/^<i>|<\/i>$/gi, "")
+        .replace(/^<em>|<\/em>$/gi, "");
+      italicProcessed.push({ text: innerItalic, bold: false, italic: true });
+      itLastIdx = italicRegex.lastIndex;
+    }
+    if (itLastIdx < tok.text.length) {
+      italicProcessed.push({
+        text: tok.text.substring(itLastIdx),
+        bold: false,
+      });
+    }
+  }
+
+  // Third pass: match explicit bold keywords on non-bold tokens
+  const validKeywords = boldKeywords.filter((k) => k && k.trim().length > 1);
+  if (validKeywords.length === 0) {
+    return italicProcessed.filter((t) => t.text.length > 0);
+  }
+
+  const finalTokens: MarkdownToken[] = [];
+  for (const tok of italicProcessed) {
+    if (tok.bold || tok.italic) {
+      finalTokens.push(tok);
+      continue;
+    }
+
+    let remaining = tok.text;
+    while (remaining.length > 0) {
+      let earliestIdx = -1;
+      let matchedKw = "";
+
+      for (const kw of validKeywords) {
+        const idx = remaining.indexOf(kw);
+        if (idx !== -1 && (earliestIdx === -1 || idx < earliestIdx)) {
+          earliestIdx = idx;
+          matchedKw = kw;
+        }
+      }
+
+      if (earliestIdx !== -1) {
+        if (earliestIdx > 0) {
+          finalTokens.push({
+            text: remaining.slice(0, earliestIdx),
+            bold: false,
+          });
+        }
+        finalTokens.push({ text: matchedKw, bold: true });
+        remaining = remaining.slice(earliestIdx + matchedKw.length);
+      } else {
+        finalTokens.push({ text: remaining, bold: false });
+        break;
+      }
+    }
+  }
+
+  return finalTokens.filter((t) => t.text.length > 0);
+}
+
+export interface CleanPastedTextVariables {
+  salutation: "Mr." | "Ms.";
+  studentName: string;
+  internshipPosition: string;
+  technology: string;
+  commencementDate: string;
+  continueUntilDate: string;
+  letterDate: string;
+  mentorName?: string;
+  mentorDesignation?: string;
+}
+
+export interface CleanPastedTextResult {
+  detectedTitle?: string;
+  detectedDate?: string;
+  cleanedText: string;
+}
+
+/**
+ * Cleans pasted custom drafts by:
+ * - Detecting and extracting document title (e.g. **INTERNSHIP MENTOR ASSIGNMENT LETTER**)
+ * - Detecting and extracting date (e.g. **Date:** 04-11-2026)
+ * - Removing redundant company banner text ("AKASH TECHNOLABS") and bottom sign-off ("For Akash Technolabs")
+ * - Resolving duplicate salutations (e.g. "Mr./Ms. Mr." -> "Mr.")
+ * - Replacing bracketed placeholders ([Intern Name], [Mentor Name], [Technology/Domain], etc.)
+ */
+export function cleanAndSanitizePastedText(
+  rawText: string,
+  vars: CleanPastedTextVariables
+): CleanPastedTextResult {
+  if (!rawText || !rawText.trim()) {
+    return { cleanedText: "" };
+  }
+
+  let text = rawText.trim();
+  let detectedTitle: string | undefined = undefined;
+  let detectedDate: string | undefined = undefined;
+
+  // Split into lines for header inspection
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+
+  for (let i = 0; i < Math.min(lines.length, 6); i++) {
+    const rawLine = lines[i];
+    // Strip bold asterisks for regex matching
+    const cleanLine = rawLine.replace(/^\*\*|\*\*$/g, "").replace(/^<b>|<\/b>$/gi, "").trim();
+
+    if (/^akash\s*technolabs$/i.test(cleanLine)) {
+      // Redundant company name - already in letterhead banner
+      text = text.replace(rawLine, "");
+    } else if (
+      /letter|certificate|noc|recommendation|agreement|appointment/i.test(cleanLine) &&
+      !detectedTitle &&
+      cleanLine.length < 90 &&
+      !cleanLine.toLowerCase().startsWith("subject:") &&
+      !cleanLine.toLowerCase().startsWith("to,")
+    ) {
+      detectedTitle = cleanLine;
+      text = text.replace(rawLine, "");
+    } else if (/^date\s*:\s*(.+)$/i.test(cleanLine.replace(/\*+/g, ""))) {
+      const dateContent = cleanLine.replace(/\*+/g, "").trim();
+      const match = dateContent.match(/^date\s*:\s*(.+)$/i);
+      if (match && match[1]) {
+        const val = match[1].trim();
+        if (!val.includes("[") && !val.includes("YYYY")) {
+          detectedDate = val;
+        }
+      }
+      text = text.replace(rawLine, "");
+    }
+  }
+
+  const cleanStudent = (vars.studentName || "[Intern Name]")
+    .replace(/^(Mr\.|Ms\.)\s*/i, "")
+    .trim();
+  const sal = vars.salutation || "Mr.";
+
+  // Fix double salutations e.g. "Mr./Ms. Mr.", "Mr./Ms.", "Mr/Ms [Intern Name]"
+  text = text.replace(
+    /(?:Mr\.\s*\/\s*Ms\.|Mr\.\/Ms\.|Mr\/Ms)\s*(?:Mr\.|Ms\.)?\s*/gi,
+    sal + " "
+  );
+
+  // Substitute placeholders
+  text = text
+    .replace(/\[Intern Name\]/gi, cleanStudent)
+    .replace(/\{studentName\}/gi, cleanStudent)
+    .replace(/\[Candidate Name\]/gi, cleanStudent)
+    .replace(/\[Mentor Name\]/gi, vars.mentorName || "Designated Senior Technical Lead")
+    .replace(/\{mentorName\}/gi, vars.mentorName || "Designated Senior Technical Lead")
+    .replace(/\[Mentor Designation\]/gi, vars.mentorDesignation || "Project Guide & Tech Lead")
+    .replace(/\{mentorDesignation\}/gi, vars.mentorDesignation || "Project Guide & Tech Lead")
+    .replace(/\[Technology\/Domain\]/gi, vars.technology || "AI/ML Systems")
+    .replace(/\[Department\/Technology\]/gi, vars.technology || "AI/ML Systems")
+    .replace(/\{technology\}/gi, vars.technology || "AI/ML Systems")
+    .replace(/\[Internship Role\]/gi, vars.internshipPosition || "AI/ML Intern")
+    .replace(/\{position\}/gi, vars.internshipPosition || "AI/ML Intern")
+    .replace(/\[Joining Date\]/gi, vars.commencementDate || "[Joining Date]")
+    .replace(/\[Commencement Date\]/gi, vars.commencementDate || "[Joining Date]")
+    .replace(/\{startDate\}/gi, vars.commencementDate || "[Joining Date]")
+    .replace(/\[End Date\]/gi, vars.continueUntilDate || "[End Date]")
+    .replace(/\[Completion Date\]/gi, vars.continueUntilDate || "[End Date]")
+    .replace(/\[Relieving Date\]/gi, vars.continueUntilDate || "[End Date]")
+    .replace(/\{endDate\}/gi, vars.continueUntilDate || "[End Date]")
+    .replace(/\[DD Month YYYY\]/gi, vars.letterDate || "04-11-2026")
+    .replace(/\{letterDate\}/gi, vars.letterDate || "04-11-2026")
+    .replace(/\[Authorized Person\]/gi, "Akash Padhiyar")
+    .replace(/\[Designation\]/gi, "CEO");
+
+  // Remove redundant closing block "For Akash Technolabs" and "Authorized Signatory" at the bottom
+  text = text.replace(
+    /\n\s*\*{0,2}For Akash Technolabs\*{0,2}(?:\s*\n\s*Authorized Signatory[\s\S]*)?$/i,
+    ""
+  );
+
+  // Normalize excessive empty lines and inline multiple spaces
+  text = text
+    .split("\n")
+    .map((l) => l.replace(/[ \t]{2,}/g, " ").trimEnd())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  return {
+    detectedTitle,
+    detectedDate,
+    cleanedText: text,
+  };
+}
+

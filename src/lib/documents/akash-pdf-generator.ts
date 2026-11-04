@@ -7,6 +7,7 @@ import {
 } from "./akash-letterhead-assets";
 import {
   generateLetterContent,
+  tokenizeMarkdown,
   LetterTemplateKey,
 } from "./letter-templates";
 
@@ -291,9 +292,17 @@ export async function generateAkashOfferLetterPdf(data: OfferLetterData): Promis
     const trimmed = para.trim();
     if (!trimmed) continue;
 
+    // Filter out redundant elements that are already part of official letterhead
+    const cleanLine = trimmed.replace(/^\*\*|\*\*$/g, "").replace(/^<b>|<\/b>$/gi, "").trim();
+    if (/^akash\s*technolabs$/i.test(cleanLine)) continue;
+    if (cleanLine.toUpperCase() === titleText) continue;
+    if (/^date\s*:/i.test(cleanLine)) continue;
+    if (/^for\s*akash\s*technolabs$/i.test(cleanLine)) continue;
+    if (/^authorized\s*signatory$/i.test(cleanLine)) continue;
+
     // Check if paragraph is a single line header (like "TO WHOMSOEVER IT MAY CONCERN")
-    if (trimmed === "TO WHOMSOEVER IT MAY CONCERN") {
-      page.drawText(trimmed, {
+    if (/^(\*\*)?TO WHOMSOEVER IT MAY CONCERN(\*\*)?$/i.test(trimmed)) {
+      page.drawText("TO WHOMSOEVER IT MAY CONCERN", {
         x: leftX,
         y: currentY,
         font: fontBold,
@@ -304,15 +313,20 @@ export async function generateAkashOfferLetterPdf(data: OfferLetterData): Promis
       continue;
     }
 
-    if (trimmed.startsWith("To,") || trimmed.startsWith("Subject:") || trimmed.startsWith("Dear ")) {
+    if (
+      /^(\*\*)?To,/i.test(trimmed) ||
+      /^(\*\*)?Subject:/i.test(trimmed) ||
+      /^(\*\*)?Dear\s/i.test(trimmed)
+    ) {
       const lines = trimmed.split("\n");
       for (const line of lines) {
-        const isSubj = line.toLowerCase().startsWith("subject:");
-        const isBoldLine = isSubj || line.startsWith("To,");
-        renderTokens(
-          [{ text: line, bold: isBoldLine }],
-          leftX
-        );
+        const isSubj = line.toLowerCase().includes("subject:");
+        const isTo = line.toLowerCase().includes("to,");
+        const lineTokens = tokenizeMarkdown(line, boldKeywords);
+        if (isSubj || isTo) {
+          lineTokens.forEach((t) => (t.bold = true));
+        }
+        renderTokens(lineTokens, leftX);
       }
       currentY -= paraGap;
       continue;
@@ -333,48 +347,22 @@ export async function generateAkashOfferLetterPdf(data: OfferLetterData): Promis
             size: fontSize,
             color: rgb(0, 0, 0),
           });
-          renderTokens([{ text: bulletText, bold: false }], leftX + 24);
+          const bTokens = tokenizeMarkdown(bulletText, boldKeywords);
+          renderTokens(bTokens, leftX + 24);
         } else {
-          renderTokens([{ text: lTrim, bold: false }], leftX);
+          const lTokens = tokenizeMarkdown(lTrim, boldKeywords);
+          renderTokens(lTokens, leftX);
         }
       }
       currentY -= paraGap;
       continue;
     }
 
-    // Standard paragraph with bold keyword matching
-    const tokens: { text: string; bold: boolean }[] = [];
-    let remaining = trimmed;
-
-    // Indent first line of normal paragraph slightly if it starts with "This is to inform"
+    // Standard paragraph with markdown parsing & bold keyword matching
     const isIntroIndent = trimmed.startsWith("This is to inform");
     const prefix = isIntroIndent ? "     " : "";
-    remaining = prefix + remaining;
-
-    while (remaining.length > 0) {
-      let earliestIdx = -1;
-      let matchedKeyword = "";
-
-      for (const kw of boldKeywords) {
-        if (!kw || kw.length < 2) continue;
-        const idx = remaining.indexOf(kw);
-        if (idx !== -1 && (earliestIdx === -1 || idx < earliestIdx)) {
-          earliestIdx = idx;
-          matchedKeyword = kw;
-        }
-      }
-
-      if (earliestIdx !== -1) {
-        if (earliestIdx > 0) {
-          tokens.push({ text: remaining.slice(0, earliestIdx), bold: false });
-        }
-        tokens.push({ text: matchedKeyword, bold: true });
-        remaining = remaining.slice(earliestIdx + matchedKeyword.length);
-      } else {
-        tokens.push({ text: remaining, bold: false });
-        break;
-      }
-    }
+    const textToParse = prefix + trimmed;
+    const tokens = tokenizeMarkdown(textToParse, boldKeywords);
 
     renderTokens(tokens, leftX);
     currentY -= paraGap;

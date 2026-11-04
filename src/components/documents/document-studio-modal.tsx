@@ -35,6 +35,7 @@ import {
   isFemaleCandidate,
   deriveTrackTechnology,
 } from "@/lib/documents/akash-pdf-generator";
+import { tokenizeMarkdown } from "@/lib/documents/letter-templates";
 import {
   AKASH_HEADER_BASE64,
   AKASH_FOOTER_BASE64,
@@ -1263,29 +1264,50 @@ export function DocumentStudioModal({
                           {paras.map((para: string, idx: number) => {
                             const trimmed = para.trim();
                             if (!trimmed) return null;
-                            if (trimmed === "TO WHOMSOEVER IT MAY CONCERN") {
+
+                            // Filter out redundant elements
+                            const cleanLine = trimmed.replace(/^\*\*|\*\*$/g, "").replace(/^<b>|<\/b>$/gi, "").trim();
+                            if (/^akash\s*technolabs$/i.test(cleanLine)) return null;
+                            if (doc.title && cleanLine.toUpperCase() === doc.title.toUpperCase()) return null;
+                            if (/^date\s*:/i.test(cleanLine)) return null;
+                            if (/^for\s*akash\s*technolabs$/i.test(cleanLine)) return null;
+                            if (/^authorized\s*signatory$/i.test(cleanLine)) return null;
+
+                            if (/^(\*\*)?TO WHOMSOEVER IT MAY CONCERN(\*\*)?$/i.test(trimmed)) {
                               return (
                                 <p key={idx} className="font-bold text-slate-900 tracking-wide text-sm py-1">
                                   TO WHOMSOEVER IT MAY CONCERN
                                 </p>
                               );
                             }
-                            if (trimmed.startsWith("To,") || trimmed.startsWith("Subject:") || trimmed.startsWith("Dear ")) {
+                            if (
+                              /^(\*\*)?To,/i.test(trimmed) ||
+                              /^(\*\*)?Subject:/i.test(trimmed) ||
+                              /^(\*\*)?Dear\s/i.test(trimmed)
+                            ) {
                               const lines = trimmed.split("\n");
                               return (
                                 <div key={idx} className="space-y-1 py-1">
-                                  {lines.map((l: string, lIdx: number) => (
-                                    <p
-                                      key={lIdx}
-                                      className={
-                                        l.toLowerCase().startsWith("subject:") || l.startsWith("To,")
-                                          ? "font-bold text-slate-900"
-                                          : "text-slate-800"
-                                      }
-                                    >
-                                      {l}
-                                    </p>
-                                  ))}
+                                  {lines.map((l: string, lIdx: number) => {
+                                    const isSubj = l.toLowerCase().includes("subject:");
+                                    const isTo = l.toLowerCase().includes("to,");
+                                    const tokens = tokenizeMarkdown(l);
+                                    return (
+                                      <p
+                                        key={lIdx}
+                                        className={isSubj || isTo ? "font-bold text-slate-900" : "text-slate-800"}
+                                      >
+                                        {tokens.map((tok, tIdx) => (
+                                          <span
+                                            key={tIdx}
+                                            className={tok.bold || isSubj || isTo ? "font-bold text-slate-900" : ""}
+                                          >
+                                            {tok.text}
+                                          </span>
+                                        ))}
+                                      </p>
+                                    );
+                                  })}
                                 </div>
                               );
                             }
@@ -1296,19 +1318,69 @@ export function DocumentStudioModal({
                                   {lines.map((l: string, lIdx: number) => {
                                     const lTrim = l.trim();
                                     if (lTrim.startsWith("• ") || lTrim.startsWith("- ")) {
+                                      const bulletText = lTrim.replace(/^[•\-]\s*/, "");
+                                      const bTokens = tokenizeMarkdown(bulletText);
                                       return (
                                         <div key={lIdx} className="flex items-start gap-2 pl-4 text-slate-800">
                                           <span className="font-bold text-slate-900">•</span>
-                                          <span>{lTrim.replace(/^[•\-]\s*/, "")}</span>
+                                          <span>
+                                            {bTokens.map((tok, tIdx) =>
+                                              tok.bold ? (
+                                                <strong key={tIdx} className="font-bold text-slate-900">
+                                                  {tok.text}
+                                                </strong>
+                                              ) : tok.italic ? (
+                                                <em key={tIdx} className="italic text-slate-800">
+                                                  {tok.text}
+                                                </em>
+                                              ) : (
+                                                <span key={tIdx}>{tok.text}</span>
+                                              )
+                                            )}
+                                          </span>
                                         </div>
                                       );
                                     }
-                                    return <p key={lIdx}>{lTrim}</p>;
+                                    const lTokens = tokenizeMarkdown(lTrim);
+                                    return (
+                                      <p key={lIdx}>
+                                        {lTokens.map((tok, tIdx) =>
+                                          tok.bold ? (
+                                            <strong key={tIdx} className="font-bold text-slate-900">
+                                              {tok.text}
+                                            </strong>
+                                          ) : tok.italic ? (
+                                            <em key={tIdx} className="italic text-slate-800">
+                                              {tok.text}
+                                            </em>
+                                          ) : (
+                                            <span key={tIdx}>{tok.text}</span>
+                                          )
+                                        )}
+                                      </p>
+                                    );
                                   })}
                                 </div>
                               );
                             }
-                            return <p key={idx}>{trimmed}</p>;
+                            const tokens = tokenizeMarkdown(trimmed);
+                            return (
+                              <p key={idx}>
+                                {tokens.map((tok, tIdx) =>
+                                  tok.bold ? (
+                                    <strong key={tIdx} className="font-bold text-slate-900">
+                                      {tok.text}
+                                    </strong>
+                                  ) : tok.italic ? (
+                                    <em key={tIdx} className="italic text-slate-800">
+                                      {tok.text}
+                                    </em>
+                                  ) : (
+                                    <span key={tIdx}>{tok.text}</span>
+                                  )
+                                )}
+                              </p>
+                            );
                           })}
                         </div>
                       );

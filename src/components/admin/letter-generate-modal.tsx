@@ -42,7 +42,10 @@ import {
   LETTER_TEMPLATES,
   UNIVERSITY_PRESETS,
   generateLetterContent,
+  tokenizeMarkdown,
+  cleanAndSanitizePastedText,
   LetterTemplateKey,
+  MarkdownToken,
 } from "@/lib/documents/letter-templates";
 import {
   AKASH_HEADER_BASE64,
@@ -277,6 +280,8 @@ export function LetterGenerateModal({
   const [continueUntilDate, setContinueUntilDate] = useState(""); // Blank by default
   const [technology, setTechnology] = useState("");
   const [purpose, setPurpose] = useState("Academic Project & Practicum Training");
+  const [mentorName, setMentorName] = useState("");
+  const [mentorDesignation, setMentorDesignation] = useState("");
 
   // Signatory fields
   const [signatoryName] = useState("Akash Padhiyar");
@@ -518,38 +523,32 @@ export function LetterGenerateModal({
 
   // Paste & Interpolate Handler
   const handleApplyPastedText = (interpolate: boolean) => {
-    let finalContent = pastedRawText;
-    if (interpolate) {
-      const dispName = (studentName || "[Intern Name]").replace(/^(Mr\.|Ms\.)\s*/i, "").trim();
-      const fullDisp = `${salutation} ${dispName}`;
-      const dispPos = internshipPosition || "[Internship Role]";
-      const dispTech = technology || "[Technology/Domain]";
-      const dispStart = commencementDate || "[Joining Date]";
-      const dispEnd = continueUntilDate || "[End Date]";
-      const dispDate = letterDate || "[Date]";
+    if (!pastedRawText.trim()) return;
 
-      finalContent = finalContent
-        .replace(/\[Intern Name\]/gi, fullDisp)
-        .replace(/\{studentName\}/gi, fullDisp)
-        .replace(/\[Internship Role\]/gi, dispPos)
-        .replace(/\{position\}/gi, dispPos)
-        .replace(/\[Technology\/Domain\]/gi, dispTech)
-        .replace(/\[Department\/Technology\]/gi, dispTech)
-        .replace(/\{technology\}/gi, dispTech)
-        .replace(/\[Joining Date\]/gi, dispStart)
-        .replace(/\[Commencement Date\]/gi, dispStart)
-        .replace(/\{startDate\}/gi, dispStart)
-        .replace(/\[End Date\]/gi, dispEnd)
-        .replace(/\[Completion Date\]/gi, dispEnd)
-        .replace(/\[Relieving Date\]/gi, dispEnd)
-        .replace(/\{endDate\}/gi, dispEnd)
-        .replace(/\[DD Month YYYY\]/gi, dispDate)
-        .replace(/\{letterDate\}/gi, dispDate)
-        .replace(/\[Authorized Person\]/gi, "Akash Padhiyar")
-        .replace(/\[Designation\]/gi, "CEO");
+    if (interpolate) {
+      const result = cleanAndSanitizePastedText(pastedRawText, {
+        salutation,
+        studentName,
+        internshipPosition: internshipPosition || "AI/ML Intern",
+        technology: technology || "AI/ML Systems",
+        commencementDate: commencementDate || "[Joining Date]",
+        continueUntilDate: continueUntilDate || "[End Date]",
+        letterDate,
+        mentorName: mentorName || "Dr. Rajesh Vaghela (Tech Lead)",
+        mentorDesignation: mentorDesignation || "Senior Technical Project Guide",
+      });
+
+      if (result.detectedTitle) {
+        setLetterTitle(result.detectedTitle.toUpperCase());
+      }
+      if (result.detectedDate) {
+        setLetterDate(result.detectedDate);
+      }
+      setDescription(result.cleanedText);
+    } else {
+      setDescription(pastedRawText.trim());
     }
 
-    setDescription(finalContent);
     setIsCustomEdited(true);
     setShowPasteHelper(false);
     setPastedRawText("");
@@ -1129,11 +1128,40 @@ export function LetterGenerateModal({
                       <p className="text-[11px] text-slate-600">
                         Paste your custom letter draft below. You can include placeholders like{" "}
                         <code className="bg-white px-1 py-0.5 rounded text-blue-600 font-mono">[Intern Name]</code>,{" "}
+                        <code className="bg-white px-1 py-0.5 rounded text-blue-600 font-mono">[Mentor Name]</code>,{" "}
                         <code className="bg-white px-1 py-0.5 rounded text-blue-600 font-mono">[Joining Date]</code>,{" "}
                         <code className="bg-white px-1 py-0.5 rounded text-blue-600 font-mono">[End Date]</code>,{" "}
                         <code className="bg-white px-1 py-0.5 rounded text-blue-600 font-mono">[Internship Role]</code>, or{" "}
                         <code className="bg-white px-1 py-0.5 rounded text-blue-600 font-mono">[Technology/Domain]</code>.
                       </p>
+
+                      {/* Optional Mentor Inputs for Mentorship/Guide Assignment letters */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 bg-white p-2.5 rounded-xl border border-slate-200">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            Mentor Name (for Mentor Assignment Letters)
+                          </label>
+                          <input
+                            type="text"
+                            value={mentorName}
+                            onChange={(e) => setMentorName(e.target.value)}
+                            placeholder="e.g. Dr. Rajesh Vaghela"
+                            className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-1 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            Mentor Designation
+                          </label>
+                          <input
+                            type="text"
+                            value={mentorDesignation}
+                            onChange={(e) => setMentorDesignation(e.target.value)}
+                            placeholder="e.g. Senior Technical Lead"
+                            className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-1 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
 
                       <textarea
                         rows={6}
@@ -1384,7 +1412,15 @@ export function LetterGenerateModal({
                         const trimmed = para.trim();
                         if (!trimmed) return null;
 
-                        if (trimmed === "TO WHOMSOEVER IT MAY CONCERN") {
+                        // Filter out redundant elements that are already part of official letterhead
+                        const cleanLine = trimmed.replace(/^\*\*|\*\*$/g, "").replace(/^<b>|<\/b>$/gi, "").trim();
+                        if (/^akash\s*technolabs$/i.test(cleanLine)) return null;
+                        if (cleanLine.toUpperCase() === letterTitle.toUpperCase()) return null;
+                        if (/^date\s*:/i.test(cleanLine)) return null;
+                        if (/^for\s*akash\s*technolabs$/i.test(cleanLine)) return null;
+                        if (/^authorized\s*signatory$/i.test(cleanLine)) return null;
+
+                        if (/^(\*\*)?TO WHOMSOEVER IT MAY CONCERN(\*\*)?$/i.test(trimmed)) {
                           return (
                             <p key={pIdx} className="font-bold text-slate-900 tracking-wide text-sm py-1">
                               TO WHOMSOEVER IT MAY CONCERN
@@ -1393,22 +1429,30 @@ export function LetterGenerateModal({
                         }
 
                         if (
-                          trimmed.startsWith("To,") ||
-                          trimmed.startsWith("Subject:") ||
-                          trimmed.startsWith("Dear ")
+                          /^(\*\*)?To,/i.test(trimmed) ||
+                          /^(\*\*)?Subject:/i.test(trimmed) ||
+                          /^(\*\*)?Dear\s/i.test(trimmed)
                         ) {
                           const lines = trimmed.split("\n");
                           return (
                             <div key={pIdx} className="space-y-1 py-1">
                               {lines.map((l, lIdx) => {
-                                const isSubj = l.toLowerCase().startsWith("subject:");
-                                const isBold = isSubj || l.startsWith("To,");
+                                const isSubj = l.toLowerCase().includes("subject:");
+                                const isTo = l.toLowerCase().includes("to,");
+                                const tokens = tokenizeMarkdown(l, previewKeywords);
                                 return (
                                   <p
                                     key={lIdx}
-                                    className={isBold ? "font-bold text-slate-900" : "text-slate-800"}
+                                    className={isSubj || isTo ? "font-bold text-slate-900" : "text-slate-800"}
                                   >
-                                    {l}
+                                    {tokens.map((tok, tIdx) => (
+                                      <span
+                                        key={tIdx}
+                                        className={tok.bold || isSubj || isTo ? "font-bold text-slate-900" : ""}
+                                      >
+                                        {tok.text}
+                                      </span>
+                                    ))}
                                   </p>
                                 );
                               })}
@@ -1423,16 +1467,45 @@ export function LetterGenerateModal({
                               {lines.map((l, lIdx) => {
                                 const lTrim = l.trim();
                                 if (lTrim.startsWith("• ") || lTrim.startsWith("- ")) {
+                                  const bulletText = lTrim.replace(/^[•\-]\s*/, "");
+                                  const bTokens = tokenizeMarkdown(bulletText, previewKeywords);
                                   return (
                                     <div key={lIdx} className="flex items-start gap-2 pl-4 text-slate-800">
                                       <span className="font-bold text-slate-900">•</span>
-                                      <span>{lTrim.replace(/^[•\-]\s*/, "")}</span>
+                                      <span>
+                                        {bTokens.map((tok, tIdx) =>
+                                          tok.bold ? (
+                                            <strong key={tIdx} className="font-bold text-slate-900">
+                                              {tok.text}
+                                            </strong>
+                                          ) : tok.italic ? (
+                                            <em key={tIdx} className="italic text-slate-800">
+                                              {tok.text}
+                                            </em>
+                                          ) : (
+                                            <span key={tIdx}>{tok.text}</span>
+                                          )
+                                        )}
+                                      </span>
                                     </div>
                                   );
                                 }
+                                const lTokens = tokenizeMarkdown(lTrim, previewKeywords);
                                 return (
                                   <p key={lIdx}>
-                                    {highlightKeywords(lTrim, previewKeywords)}
+                                    {lTokens.map((tok, tIdx) =>
+                                      tok.bold ? (
+                                        <strong key={tIdx} className="font-bold text-slate-900">
+                                          {tok.text}
+                                        </strong>
+                                      ) : tok.italic ? (
+                                        <em key={tIdx} className="italic text-slate-800">
+                                          {tok.text}
+                                        </em>
+                                      ) : (
+                                        <span key={tIdx}>{tok.text}</span>
+                                      )
+                                    )}
                                   </p>
                                 );
                               })}
@@ -1441,10 +1514,23 @@ export function LetterGenerateModal({
                         }
 
                         const isIntroIndent = trimmed.startsWith("This is to inform");
+                        const tokens = tokenizeMarkdown(trimmed, previewKeywords);
 
                         return (
                           <p key={pIdx} className={isIntroIndent ? "indent-6" : ""}>
-                            {highlightKeywords(trimmed, previewKeywords)}
+                            {tokens.map((tok, tIdx) =>
+                              tok.bold ? (
+                                <strong key={tIdx} className="font-bold text-slate-900">
+                                  {tok.text}
+                                </strong>
+                              ) : tok.italic ? (
+                                <em key={tIdx} className="italic text-slate-800">
+                                  {tok.text}
+                                </em>
+                              ) : (
+                                <span key={tIdx}>{tok.text}</span>
+                              )
+                            )}
                           </p>
                         );
                       })}

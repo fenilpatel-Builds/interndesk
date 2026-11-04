@@ -3,6 +3,8 @@ import {
   LETTER_TEMPLATES,
   UNIVERSITY_PRESETS,
   generateLetterContent,
+  tokenizeMarkdown,
+  cleanAndSanitizePastedText,
 } from "../src/lib/documents/letter-templates";
 import { generateAkashOfferLetterPdf } from "../src/lib/documents/akash-pdf-generator";
 import { documentStore } from "../src/lib/documents/document-store";
@@ -283,6 +285,74 @@ describe("Professional Letter Templates Catalog & Dynamic Generators", () => {
     // Clean up
     documentStore.deleteDocument(doc.id, adminEmail);
     expect(documentStore.getById(doc.id)).toBeNull();
+  });
+
+  it("should accurately clean and sanitize pasted custom letter text without raw asterisks, double salutations, or header duplication", () => {
+    const rawPastedDraft = `**AKASH TECHNOLABS**
+
+**INTERNSHIP MENTOR ASSIGNMENT LETTER**
+
+**Date:** 04-11-2026
+
+**To,** Mr./Ms. Mr. [Intern Name]
+
+**Subject: Assignment of Internship Mentor**
+
+Dear Mr. [Intern Name],
+
+We are pleased to inform you that **[Mentor Name]**, serving as **[Mentor Designation]** at **Akash Technolabs**, has been assigned as your internship mentor.
+
+Your mentor will guide you throughout your internship in areas including technical learning, project execution, task planning, problem-solving and professional development.
+
+We wish you a successful learning experience.
+
+**For Akash Technolabs**`;
+
+    const result = cleanAndSanitizePastedText(rawPastedDraft, {
+      salutation: "Mr.",
+      studentName: "Fenil Patel",
+      internshipPosition: "AI/ML Intern",
+      technology: "AI/ML Systems",
+      commencementDate: "3rd July 2026",
+      continueUntilDate: "30th April 2027",
+      letterDate: "04-11-2026",
+      mentorName: "Dr. Rajesh Vaghela",
+      mentorDesignation: "Senior Technical Lead",
+    });
+
+    expect(result.detectedTitle).toBe("INTERNSHIP MENTOR ASSIGNMENT LETTER");
+    expect(result.detectedDate).toBe("04-11-2026");
+
+    // Company name header and "For Akash Technolabs" must be stripped
+    expect(result.cleanedText.startsWith("**AKASH TECHNOLABS**")).toBe(false);
+    expect(result.cleanedText).not.toContain("For Akash Technolabs");
+
+    // Double salutation fixed
+    expect(result.cleanedText).not.toContain("Mr./Ms. Mr.");
+    expect(result.cleanedText).toContain("Mr. Fenil Patel");
+    expect(result.cleanedText).toContain("Dear Mr. Fenil Patel");
+
+    // Mentor variables replaced
+    expect(result.cleanedText).toContain("Dr. Rajesh Vaghela");
+    expect(result.cleanedText).toContain("Senior Technical Lead");
+    expect(result.cleanedText).not.toContain("[Mentor Name]");
+    expect(result.cleanedText).not.toContain("[Mentor Designation]");
+  });
+
+  it("should tokenize markdown into clean bold/italic chunks with zero literal asterisks", () => {
+    const sampleLine = "We are pleased to inform you that **Dr. Rajesh Vaghela**, serving as **Lead** at **Akash Technolabs**.";
+    const tokens = tokenizeMarkdown(sampleLine, ["Akash Technolabs"]);
+
+    expect(tokens.length).toBeGreaterThan(1);
+    // No token should have literal asterisks
+    for (const tok of tokens) {
+      expect(tok.text).not.toContain("**");
+    }
+
+    const boldTexts = tokens.filter((t) => t.bold).map((t) => t.text);
+    expect(boldTexts).toContain("Dr. Rajesh Vaghela");
+    expect(boldTexts).toContain("Lead");
+    expect(boldTexts).toContain("Akash Technolabs");
   });
 });
 

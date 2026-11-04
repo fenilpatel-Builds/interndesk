@@ -43,7 +43,7 @@ export async function GET() {
     // 2. Fetch live users from Supabase Auth & DB
     try {
       const adminClient = createAdminClient();
-      if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      if (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY) {
         const { data: authData } = await adminClient.auth.admin.listUsers();
         if (authData?.users && Array.isArray(authData.users)) {
           for (const u of authData.users) {
