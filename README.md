@@ -53,7 +53,6 @@ InternDesk is a production-ready, full-stack **Single Institute Student Activity
 
 | Role | Name | Email | Password | Target Dashboard |
 | :--- | :--- | :--- | :--- | :--- |
-| **Primary Admin (CEO)** | **Akash Padhiyar** | `akash@akashtechnolabs.com` | `Akash@2026` | `/admin/dashboard` |
 | **Student Intern (AI/ML)** | **Fenil Patel** | `fenil.patel@akashtechnolabs.com` | `Fenil@2026` | `/student/dashboard` |
 | **Student Intern (Cloud)** | **Priya Sharma** | `priya.sharma@akashtechnolabs.com` | `Priya@2026` | `/student/dashboard` |
 | **Student Intern (Fullstack)**| **Harshit Mehta** | `harshit.mehta@akashtechnolabs.com` | `Harshit@2026` | `/student/dashboard` |
