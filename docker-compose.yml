@@ -1,0 +1,21 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: akash-intern-desk
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_APP_NAME=Akash Technolabs — Student Activity & Practicum Portal
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+      - PRIMARY_ADMIN_EMAIL=fenil8160@gmail.com
+      - ALLOWED_INSTITUTE_EMAIL_DOMAINS=akashtechnolabs.com,gmail.com
+    volumes:
+      - app_data:/app/src/lib/data
+
+volumes:
+  app_data:
+    driver: local

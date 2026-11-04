@@ -15,14 +15,16 @@ const MAX_ATTEMPTS = 5;
 // In-memory cache
 const memoryCache: Map<string, StoredOtp> = new Map();
 
-// File persistence path for development hot-reloads
-const DATA_DIR = path.join(process.cwd(), "src", "lib", "data");
-const OTP_FILE = path.join(DATA_DIR, "active-otps.json");
+import { resolveDataFilePath } from "../data/storage-path";
+
+// File persistence path for development hot-reloads and serverless runs
+const OTP_FILE = resolveDataFilePath("active-otps.json");
 
 function ensureDataDir(): void {
   try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
+    const dir = path.dirname(OTP_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
   } catch {
     // Non-fatal

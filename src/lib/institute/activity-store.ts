@@ -10,21 +10,21 @@ import { InstituteActivity, ActivitySubmission, ActivityStatus, SubmissionStatus
 import { INSTITUTE_CONFIG } from "./config";
 import { createAdminClient } from "../supabase/admin";
 
-const DATA_DIR = path.join(process.cwd(), "src", "lib", "data");
+import { resolveDataFilePath } from "../data/storage-path";
+
 const isTestEnv = process.env.NODE_ENV === "test" || process.env.VITEST === "true";
-const ACTIVITIES_FILE = path.join(
-  DATA_DIR,
+const ACTIVITIES_FILE = resolveDataFilePath(
   isTestEnv ? "institute-activities.test.json" : "institute-activities.json"
 );
-const SUBMISSIONS_FILE = path.join(
-  DATA_DIR,
+const SUBMISSIONS_FILE = resolveDataFilePath(
   isTestEnv ? "activity-submissions.test.json" : "activity-submissions.json"
 );
 
 function ensureDirectoryExists() {
-  if (!fs.existsSync(DATA_DIR)) {
+  const dir = path.dirname(ACTIVITIES_FILE);
+  if (!fs.existsSync(dir)) {
     try {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
+      fs.mkdirSync(dir, { recursive: true });
     } catch {
       // Ignore if exists
     }

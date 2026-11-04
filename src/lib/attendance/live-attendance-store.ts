@@ -17,14 +17,16 @@ export interface StudentLiveAttendance {
   location?: string;
 }
 
-const DATA_DIR = path.join(process.cwd(), "src", "lib", "data");
+import { resolveDataFilePath } from "../data/storage-path";
+
 const isTestEnv = process.env.NODE_ENV === "test" || process.env.VITEST === "true";
-const LIVE_ATTENDANCE_FILE = path.join(DATA_DIR, isTestEnv ? "live-attendance.test.json" : "live-attendance.json");
+const LIVE_ATTENDANCE_FILE = resolveDataFilePath(isTestEnv ? "live-attendance.test.json" : "live-attendance.json");
 
 function ensureDirectoryExists() {
-  if (!fs.existsSync(DATA_DIR)) {
+  const dir = path.dirname(LIVE_ATTENDANCE_FILE);
+  if (!fs.existsSync(dir)) {
     try {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
+      fs.mkdirSync(dir, { recursive: true });
     } catch {
       // Ignore if exists
     }

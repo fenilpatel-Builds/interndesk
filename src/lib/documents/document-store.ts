@@ -47,12 +47,18 @@ export interface OfficialOfferLetter {
   accepted_at?: string;
 }
 
-const DATA_DIR = path.join(process.cwd(), "src", "lib", "data");
-const DOCS_FILE = path.join(DATA_DIR, "issued-documents.json");
+import { resolveDataFilePath } from "../data/storage-path";
+
+const DOCS_FILE = resolveDataFilePath("issued-documents.json");
 
 function ensureDataDirectory() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  const dir = path.dirname(DOCS_FILE);
+  if (!fs.existsSync(dir)) {
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+    } catch {
+      // Ignored
+    }
   }
 }
 

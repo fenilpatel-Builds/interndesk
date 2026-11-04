@@ -17,8 +17,9 @@ export interface RegisteredAccount {
   createdAt: string;
 }
 
-const DATA_DIR = path.join(process.cwd(), "src", "lib", "data");
-const ACCOUNTS_FILE = path.join(DATA_DIR, "accounts.json");
+import { resolveDataFilePath } from "../data/storage-path";
+
+const ACCOUNTS_FILE = resolveDataFilePath("accounts.json");
 
 function hashPassword(password: string, salt: string): string {
   return crypto.createHash("sha256").update(password + salt).digest("hex");
@@ -26,8 +27,9 @@ function hashPassword(password: string, salt: string): string {
 
 function loadAccountsFromDisk(): RegisteredAccount[] {
   try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
+    const dir = path.dirname(ACCOUNTS_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
     if (fs.existsSync(ACCOUNTS_FILE)) {
       const content = fs.readFileSync(ACCOUNTS_FILE, "utf-8");
@@ -42,8 +44,9 @@ function loadAccountsFromDisk(): RegisteredAccount[] {
 
 function saveAccountsToDisk(accounts: RegisteredAccount[]): void {
   try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
+    const dir = path.dirname(ACCOUNTS_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
     fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(accounts, null, 2), "utf-8");
   } catch (err) {
