@@ -17,6 +17,8 @@ import {
   X,
   AlertTriangle,
   ShieldCheck,
+  Edit3,
+  Trash2,
 } from "lucide-react";
 import { DocumentStudioModal } from "@/components/documents/document-studio-modal";
 import { LetterGenerateModal } from "@/components/admin/letter-generate-modal";
@@ -36,6 +38,7 @@ export default function AdminDocumentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStudioDoc, setSelectedStudioDoc] = useState<IssuedDocument | null>(null);
   const [isLetterGenerateOpen, setIsLetterGenerateOpen] = useState(false);
+  const [selectedDocForEdit, setSelectedDocForEdit] = useState<any | null>(null);
 
   // Admin Approval Modal State
   const [selectedPendingDoc, setSelectedPendingDoc] = useState<any | null>(null);
@@ -145,6 +148,32 @@ export default function AdminDocumentsPage() {
       }
     } catch {
       alert("Network error while rejecting document request.");
+    }
+  };
+
+  const handleOpenEdit = (doc: any) => {
+    setSelectedDocForEdit(doc);
+    setIsLetterGenerateOpen(true);
+  };
+
+  const handleDeleteDoc = async (id: string, title?: string) => {
+    if (!confirm(`Are you sure you want to permanently revoke and delete the document "${title || id}"? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      const res = await fetch("/api/admin/documents/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documentId: id }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setDocuments((prev) => prev.filter((d) => d.id !== id));
+      } else {
+        alert(data.error || "Failed to delete document.");
+      }
+    } catch {
+      alert("Network error while deleting document.");
     }
   };
 
@@ -301,7 +330,10 @@ export default function AdminDocumentsPage() {
           <div className="flex items-center gap-2">
             <Button
               size="sm"
-              onClick={() => setIsLetterGenerateOpen(true)}
+              onClick={() => {
+                setSelectedDocForEdit(null);
+                setIsLetterGenerateOpen(true);
+              }}
               className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold rounded-xl shadow-md shadow-red-500/20 text-xs flex items-center gap-1.5 transition-transform hover:scale-[1.02] cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5" />
@@ -310,7 +342,10 @@ export default function AdminDocumentsPage() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setIsLetterGenerateOpen(true)}
+              onClick={() => {
+                setSelectedDocForEdit(null);
+                setIsLetterGenerateOpen(true);
+              }}
               className="text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -478,7 +513,7 @@ export default function AdminDocumentsPage() {
                         {doc.appliedAt}
                       </td>
                       <td className="px-6 py-3.5 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-1.5">
                           {doc.status === "PENDING_APPROVAL" ? (
                             <>
                               <Button
@@ -488,6 +523,15 @@ export default function AdminDocumentsPage() {
                               >
                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                 <span>Verify &amp; Approve</span>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleOpenEdit(doc)}
+                                className="h-8 px-2 text-xs font-semibold rounded-lg text-slate-700 hover:bg-slate-100 cursor-pointer"
+                                title="Edit letter details before approving"
+                              >
+                                <Edit3 className="w-3.5 h-3.5 text-amber-600" />
                               </Button>
                               <Button
                                 size="sm"
@@ -526,7 +570,26 @@ export default function AdminDocumentsPage() {
                                 title="Direct download official PDF"
                               >
                                 <Download className="w-3.5 h-3.5" />
-                                <span>Download PDF</span>
+                                <span>PDF</span>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleOpenEdit(doc)}
+                                className="h-8 px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg shadow-2xs cursor-pointer flex items-center gap-1"
+                                title="Edit and update letter format or terms"
+                              >
+                                <Edit3 className="w-3.5 h-3.5 text-amber-600" />
+                                <span>Edit</span>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDeleteDoc(doc.id, doc.title)}
+                                className="h-8 px-2 text-xs font-semibold text-red-600 border-red-200 hover:bg-red-50 rounded-lg cursor-pointer"
+                                title="Revoke and permanently delete this document"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
                               </Button>
                             </>
                           )}
@@ -541,11 +604,20 @@ export default function AdminDocumentsPage() {
         </Card>
       </main>
 
-      {/* Admin Letter Generate Modal */}
+      {/* Admin Letter Generate / Edit Modal */}
       <LetterGenerateModal
         isOpen={isLetterGenerateOpen}
-        onClose={() => setIsLetterGenerateOpen(false)}
-        onSuccess={handleLetterGenerated}
+        initialDoc={selectedDocForEdit}
+        onClose={() => {
+          setIsLetterGenerateOpen(false);
+          setSelectedDocForEdit(null);
+        }}
+        onSuccess={(updatedOrNew) => {
+          handleLetterGenerated(updatedOrNew);
+          setIsLetterGenerateOpen(false);
+          setSelectedDocForEdit(null);
+          fetchDocs();
+        }}
       />
 
       {/* Admin Verification & Approval Modal */}

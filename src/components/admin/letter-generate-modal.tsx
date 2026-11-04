@@ -27,6 +27,10 @@ import {
   Loader2,
   GraduationCap,
   Building2,
+  ClipboardPaste,
+  Edit3,
+  Trash2,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -58,7 +62,8 @@ interface StudentOption {
 interface LetterGenerateModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: (createdDoc: any) => void;
+  onSuccess?: (doc: any) => void;
+  initialDoc?: any | null; // Pass existing document to EDIT/UPDATE
 }
 
 // Predefined tracks for fast domain selection (AI/ML, Cybersecurity, Python, etc.)
@@ -248,7 +253,10 @@ export function LetterGenerateModal({
   isOpen,
   onClose,
   onSuccess,
+  initialDoc,
 }: LetterGenerateModalProps) {
+  const isEditMode = Boolean(initialDoc && initialDoc.id);
+
   // Document Template Selection
   const [templateKey, setTemplateKey] = useState<LetterTemplateKey>("INTERNSHIP_OFFER");
 
@@ -282,6 +290,10 @@ export function LetterGenerateModal({
   const [description, setDescription] = useState("");
   const [isCustomEdited, setIsCustomEdited] = useState(false);
 
+  // Quick Paste & Interpolation Assistant State
+  const [showPasteHelper, setShowPasteHelper] = useState(false);
+  const [pastedRawText, setPastedRawText] = useState("");
+
   // View mode: Form or Full Official Preview
   const [viewMode, setViewMode] = useState<"FORM" | "PREVIEW">("FORM");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -310,7 +322,7 @@ export function LetterGenerateModal({
   };
 
   useEffect(() => {
-    if (!isCustomEdited) {
+    if (!isCustomEdited && !isEditMode) {
       refreshDescriptionFromTemplate();
     }
   }, [
@@ -326,18 +338,12 @@ export function LetterGenerateModal({
     letterDate,
     purpose,
     isCustomEdited,
+    isEditMode,
   ]);
 
-  // Reset when modal opens and fetch live registered students
+  // Load registered students
   useEffect(() => {
     if (isOpen) {
-      setViewMode("FORM");
-      setStatusMessage(null);
-      setIsSubmitting(false);
-      setIsCustomEdited(false);
-      setLetterDate(getTodayFormattedDDMMYYYY());
-
-      // Live fetch from Supabase Auth & Database
       fetch("/api/admin/students", { cache: "no-store" })
         .then((res) => (res.ok ? res.json() : Promise.reject()))
         .then((data) => {
@@ -348,6 +354,66 @@ export function LetterGenerateModal({
         .catch(() => {});
     }
   }, [isOpen]);
+
+  // Reset or pre-fill state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setViewMode("FORM");
+      setStatusMessage(null);
+      setIsSubmitting(false);
+      setShowPasteHelper(false);
+      setPastedRawText("");
+
+      if (initialDoc) {
+        // EDIT MODE: Pre-fill from existing document
+        const raw = initialDoc.rawDoc || initialDoc;
+        const tmplData = raw.template_data || {};
+
+        const sal = tmplData.salutation || (isFemaleCandidate(raw.recipient_name || initialDoc.student) ? "Ms." : "Mr.");
+        setSalutation(sal);
+
+        const cleanName = (tmplData.student_name || raw.recipient_name || initialDoc.student || "")
+          .replace(/^(Mr\.|Ms\.)\s*/i, "")
+          .trim();
+        setStudentName(cleanName);
+
+        setRecipientEmail(raw.recipient_email || "");
+        setInternshipPosition(raw.recipient_role || initialDoc.role || "AI/ML Intern");
+        setTechnology(tmplData.technology || deriveTrackTechnology(raw.recipient_role || initialDoc.role));
+        setCommencementDate(tmplData.commencement_date || "");
+        setContinueUntilDate(tmplData.continue_until_date || "");
+        setLetterDate(raw.issued_date || initialDoc.appliedAt || getTodayFormattedDDMMYYYY());
+        setLetterTitle(raw.title || initialDoc.title || "INTERNSHIP OFFER LETTER");
+        setTemplateKey((raw.template_type as LetterTemplateKey) || "INTERNSHIP_OFFER");
+        setUniversityId(tmplData.university || "STANDARD");
+        setPurpose(tmplData.purpose || "Academic Project & Practicum Training");
+
+        if (raw.description_content) {
+          setDescription(raw.description_content);
+          setIsCustomEdited(true);
+        } else {
+          setIsCustomEdited(false);
+        }
+      } else {
+        // CREATE MODE: Fresh blank document
+        setIsCustomEdited(false);
+        setLetterDate(getTodayFormattedDDMMYYYY());
+        setSalutation("Mr.");
+        setStudentName("");
+        setRecipientEmail("");
+        setInternshipPosition("");
+        setCommencementDate("");
+        setContinueUntilDate("");
+        setTechnology("");
+        setSelectedStudentId("");
+        setTemplateKey("INTERNSHIP_OFFER");
+        setUniversityId("STANDARD");
+        setCustomUniversity("");
+        setPurpose("Academic Project & Practicum Training");
+        refreshDescriptionFromTemplate();
+      }
+    }
+  }, [isOpen, initialDoc]);
 
   // Handle template change
   const handleTemplateSelect = (key: LetterTemplateKey) => {
@@ -394,7 +460,7 @@ export function LetterGenerateModal({
         setInternshipPosition(`${cleanT} Intern`);
       }
 
-      // Check if student's university is known (GTU, SOU, GU)
+      // Check university
       if (found.university) {
         const uLower = found.university.toLowerCase();
         if (uLower.includes("gtu") || uLower.includes("technological")) {
@@ -450,6 +516,46 @@ export function LetterGenerateModal({
     setIsCustomEdited(false);
   };
 
+  // Paste & Interpolate Handler
+  const handleApplyPastedText = (interpolate: boolean) => {
+    let finalContent = pastedRawText;
+    if (interpolate) {
+      const dispName = (studentName || "[Intern Name]").replace(/^(Mr\.|Ms\.)\s*/i, "").trim();
+      const fullDisp = `${salutation} ${dispName}`;
+      const dispPos = internshipPosition || "[Internship Role]";
+      const dispTech = technology || "[Technology/Domain]";
+      const dispStart = commencementDate || "[Joining Date]";
+      const dispEnd = continueUntilDate || "[End Date]";
+      const dispDate = letterDate || "[Date]";
+
+      finalContent = finalContent
+        .replace(/\[Intern Name\]/gi, fullDisp)
+        .replace(/\{studentName\}/gi, fullDisp)
+        .replace(/\[Internship Role\]/gi, dispPos)
+        .replace(/\{position\}/gi, dispPos)
+        .replace(/\[Technology\/Domain\]/gi, dispTech)
+        .replace(/\[Department\/Technology\]/gi, dispTech)
+        .replace(/\{technology\}/gi, dispTech)
+        .replace(/\[Joining Date\]/gi, dispStart)
+        .replace(/\[Commencement Date\]/gi, dispStart)
+        .replace(/\{startDate\}/gi, dispStart)
+        .replace(/\[End Date\]/gi, dispEnd)
+        .replace(/\[Completion Date\]/gi, dispEnd)
+        .replace(/\[Relieving Date\]/gi, dispEnd)
+        .replace(/\{endDate\}/gi, dispEnd)
+        .replace(/\[DD Month YYYY\]/gi, dispDate)
+        .replace(/\{letterDate\}/gi, dispDate)
+        .replace(/\[Authorized Person\]/gi, "Akash Padhiyar")
+        .replace(/\[Designation\]/gi, "CEO");
+    }
+
+    setDescription(finalContent);
+    setIsCustomEdited(true);
+    setShowPasteHelper(false);
+    setPastedRawText("");
+  };
+
+  // Submit Handler: Supports both CREATE and UPDATE
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatusMessage(null);
@@ -471,35 +577,51 @@ export function LetterGenerateModal({
 
     try {
       const activeTmpl = LETTER_TEMPLATES.find((t) => t.key === templateKey);
-      const res = await fetch("/api/admin/documents/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          templateType: templateKey,
-          documentType: activeTmpl?.documentType || "OFFER_LETTER",
-          letterDate,
-          title: letterTitle,
-          salutation,
-          studentName,
-          recipientEmail,
-          internshipPosition,
-          commencementDate,
-          continueUntilDate,
-          technology,
-          descriptionContent: description,
-          university: universityId !== "STANDARD" ? (universityId === "CUSTOM" ? customUniversity : universityId) : undefined,
-          purpose,
-        }),
-      });
+      const docPayload = {
+        templateType: templateKey,
+        documentType: activeTmpl?.documentType || "OFFER_LETTER",
+        letterDate,
+        title: letterTitle,
+        salutation,
+        studentName,
+        recipientEmail,
+        internshipPosition,
+        commencementDate,
+        continueUntilDate,
+        technology,
+        descriptionContent: description,
+        university: universityId !== "STANDARD" ? (universityId === "CUSTOM" ? customUniversity : universityId) : undefined,
+        purpose,
+      };
+
+      let res: Response;
+      if (isEditMode) {
+        // UPDATE Existing Document
+        res = await fetch("/api/admin/documents/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            documentId: initialDoc.id || initialDoc.docNumber,
+            updates: docPayload,
+          }),
+        });
+      } else {
+        // CREATE New Document
+        res = await fetch("/api/admin/documents/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(docPayload),
+        });
+      }
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to generate official document.");
+        throw new Error(data.error || `Failed to ${isEditMode ? "update" : "generate"} official document.`);
       }
 
       setStatusMessage({
         type: "success",
-        text: `Official Document (${letterTitle}) successfully issued for ${salutation} ${studentName}! Available in Student Portal.`,
+        text: `Official Document (${letterTitle}) successfully ${isEditMode ? "updated" : "issued"} for ${salutation} ${studentName}! Synchronized to database.`,
       });
 
       if (onSuccess) {
@@ -508,7 +630,7 @@ export function LetterGenerateModal({
 
       setViewMode("PREVIEW");
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Error generating letter";
+      const message = err instanceof Error ? err.message : "Error saving document";
       setStatusMessage({ type: "error", text: message });
     } finally {
       setIsSubmitting(false);
@@ -567,10 +689,26 @@ export function LetterGenerateModal({
         <div className="px-6 py-3.5 border-b border-slate-200/90 flex items-center justify-between bg-slate-50/70 shrink-0">
           <div className="flex items-center gap-3">
             <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
-              Official Document Dispatch &amp; Letter Generator
+              {isEditMode ? (
+                <>
+                  <Edit3 className="w-5 h-5 text-amber-600" />
+                  <span>Edit &amp; Update Official Document</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5 text-blue-600" />
+                  <span>Official Document Dispatch &amp; Letter Generator</span>
+                </>
+              )}
             </h2>
-            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
-              Akash Technolabs Enterprise
+            <span
+              className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                isEditMode
+                  ? "bg-amber-100 text-amber-800 border-amber-200"
+                  : "bg-blue-100 text-blue-800 border-blue-200"
+              }`}
+            >
+              {isEditMode ? `Editing: ${initialDoc.docNumber || initialDoc.id}` : "Akash Technolabs Enterprise"}
             </span>
           </div>
 
@@ -723,33 +861,35 @@ export function LetterGenerateModal({
                 )}
               </div>
 
-              {/* Card 3: Auto-fill from Registered Student */}
-              <div className="bg-white rounded-2xl border border-slate-200/90 p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
-                    <UserCheck className="w-4 h-4 text-blue-600" />
-                    <span>Auto-fill from Registered Student (Live Supabase &amp; DB)</span>
+              {/* Card 3: Auto-fill from Registered Student (Create mode only) */}
+              {!isEditMode && (
+                <div className="bg-white rounded-2xl border border-slate-200/90 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+                      <UserCheck className="w-4 h-4 text-blue-600" />
+                      <span>Auto-fill from Registered Student (Live Supabase &amp; DB)</span>
+                    </div>
+                    <span className="text-[11px] text-slate-500 font-medium">
+                      Links letter directly to verified student portal profile
+                    </span>
                   </div>
-                  <span className="text-[11px] text-slate-500 font-medium">
-                    Links letter directly to verified student portal profile
-                  </span>
-                </div>
 
-                <div className="relative">
-                  <select
-                    value={selectedStudentId}
-                    onChange={handleStudentSelect}
-                    className="w-full text-xs font-semibold text-slate-800 bg-white border border-slate-300 rounded-xl px-3 py-2.5 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">-- Choose a student or fill manually below --</option>
-                    {students.map((st) => (
-                      <option key={st.id} value={st.id}>
-                        {st.name} ({st.email}) {st.technology ? `• ${st.technology}` : ""} {st.university ? `[${st.university}]` : ""}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={selectedStudentId}
+                      onChange={handleStudentSelect}
+                      className="w-full text-xs font-semibold text-slate-800 bg-white border border-slate-300 rounded-xl px-3 py-2.5 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">-- Choose a student or fill manually below --</option>
+                      {students.map((st) => (
+                        <option key={st.id} value={st.id}>
+                          {st.name} ({st.email}) {st.technology ? `• ${st.technology}` : ""} {st.university ? `[${st.university}]` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Card 4: Predefined Track Quick Select */}
               <div className="bg-white rounded-2xl border border-slate-200/90 p-5 space-y-3">
@@ -790,7 +930,7 @@ export function LetterGenerateModal({
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-[#E52329]" />
-                    Candidate &amp; Practicum Variables
+                    Candidate &amp; Practicum Variables (Full Dynamic Control)
                   </h3>
                   <span className="text-[11px] text-slate-400 font-mono">Official Letterhead Variables</span>
                 </div>
@@ -805,25 +945,41 @@ export function LetterGenerateModal({
                     mode="DD-MM-YYYY"
                   />
 
-                  {/* Salutation */}
+                  {/* Salutation / Gender Selection with Explicit Male & Female Buttons */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Salutation <span className="text-red-500">*</span>
+                      Gender &amp; Salutation <span className="text-red-500">*</span>
                     </label>
-                    <select
-                      value={salutation}
-                      onChange={(e) => handleSalutationChange(e.target.value as "Mr." | "Ms.")}
-                      className="w-full text-xs font-semibold text-slate-900 border border-slate-300 rounded-xl px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="Mr.">Mr.</option>
-                      <option value="Ms.">Ms.</option>
-                    </select>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSalutationChange("Mr.")}
+                        className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 border ${
+                          salutation === "Mr."
+                            ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                            : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
+                        }`}
+                      >
+                        <span>👨 Male (Mr.)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSalutationChange("Ms.")}
+                        className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 border ${
+                          salutation === "Ms."
+                            ? "bg-pink-600 text-white border-pink-600 shadow-xs"
+                            : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
+                        }`}
+                      >
+                        <span>👩 Female (Ms.)</span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Student Name */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Student Name <span className="text-red-500">*</span>
+                      Student Full Name <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -852,7 +1008,7 @@ export function LetterGenerateModal({
                   {/* Internship Position */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Internship Position <span className="text-red-500">*</span>
+                      Internship Position / Role <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -867,7 +1023,7 @@ export function LetterGenerateModal({
                   {/* Technology */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Technology <span className="text-red-500">*</span>
+                      Technology Domain <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -882,7 +1038,7 @@ export function LetterGenerateModal({
                     />
                   </div>
 
-                  {/* Internship Start Date - Blank by default */}
+                  {/* Internship Start Date */}
                   <DualDateField
                     label="Internship Start Date"
                     value={commencementDate}
@@ -891,7 +1047,7 @@ export function LetterGenerateModal({
                     mode="ORDINAL"
                   />
 
-                  {/* Internship End Date - Blank by default */}
+                  {/* Internship End Date */}
                   <DualDateField
                     label="Internship End Date"
                     value={continueUntilDate}
@@ -900,7 +1056,7 @@ export function LetterGenerateModal({
                     mode="ORDINAL"
                   />
 
-                  {/* Purpose / Activity (for NOC / Custom) */}
+                  {/* Purpose / Academic Activity */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
                       Purpose / Academic Activity
@@ -919,7 +1075,7 @@ export function LetterGenerateModal({
                 </div>
               </div>
 
-              {/* Card 6: Letter Title & Rich Description Editor */}
+              {/* Card 6: Letter Title, Custom Format Paste, & Rich Description Editor */}
               <div className="bg-white rounded-2xl border border-slate-200/90 p-5 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Title */}
@@ -950,10 +1106,87 @@ export function LetterGenerateModal({
                   </div>
                 </div>
 
+                {/* PASTE CUSTOM FORMAT ASSISTANT */}
+                <div className="p-3.5 rounded-xl border border-blue-200 bg-blue-50/60 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <ClipboardPaste className="w-4 h-4 text-blue-600" />
+                      <span className="text-xs font-bold text-slate-900">
+                        Paste Any Custom Letter Format / Draft
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowPasteHelper(!showPasteHelper)}
+                      className="text-xs font-bold text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                    >
+                      {showPasteHelper ? "Hide Paste Tool" : "📋 Paste New Format or Draft Here"}
+                    </button>
+                  </div>
+
+                  {showPasteHelper && (
+                    <div className="pt-2 space-y-3">
+                      <p className="text-[11px] text-slate-600">
+                        Paste your custom letter draft below. You can include placeholders like{" "}
+                        <code className="bg-white px-1 py-0.5 rounded text-blue-600 font-mono">[Intern Name]</code>,{" "}
+                        <code className="bg-white px-1 py-0.5 rounded text-blue-600 font-mono">[Joining Date]</code>,{" "}
+                        <code className="bg-white px-1 py-0.5 rounded text-blue-600 font-mono">[End Date]</code>,{" "}
+                        <code className="bg-white px-1 py-0.5 rounded text-blue-600 font-mono">[Internship Role]</code>, or{" "}
+                        <code className="bg-white px-1 py-0.5 rounded text-blue-600 font-mono">[Technology/Domain]</code>.
+                      </p>
+
+                      <textarea
+                        rows={6}
+                        value={pastedRawText}
+                        onChange={(e) => setPastedRawText(e.target.value)}
+                        placeholder="Paste letter draft or new format here..."
+                        className="w-full p-3 text-xs font-sans text-slate-900 bg-white border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                      />
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={!pastedRawText.trim()}
+                          onClick={() => handleApplyPastedText(true)}
+                          className="bg-[#0F4C81] hover:bg-[#0C3D68] text-white text-xs font-bold rounded-xl cursor-pointer"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 mr-1 text-amber-300" />
+                          Apply &amp; Auto-Replace Placeholders
+                        </Button>
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={!pastedRawText.trim()}
+                          onClick={() => handleApplyPastedText(false)}
+                          className="text-xs font-bold rounded-xl cursor-pointer"
+                        >
+                          Paste Raw Draft (As-Is)
+                        </Button>
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setPastedRawText("");
+                            setShowPasteHelper(false);
+                          }}
+                          className="text-xs text-slate-500"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* Description Rich Text Editor Box */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-bold text-slate-700">Document Body &amp; Terms</label>
+                    <label className="text-xs font-bold text-slate-700">Document Body &amp; Terms (Full Editable Text)</label>
                     <button
                       type="button"
                       onClick={() => {
@@ -970,15 +1203,32 @@ export function LetterGenerateModal({
                   <div className="border border-slate-300 rounded-xl overflow-hidden shadow-2xs">
                     {/* Simulated WYSIWYG Toolbar */}
                     <div className="bg-slate-100/90 px-3 py-1.5 border-b border-slate-200 flex flex-wrap items-center gap-1 text-slate-600">
-                      <button type="button" className="p-1 hover:bg-slate-200 rounded text-slate-700"><Sparkles className="w-3.5 h-3.5" /></button>
+                      <button
+                        type="button"
+                        onClick={() => setDescription((prev) => prev ? `**${prev}**` : "")}
+                        title="Bold text"
+                        className="p-1 hover:bg-slate-200 rounded font-bold text-slate-800 text-xs"
+                      >
+                        <Bold className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDescription((prev) => prev ? `*${prev}*` : "")}
+                        title="Italic text"
+                        className="p-1 hover:bg-slate-200 rounded italic text-slate-800 text-xs"
+                      >
+                        <Italic className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDescription((prev) => prev + "\n• ")}
+                        title="Add bullet point"
+                        className="p-1 hover:bg-slate-200 rounded"
+                      >
+                        <List className="w-3.5 h-3.5" />
+                      </button>
                       <span className="w-px h-4 bg-slate-300 mx-1" />
-                      <button type="button" className="p-1 hover:bg-slate-200 rounded font-bold text-slate-800 text-xs"><Bold className="w-3.5 h-3.5" /></button>
-                      <button type="button" className="p-1 hover:bg-slate-200 rounded italic text-slate-800 text-xs"><Italic className="w-3.5 h-3.5" /></button>
-                      <button type="button" className="p-1 hover:bg-slate-200 rounded underline text-slate-800 text-xs"><UnderlineIcon className="w-3.5 h-3.5" /></button>
                       <button type="button" className="p-1 hover:bg-slate-200 rounded text-amber-600"><Highlighter className="w-3.5 h-3.5" /></button>
-                      <span className="w-px h-4 bg-slate-300 mx-1" />
-                      <button type="button" className="p-1 hover:bg-slate-200 rounded"><List className="w-3.5 h-3.5" /></button>
-                      <button type="button" className="p-1 hover:bg-slate-200 rounded"><ListOrdered className="w-3.5 h-3.5" /></button>
                       <button type="button" className="p-1 hover:bg-slate-200 rounded"><AlignLeft className="w-3.5 h-3.5" /></button>
                       <button type="button" className="p-1 hover:bg-slate-200 rounded"><TableIcon className="w-3.5 h-3.5" /></button>
                       <button type="button" className="p-1 hover:bg-slate-200 rounded"><LinkIcon className="w-3.5 h-3.5" /></button>
@@ -997,7 +1247,7 @@ export function LetterGenerateModal({
                         setIsCustomEdited(true);
                       }}
                       className="w-full p-4 text-xs sm:text-sm font-sans text-slate-800 bg-white leading-relaxed focus:outline-hidden"
-                      placeholder="Type or format your document body..."
+                      placeholder="Type, edit or paste your letter body here..."
                     />
                   </div>
                 </div>
@@ -1021,10 +1271,20 @@ export function LetterGenerateModal({
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="bg-[#0F4C81] hover:bg-[#0C3D68] text-white font-bold px-6 py-2.5 rounded-xl shadow-md text-xs cursor-pointer flex items-center gap-1.5"
+                  className={`${
+                    isEditMode
+                      ? "bg-amber-600 hover:bg-amber-700"
+                      : "bg-[#0F4C81] hover:bg-[#0C3D68]"
+                  } text-white font-bold px-6 py-2.5 rounded-xl shadow-md text-xs cursor-pointer flex items-center gap-1.5`}
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>{isSubmitting ? "Generating..." : "✔ Issue & Dispatch Official Letter"}</span>
+                  <span>
+                    {isSubmitting
+                      ? "Saving Document..."
+                      : isEditMode
+                      ? "💾 Save & Update Official Document"
+                      : "✔ Issue & Dispatch Official Letter"}
+                  </span>
                 </Button>
 
                 <Button

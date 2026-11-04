@@ -239,4 +239,50 @@ describe("Professional Letter Templates Catalog & Dynamic Generators", () => {
     expect(retrieved).not.toBeNull();
     expect(retrieved?.recipient_name).toBe("Mr. Fenil Patel");
   });
+
+  it("should update and edit an existing document format and variables dynamically in documentStore", () => {
+    const adminEmail = "akash@akashtechnolabs.com";
+    const doc = documentStore.createOfferLetter(adminEmail, {
+      templateType: "INTERNSHIP_OFFER",
+      documentType: "OFFER_LETTER",
+      letterDate: "04-11-2026",
+      title: "INTERNSHIP OFFER LETTER",
+      salutation: "Mr.",
+      studentName: "Valand Harsh",
+      recipientEmail: "valand.harsh@akashtechnolabs.com",
+      internshipPosition: "Python Intern",
+      commencementDate: "1st December 2026",
+      continueUntilDate: "25th December 2026",
+      technology: "Python",
+    });
+
+    expect(doc).toBeDefined();
+
+    // Admin updates the document: changes role, dates, university, and pastes a new custom format
+    const updated = documentStore.updateDocument(doc.id, adminEmail, {
+      studentName: "Valand Harsh",
+      salutation: "Mr.",
+      internshipPosition: "Senior Python & AI Engineer Intern",
+      technology: "Python & AI Systems",
+      commencementDate: "1st January 2027",
+      continueUntilDate: "30th June 2027",
+      university: "SOU",
+      title: "OFFICIAL SENIOR INTERNSHIP APPOINTMENT",
+      descriptionContent: "Custom pasted format: This is an updated and custom formatted letter for Valand Harsh.",
+    });
+
+    expect(updated).not.toBeNull();
+    expect(updated?.recipient_role).toBe("Senior Python & AI Engineer Intern");
+    expect(updated?.template_data.technology).toBe("Python & AI Systems");
+    expect(updated?.template_data.commencement_date).toBe("1st January 2027");
+    expect(updated?.template_data.continue_until_date).toBe("30th June 2027");
+    expect(updated?.template_data.university).toBe("SOU");
+    expect(updated?.title).toBe("OFFICIAL SENIOR INTERNSHIP APPOINTMENT");
+    expect(updated?.description_content).toContain("Custom pasted format");
+
+    // Clean up
+    documentStore.deleteDocument(doc.id, adminEmail);
+    expect(documentStore.getById(doc.id)).toBeNull();
+  });
 });
+

@@ -438,3 +438,4 @@ export function generateLetterContent(params: GenerateLetterParams): GeneratedLe
     },
   };
 }
+

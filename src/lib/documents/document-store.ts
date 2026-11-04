@@ -304,6 +304,104 @@ export class DocumentStore {
     return true;
   }
 
+  public updateDocument(
+    id: string,
+    adminEmail: string,
+    payload: {
+      templateType?: string;
+      documentType?: string;
+      letterDate?: string;
+      title?: string;
+      salutation?: "Mr." | "Ms.";
+      studentName?: string;
+      recipientEmail?: string;
+      internshipPosition?: string;
+      commencementDate?: string;
+      continueUntilDate?: string;
+      technology?: string;
+      descriptionContent?: string;
+      university?: string;
+      purpose?: string;
+      status?: "ISSUED" | "ACCEPTED" | "PENDING_APPROVAL";
+    }
+  ): OfficialOfferLetter | null {
+    if (!isUserAdmin(adminEmail)) {
+      throw new Error("Access Denied: Only designated Akash Technolabs Administrators can update official documents.");
+    }
+
+    this.docs = loadFromDisk();
+    const idx = this.docs.findIndex((d) => d.id === id || d.document_number === id);
+    if (idx === -1) return null;
+
+    const doc = this.docs[idx];
+
+    if (payload.title) doc.title = payload.title.trim();
+    if (payload.documentType) doc.document_type = payload.documentType;
+    if (payload.templateType) doc.template_type = payload.templateType;
+    if (payload.letterDate) doc.issued_date = payload.letterDate.trim();
+    if (payload.status) doc.status = payload.status;
+    if (payload.descriptionContent !== undefined) doc.description_content = payload.descriptionContent;
+
+    if (payload.studentName) {
+      const sal = payload.salutation || doc.template_data.salutation || "Mr.";
+      doc.recipient_name = `${sal} ${payload.studentName.replace(/^(Mr\.|Ms\.)\s*/i, "").trim()}`;
+      doc.template_data.student_name = payload.studentName.replace(/^(Mr\.|Ms\.)\s*/i, "").trim();
+    }
+
+    if (payload.salutation) {
+      doc.template_data.salutation = payload.salutation;
+      const cleanName = (payload.studentName || doc.template_data.student_name).replace(/^(Mr\.|Ms\.)\s*/i, "").trim();
+      doc.recipient_name = `${payload.salutation} ${cleanName}`;
+    }
+
+    if (payload.internshipPosition) {
+      doc.recipient_role = payload.internshipPosition.trim();
+    }
+
+    if (payload.recipientEmail) {
+      doc.recipient_email = payload.recipientEmail.toLowerCase().trim();
+      doc.member_id = `usr-${payload.recipientEmail.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
+    }
+
+    if (payload.commencementDate) {
+      doc.template_data.commencement_date = payload.commencementDate.trim();
+    }
+
+    if (payload.continueUntilDate) {
+      doc.template_data.continue_until_date = payload.continueUntilDate.trim();
+    }
+
+    if (payload.technology) {
+      doc.template_data.technology = payload.technology.trim();
+      doc.template_data.program_or_track = `${payload.technology.trim()} technology`;
+    }
+
+    if (payload.university !== undefined) {
+      doc.template_data.university = payload.university;
+    }
+
+    if (payload.purpose !== undefined) {
+      doc.template_data.purpose = payload.purpose;
+    }
+
+    doc.updated_at = new Date().toISOString();
+    this.docs[idx] = doc;
+    saveToDisk(this.docs);
+    return doc;
+  }
+
+  public deleteDocument(id: string, adminEmail: string): boolean {
+    if (!isUserAdmin(adminEmail)) {
+      throw new Error("Access Denied: Only designated Akash Technolabs Administrators can delete official documents.");
+    }
+    this.docs = loadFromDisk();
+    const idx = this.docs.findIndex((d) => d.id === id || d.document_number === id);
+    if (idx === -1) return false;
+    this.docs.splice(idx, 1);
+    saveToDisk(this.docs);
+    return true;
+  }
+
   public createOfferLetter(
     adminEmail: string,
     payload: {
