@@ -20,7 +20,12 @@ export const metadata: Metadata = {
   description:
     "Empowering students, faculty and administrators with a smart, secure and seamless platform for activities, submissions, learning and progress at Akash Technolabs.",
   icons: {
-    icon: "/images/akash-at-watermark-hd.png",
+    icon: [
+      { url: "/icon.png", type: "image/png", sizes: "192x192" },
+      { url: "/favicon.ico", type: "image/x-icon", sizes: "any" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
   },
 };
 

@@ -123,3 +123,4 @@ Before going live with real students:
 2. **Access Control**: Confirm that visiting `/admin/dashboard` in Incognito / Guest mode redirects to `/admin/login`.
 3. **Student Isolation**: Confirm that students logging in at `/login` only see their own assigned tasks and documents.
 4. **Offer Letter Approval**: Confirm that requested offer letters are marked `PENDING_APPROVAL` and only unlock after admin approval in `/admin/documents`.
+
