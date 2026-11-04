@@ -69,7 +69,7 @@ export default function StudentDocumentsPage() {
   const [sharingDoc, setSharingDoc] = useState<IssuedDocument | null>(null);
   const [copiedType, setCopiedType] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState(() => parseClientSessionCookie());
-  const [studentName, setStudentName] = useState(() => parseClientSessionCookie()?.name || "Fenil Patel");
+  const [studentName, setStudentName] = useState(() => parseClientSessionCookie()?.name || "Student Intern");
   const [apiDocs, setApiDocs] = useState<IssuedDocument[]>([]);
   const [internshipRequestStatus, setInternshipRequestStatus] = useState<{
     hasRequested: boolean;
@@ -81,11 +81,12 @@ export default function StudentDocumentsPage() {
   const [isRequesting, setIsRequesting] = useState(false);
   const [requestMessage, setRequestMessage] = useState<string | null>(null);
 
-  // Form states for Student Offer Letter Request
-  const [selectedTrack, setSelectedTrack] = useState("PHP / Laravel Web Development");
+  // Form states for Student Document Request (Offer Letter / NOC / Recommendation)
+  const [requestDocType, setRequestDocType] = useState<"OFFER_LETTER" | "NOC" | "RECOMMENDATION_LETTER">("OFFER_LETTER");
+  const [selectedTrack, setSelectedTrack] = useState("AI & Machine Learning Engineering");
   const [customTrack, setCustomTrack] = useState("");
-  const [startDate, setStartDate] = useState("2026-07-03");
-  const [endDate, setEndDate] = useState("2027-04-30");
+  const [startDate, setStartDate] = useState(""); // Empty by default: user must choose
+  const [endDate, setEndDate] = useState(""); // Empty by default: user must choose
   const [salutation, setSalutation] = useState<"Mr." | "Ms.">("Mr.");
   const [purpose, setPurpose] = useState("Academic Practicum & Degree Verification");
 
@@ -97,6 +98,18 @@ export default function StudentDocumentsPage() {
     }
 
     let active = true;
+
+    // Fetch auth me to get live profile details
+    fetch("/api/auth/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (active && data?.user?.name) {
+          setStudentName(data.user.name);
+          setCurrentUser((prev: any) => ({ ...prev, name: data.user.name, email: data.user.email }));
+        }
+      })
+      .catch(() => {});
+
     fetch("/api/student/documents")
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Failed to load"))))
       .then((data) => {
@@ -106,7 +119,7 @@ export default function StudentDocumentsPage() {
       })
       .catch(() => {});
 
-    // Check one-time internship letter status
+    // Check one-time document request status
     fetch("/api/student/documents/internship-letter")
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Failed to load letter status"))))
       .then((data) => {
@@ -164,7 +177,10 @@ export default function StudentDocumentsPage() {
     return true;
   });
 
-  const certificateDoc = docsList.find((d) => d.document_type === "COMPLETION_CERTIFICATE" && d.status === "ISSUED") || docsList[0];
+  const issuedCertificate = docsList.find(
+    (d) => d.document_type === "COMPLETION_CERTIFICATE" && (d.status === "ISSUED" || d.approval_status === "APPROVED")
+  );
+  const certificateDoc = issuedCertificate || null;
 
   // LinkedIn Add-to-Profile URL for the certificate
   const certLinkedInUrl = `https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=${encodeURIComponent(
@@ -177,13 +193,25 @@ export default function StudentDocumentsPage() {
   const pendingCount = docsList.filter((d) => d.status === "PENDING_APPROVAL").length;
 
   const handleConfirmInternshipLetterRequest = async () => {
+    if (!startDate) {
+      setRequestMessage("Please select the Starting Date.");
+      return;
+    }
+    if (!endDate) {
+      setRequestMessage("Please select the Ending Date.");
+      return;
+    }
     setIsRequesting(true);
     setRequestMessage(null);
     try {
       const chosenTrack =
         selectedTrack === "OTHER" ? customTrack.trim() || "Information Technology" : selectedTrack;
-      const formattedStart = formatDateOrdinal(startDate) || "3rd July 2026";
-      const formattedEnd = formatDateOrdinal(endDate) || "30th April 2027";
+      const formattedStart = formatDateOrdinal(startDate) || startDate;
+      const formattedEnd = formatDateOrdinal(endDate) || endDate;
+
+      let docTitle = "OFFICIAL INTERNSHIP OFFER LETTER";
+      if (requestDocType === "NOC") docTitle = "NO OBJECTION CERTIFICATE (NOC)";
+      else if (requestDocType === "RECOMMENDATION_LETTER") docTitle = "LETTER OF RECOMMENDATION (LOR)";
 
       const res = await fetch("/api/student/documents/internship-letter", {
         method: "POST",
@@ -196,6 +224,8 @@ export default function StudentDocumentsPage() {
           commencementDate: formattedStart,
           continueUntilDate: formattedEnd,
           purpose,
+          documentType: requestDocType,
+          title: docTitle,
         }),
       });
       const data = await res.json();
@@ -211,10 +241,10 @@ export default function StudentDocumentsPage() {
         setApiDocs((prev) => [data.document, ...prev.filter((d) => d.id !== data.document.id)]);
         setShowRequestDialog(false);
       } else {
-        setRequestMessage(data.error || "Failed to submit internship letter request");
+        setRequestMessage(data.error || "Failed to submit document request");
       }
     } catch {
-      setRequestMessage("Network error requesting internship letter.");
+      setRequestMessage("Network error requesting document.");
     } finally {
       setIsRequesting(false);
     }
@@ -334,106 +364,133 @@ export default function StudentDocumentsPage() {
           ))}
         </div>
 
-        {/* One-Time Official Internship Letter Request Banner */}
-        {(activeTab === "ALL" || activeTab === "INTERN" || activeTab === "OFFER") && (
-          <div
-            className={`p-4 sm:p-5 rounded-2xl border text-white shadow-md relative overflow-hidden ${
-              internshipRequestStatus?.hasRequested && !internshipRequestStatus?.isApproved
-                ? "border-amber-800 bg-gradient-to-r from-slate-900 via-[#1C180B] to-[#3B2C0D]"
-                : internshipRequestStatus?.hasRequested && internshipRequestStatus?.isApproved
-                ? "border-emerald-800 bg-gradient-to-r from-slate-900 via-[#0B231A] to-[#0A3D28]"
-                : "border-slate-800 bg-gradient-to-r from-slate-900 via-[#0B192C] to-[#0F4C81]"
-            }`}
-          >
-            <div className="absolute right-0 top-0 translate-x-12 -translate-y-8 w-60 h-60 bg-[#E52329]/15 rounded-full blur-3xl pointer-events-none" />
-            <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div className="space-y-1 max-w-xl">
-                <div className="flex items-center gap-2">
-                  {internshipRequestStatus?.hasRequested && !internshipRequestStatus?.isApproved ? (
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-amber-400" />
-                      Pending Admin Approval
-                    </span>
-                  ) : internshipRequestStatus?.hasRequested && internshipRequestStatus?.isApproved ? (
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                      Approved &amp; Issued
-                    </span>
-                  ) : (
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-red-500/20 text-red-200 border border-red-500/30">
-                      Official Appointment Letter
-                    </span>
-                  )}
-                  <span className="text-[11px] text-slate-300 font-semibold">
-                    • Strictly 1 Issuance Per Student
-                  </span>
-                </div>
-                <h3 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-2">
-                  Akash Technolabs Official Internship Offer Letter
-                </h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  {internshipRequestStatus?.hasRequested && !internshipRequestStatus?.isApproved ? (
-                    <>
-                      Your internship letter request has been submitted for{" "}
-                      <strong className="text-amber-300">
-                        {(internshipRequestStatus.letter?.template_data as any)?.technology ||
-                          internshipRequestStatus.letter?.recipient_role ||
-                          "your selected track"}
-                      </strong>{" "}
-                      ({((internshipRequestStatus.letter?.template_data as any)?.commencement_date || "Start")} to{" "}
-                      {((internshipRequestStatus.letter?.template_data as any)?.continue_until_date || "End")}).
-                      The signed letterhead will be unlocked for preview and download immediately once approved by Akash Technolabs Admin.
-                    </>
-                  ) : internshipRequestStatus?.hasRequested && internshipRequestStatus?.isApproved ? (
-                    <>
-                      Your official internship appointment letter was verified and approved by CEO Akash Padhiyar on{" "}
-                      <strong className="text-emerald-300">{internshipRequestStatus.letter?.issued_date || "record"}</strong>.
-                      Under institutional policy, each intern can obtain this letter exactly once.
-                    </>
-                  ) : (
-                    "Request your certified appointment and enrollment letter endorsed by CEO Akash Padhiyar. You can select your technical field and commencement dates. This official document is permitted exactly one time per enrolled student."
-                  )}
-                </p>
-              </div>
-
-              <div className="shrink-0 flex items-center gap-2 w-full md:w-auto">
+        {/* Official Document Request Banner */}
+        <div
+          className={`p-4 sm:p-5 rounded-2xl border text-white shadow-md relative overflow-hidden ${
+            internshipRequestStatus?.hasRequested && !internshipRequestStatus?.isApproved
+              ? "border-amber-800 bg-gradient-to-r from-slate-900 via-[#1C180B] to-[#3B2C0D]"
+              : internshipRequestStatus?.hasRequested && internshipRequestStatus?.isApproved
+              ? "border-emerald-800 bg-gradient-to-r from-slate-900 via-[#0B231A] to-[#0A3D28]"
+              : "border-slate-800 bg-gradient-to-r from-slate-900 via-[#0B192C] to-[#0F4C81]"
+          }`}
+        >
+          <div className="absolute right-0 top-0 translate-x-12 -translate-y-8 w-60 h-60 bg-[#E52329]/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="space-y-1 max-w-xl">
+              <div className="flex items-center gap-2">
                 {internshipRequestStatus?.hasRequested && !internshipRequestStatus?.isApproved ? (
-                  <div className="px-3.5 py-2 rounded-xl bg-amber-500/20 text-amber-200 border border-amber-500/40 text-xs font-bold flex items-center gap-2 shadow-xs">
-                    <Lock className="w-4 h-4 text-amber-300" />
-                    <span>Awaiting Admin Verification</span>
-                  </div>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-amber-400" />
+                    Pending Admin Approval
+                  </span>
                 ) : internshipRequestStatus?.hasRequested && internshipRequestStatus?.isApproved ? (
-                  <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                    <Button
-                      size="sm"
-                      onClick={() =>
-                        internshipRequestStatus.letter &&
-                        handleDirectStudentDownload(internshipRequestStatus.letter)
-                      }
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl h-9 px-4 shadow-xs cursor-pointer flex items-center gap-1.5"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Download Letter (PDF)</span>
-                    </Button>
-                    <div className="px-3 py-1.5 rounded-xl bg-white/10 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>1-Time Limit Used</span>
-                    </div>
-                  </div>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                    Approved &amp; Issued
+                  </span>
                 ) : (
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-red-500/20 text-red-200 border border-red-500/30">
+                    Official Academic Credentials
+                  </span>
+                )}
+                <span className="text-[11px] text-slate-300 font-semibold">
+                  • Verified Akash Technolabs Credentials
+                </span>
+              </div>
+              <h3 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-2">
+                {internshipRequestStatus?.letter?.title || "Akash Technolabs Official Credentials & Letters"}
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                {internshipRequestStatus?.hasRequested && !internshipRequestStatus?.isApproved ? (
+                  <>
+                    Your document request has been submitted for{" "}
+                    <strong className="text-amber-300">
+                      {(internshipRequestStatus.letter?.template_data as any)?.technology ||
+                        internshipRequestStatus.letter?.recipient_role ||
+                        "your technical track"}
+                    </strong>{" "}
+                    ({((internshipRequestStatus.letter?.template_data as any)?.commencement_date || "Start")} to{" "}
+                    {((internshipRequestStatus.letter?.template_data as any)?.continue_until_date || "End")}).
+                    The signed letterhead will be unlocked for download immediately once verified by Akash Technolabs Admin.
+                  </>
+                ) : internshipRequestStatus?.hasRequested && internshipRequestStatus?.isApproved ? (
+                  <>
+                    Your official document was verified and approved by CEO Akash Padhiyar on{" "}
+                    <strong className="text-emerald-300">{internshipRequestStatus.letter?.issued_date || "record"}</strong>.
+                    You can download your certified PDF below.
+                  </>
+                ) : (
+                  "Request your certified internship offer letter, college NOC, or recommendation letter endorsed by CEO Akash Padhiyar. Select your technical field and commencement dates to submit for administrator verification."
+                )}
+              </p>
+            </div>
+
+            <div className="shrink-0 flex flex-wrap items-center gap-2 w-full md:w-auto">
+              {internshipRequestStatus?.hasRequested && !internshipRequestStatus?.isApproved ? (
+                <div className="px-3.5 py-2 rounded-xl bg-amber-500/20 text-amber-200 border border-amber-500/40 text-xs font-bold flex items-center gap-2 shadow-xs">
+                  <Lock className="w-4 h-4 text-amber-300" />
+                  <span>Awaiting Admin Verification</span>
+                </div>
+              ) : internshipRequestStatus?.hasRequested && internshipRequestStatus?.isApproved ? (
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                   <Button
                     size="sm"
-                    onClick={() => setShowRequestDialog(true)}
-                    className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold text-xs rounded-xl h-9 px-5 shadow-md shadow-red-500/20 transition-transform hover:scale-[1.02] cursor-pointer flex items-center gap-2 w-full md:w-auto justify-center"
+                    onClick={() =>
+                      internshipRequestStatus.letter &&
+                      handleDirectStudentDownload(internshipRequestStatus.letter)
+                    }
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl h-9 px-4 shadow-xs cursor-pointer flex items-center gap-1.5"
                   >
-                    <FileText className="w-4 h-4" />
-                    <span>Request Internship Letter (1-Time)</span>
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download Letter (PDF)</span>
                   </Button>
-                )}
-              </div>
+                  <div className="px-3 py-1.5 rounded-xl bg-white/10 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Verified ✓</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setRequestDocType("OFFER_LETTER");
+                      setShowRequestDialog(true);
+                    }}
+                    className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold text-xs rounded-xl h-9 px-4 shadow-md shadow-red-500/20 transition-transform hover:scale-[1.02] cursor-pointer flex items-center gap-1.5"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Request Offer Letter</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setRequestDocType("NOC");
+                      setShowRequestDialog(true);
+                    }}
+                    variant="outline"
+                    className="border-white/30 text-white hover:bg-white/10 font-bold text-xs rounded-xl h-9 px-3.5 cursor-pointer flex items-center gap-1.5"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Request NOC</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setRequestDocType("RECOMMENDATION_LETTER");
+                      setShowRequestDialog(true);
+                    }}
+                    variant="outline"
+                    className="border-white/30 text-white hover:bg-white/10 font-bold text-xs rounded-xl h-9 px-3.5 cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Award className="w-3.5 h-3.5" />
+                    <span>Request LOR</span>
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
-        )}
+        </div>
 
         {/* 2-Column Layout: Documents List (Left) & Certificate Preview (Right) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -556,131 +613,194 @@ export default function StudentDocumentsPage() {
           <div className="lg:col-span-6 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                Live Certificate Preview &amp; Verification
+                Official Credential Verification
               </h3>
-              <span className="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5" /> Seal Intact
-              </span>
+              {certificateDoc ? (
+                <span className="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Seal Intact &amp; Verified
+                </span>
+              ) : (
+                <span className="text-[11px] text-amber-600 font-bold flex items-center gap-1">
+                  <Lock className="w-3.5 h-3.5" /> Milestone In Progress
+                </span>
+              )}
             </div>
 
-            <Card className="border-2 border-slate-200 shadow-md p-8 text-center bg-white relative overflow-hidden rounded-2xl">
-              {/* Decorative border */}
-              <div className="border-2 border-dashed border-blue-900/30 p-6 rounded-xl space-y-4 relative bg-gradient-to-b from-blue-50/20 via-white to-amber-50/20">
-                {/* Logo */}
-                <div className="flex items-center justify-center gap-2">
-                  <img
-                    src="/images/akash-technolabs-header-logo.png"
-                    alt="Akash Technolabs"
-                    className="h-7 w-auto object-contain"
-                  />
+            {certificateDoc ? (
+              <Card className="border-2 border-slate-200 shadow-md p-8 text-center bg-white relative overflow-hidden rounded-2xl">
+                {/* Decorative border */}
+                <div className="border-2 border-dashed border-blue-900/30 p-6 rounded-xl space-y-4 relative bg-gradient-to-b from-blue-50/20 via-white to-amber-50/20">
+                  {/* Logo */}
+                  <div className="flex items-center justify-center gap-2">
+                    <img
+                      src="/images/akash-technolabs-header-logo.png"
+                      alt="Akash Technolabs"
+                      className="h-7 w-auto object-contain"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <h4 className="text-base font-serif font-black text-slate-900 tracking-wide">
+                      {certificateDoc.title || "Certificate of Internship Excellence"}
+                    </h4>
+                    <p className="text-[11px] text-slate-500 italic">This officially certifies that</p>
+                  </div>
+
+                  <div className="py-1">
+                    <h3 className="text-2xl font-serif font-black text-blue-700 tracking-tight">
+                      {studentName && studentName !== "Student Intern"
+                        ? studentName
+                        : certificateDoc.recipient_name || "Certified Intern"}
+                    </h3>
+                    <div className="w-28 h-0.5 bg-[#E52329] mx-auto mt-1" />
+                  </div>
+
+                  <p className="text-[11px] text-slate-600 max-w-sm mx-auto leading-relaxed">
+                    has successfully completed all milestones for the{" "}
+                    <strong className="text-slate-800">
+                      {(certificateDoc.template_data as any)?.technology || "Technical Internship"}
+                    </strong>{" "}
+                    under Akash Technolabs practicum program.
+                  </p>
+
+                  {/* Footer Stamp, QR Code & Signatory */}
+                  <div className="pt-4 mt-4 border-t border-slate-200 flex items-center justify-between text-left">
+                    <div className="text-[10px] text-slate-500">
+                      <div className="font-serif text-sm text-slate-900 font-bold">Akash Padhiyar</div>
+                      <p className="text-[9px] text-slate-500 font-semibold">CEO • Akash Technolabs</p>
+                      <span className="font-mono text-[9px] text-blue-600 block mt-0.5">
+                        ID: {certificateDoc.document_number}
+                      </span>
+                    </div>
+
+                    {/* QR Code Block linking to /verify/[id] */}
+                    <Link
+                      href={`/verify/${certificateDoc.document_number}`}
+                      className="flex items-center gap-2 p-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors"
+                      title="Scan or click to verify authentically on public ledger"
+                    >
+                      <div className="w-9 h-9 bg-white p-1 rounded border border-slate-300 flex flex-col justify-between shrink-0">
+                        <div className="flex justify-between">
+                          <div className="w-2 h-2 bg-slate-900" />
+                          <div className="w-2 h-2 bg-slate-900" />
+                        </div>
+                        <div className="w-1.5 h-1.5 bg-blue-600 mx-auto rounded-full" />
+                        <div className="flex justify-between">
+                          <div className="w-2 h-2 bg-slate-900" />
+                          <div className="w-1.5 h-1.5 bg-emerald-600" />
+                        </div>
+                      </div>
+                      <div className="text-[9px] leading-tight text-slate-600">
+                        <span className="font-bold text-slate-900 block">Scan to Verify</span>
+                        <span className="text-emerald-600 font-semibold">Valid Credential</span>
+                      </div>
+                    </Link>
+
+                    <div className="w-11 h-11 rounded-full border-2 border-amber-500 bg-amber-50/70 flex items-center justify-center text-amber-700 shrink-0 shadow-2xs">
+                      <Award className="w-5 h-5" />
+                    </div>
+                  </div>
                 </div>
 
-                <div className="space-y-1">
-                  <h4 className="text-base font-serif font-black text-slate-900 tracking-wide">
+                {/* Action Buttons: Studio Modal, Download & Add to LinkedIn */}
+                <div className="pt-4 space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Button
+                      id="open-pdf-studio-btn"
+                      onClick={() => setSelectedStudioDoc(certificateDoc)}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs py-5 cursor-pointer text-xs"
+                    >
+                      <Download className="w-4 h-4 mr-1.5" />
+                      Open PDF Studio
+                    </Button>
+                    <Link href={`/verify/${certificateDoc.document_number}`} target="_blank" className="w-full">
+                      <Button
+                        id="verify-publicly-btn"
+                        variant="outline"
+                        className="w-full border-slate-300 text-slate-700 font-bold rounded-xl py-5 hover:bg-slate-50 cursor-pointer text-xs"
+                      >
+                        <ShieldCheck className="w-4 h-4 mr-1.5 text-emerald-600" />
+                        Verify Publicly
+                      </Button>
+                    </Link>
+                  </div>
+
+                  {/* Add to LinkedIn & Share Embed Buttons */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <a
+                      href={certLinkedInUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#0a66c2] hover:bg-[#004182] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+                    >
+                      <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                        <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76a1.53 1.53 0 0 0 1.53-1.53 1.53 1.53 0 0 0-1.53-1.53 1.53 1.53 0 0 0-1.53 1.53 1.53 1.53 0 0 0 1.53 1.53m1.4 9.74v-8.37H5.06v8.37h2.8z" />
+                      </svg>
+                      <span>LinkedIn</span>
+                    </a>
+
+                    <Button
+                      id="share-embed-btn"
+                      onClick={() => setSharingDoc(certificateDoc)}
+                      variant="outline"
+                      className="w-full border-slate-300 text-slate-700 hover:bg-slate-100 font-bold rounded-xl py-2.5 cursor-pointer text-xs flex items-center justify-center gap-1.5"
+                    >
+                      <Share2 className="w-3.5 h-3.5 text-blue-600" />
+                      Share &amp; Embed Badge
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ) : (
+              /* Milestone In Progress Card - Rendered for newly registered students */
+              <Card className="border border-slate-200/90 shadow-sm p-6 sm:p-7 text-center bg-white relative overflow-hidden rounded-2xl space-y-4">
+                <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto shadow-xs">
+                  <Lock className="w-7 h-7" />
+                </div>
+
+                <div>
+                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200">
+                    Not Issued Yet • Milestone In Progress
+                  </span>
+                  <h4 className="text-base font-serif font-black text-slate-900 tracking-wide mt-2">
                     Certificate of Internship Excellence
                   </h4>
-                  <p className="text-[11px] text-slate-500 italic">This officially certifies that</p>
+                  <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
+                    Official completion certificates are awarded upon verified evaluation of your practical activities and supervisor feedback.
+                  </p>
                 </div>
 
-                <div className="py-1">
-                  <h3 className="text-2xl font-serif font-black text-blue-700 tracking-tight">
-                    {studentName && studentName !== "Student Intern" ? studentName : (certificateDoc?.recipient_name || "Certified Intern")}
-                  </h3>
-                  <div className="w-28 h-0.5 bg-[#E52329] mx-auto mt-1" />
-                </div>
-
-                <p className="text-[11px] text-slate-600 max-w-sm mx-auto leading-relaxed">
-                  has successfully completed all milestones for the <strong className="text-slate-800">AI &amp; Full Stack Enterprise Internship</strong> from October 1, 2026 to October 31, 2026.
-                </p>
-
-                {/* Footer Stamp, QR Code & Signatory */}
-                <div className="pt-4 mt-4 border-t border-slate-200 flex items-center justify-between text-left">
-                  <div className="text-[10px] text-slate-500">
-                    <div className="font-serif text-sm text-slate-900 font-bold">Akash Padhiyar</div>
-                    <p className="text-[9px] text-slate-500 font-semibold">CEO • Akash Technolabs</p>
-                    <span className="font-mono text-[9px] text-blue-600 block mt-0.5">
-                      ID: {certificateDoc?.document_number || "ID-AKT-2026-CERT01"}
-                    </span>
+                {/* Real-time milestone tracker */}
+                <div className="bg-slate-50 rounded-xl p-4 text-left border border-slate-200 space-y-2.5 text-xs">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                    Accreditation Milestones:
+                  </span>
+                  <div className="flex items-center gap-2 text-emerald-700 font-semibold">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Candidate Identity &amp; Portal Enrollment Verified</span>
                   </div>
-
-                  {/* QR Code Block linking to /verify/[id] */}
-                  <Link
-                    href={`/verify/${certificateDoc?.document_number || "ID-AKT-2026-0701"}`}
-                    className="flex items-center gap-2 p-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors"
-                    title="Scan or click to verify authentically on public ledger"
-                  >
-                    <div className="w-9 h-9 bg-white p-1 rounded border border-slate-300 flex flex-col justify-between shrink-0">
-                      <div className="flex justify-between">
-                        <div className="w-2 h-2 bg-slate-900" />
-                        <div className="w-2 h-2 bg-slate-900" />
-                      </div>
-                      <div className="w-1.5 h-1.5 bg-blue-600 mx-auto rounded-full" />
-                      <div className="flex justify-between">
-                        <div className="w-2 h-2 bg-slate-900" />
-                        <div className="w-1.5 h-1.5 bg-emerald-600" />
-                      </div>
-                    </div>
-                    <div className="text-[9px] leading-tight text-slate-600">
-                      <span className="font-bold text-slate-900 block">Scan to Verify</span>
-                      <span className="text-emerald-600 font-semibold">Valid Credential</span>
-                    </div>
-                  </Link>
-
-                  <div className="w-11 h-11 rounded-full border-2 border-amber-500 bg-amber-50/70 flex items-center justify-center text-amber-700 shrink-0 shadow-2xs">
-                    <Award className="w-5 h-5" />
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <Clock className="w-4 h-4 text-amber-500 shrink-0" />
+                    <span>Practicum Activities &amp; Project Submissions</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <Clock className="w-4 h-4 text-slate-400 shrink-0" />
+                    <span>Faculty Evaluation &amp; Performance Review</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <ShieldCheck className="w-4 h-4 text-slate-400 shrink-0" />
+                    <span>Tamper-Proof SHA-256 Ledger Seal by CEO Akash Padhiyar</span>
                   </div>
                 </div>
-              </div>
 
-              {/* Action Buttons: Studio Modal, Download & Add to LinkedIn */}
-              <div className="pt-4 space-y-2">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <Button
-                    id="open-pdf-studio-btn"
-                    onClick={() => setSelectedStudioDoc(certificateDoc)}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs py-5 cursor-pointer text-xs"
-                  >
-                    <Download className="w-4 h-4 mr-1.5" />
-                    Open PDF Studio
-                  </Button>
-                  <Link href="/verify/ID-CERT-2026-8918" target="_blank" className="w-full">
-                    <Button
-                      id="verify-publicly-btn"
-                      variant="outline"
-                      className="w-full border-slate-300 text-slate-700 font-bold rounded-xl py-5 hover:bg-slate-50 cursor-pointer text-xs"
-                    >
-                      <ShieldCheck className="w-4 h-4 mr-1.5 text-emerald-600" />
-                      Verify Publicly
-                    </Button>
-                  </Link>
+                <div className="pt-2">
+                  <div className="w-full py-3 px-4 rounded-xl bg-slate-100 text-slate-400 text-xs font-bold border border-slate-200 flex items-center justify-center gap-2 cursor-not-allowed select-none">
+                    <Lock className="w-4 h-4" />
+                    <span>Certificate Locked (Available Upon Milestone Completion)</span>
+                  </div>
                 </div>
-
-                {/* Add to LinkedIn & Share Embed Buttons */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <a
-                    href={certLinkedInUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#0a66c2] hover:bg-[#004182] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
-                  >
-                    <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
-                      <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76a1.53 1.53 0 0 0 1.53-1.53 1.53 1.53 0 0 0-1.53-1.53 1.53 1.53 0 0 0-1.53 1.53 1.53 1.53 0 0 0 1.53 1.53m1.4 9.74v-8.37H5.06v8.37h2.8z" />
-                    </svg>
-                    <span>LinkedIn</span>
-                  </a>
-
-                  <Button
-                    id="share-embed-btn"
-                    onClick={() => setSharingDoc(certificateDoc)}
-                    variant="outline"
-                    className="w-full border-slate-300 text-slate-700 hover:bg-slate-100 font-bold rounded-xl py-2.5 cursor-pointer text-xs flex items-center justify-center gap-1.5"
-                  >
-                    <Share2 className="w-3.5 h-3.5 text-blue-600" />
-                    Share &amp; Embed Badge
-                  </Button>
-                </div>
-              </div>
-            </Card>
+              </Card>
+            )}
           </div>
         </div>
       </main>
@@ -844,7 +964,11 @@ export default function StudentDocumentsPage() {
                 </div>
                 <div>
                   <h3 className="text-base font-black text-slate-900 tracking-tight">
-                    Request Official Internship Offer Letter
+                    {requestDocType === "NOC"
+                      ? "Request College NOC Letter"
+                      : requestDocType === "RECOMMENDATION_LETTER"
+                      ? "Request Letter of Recommendation (LOR)"
+                      : "Request Official Internship Offer Letter"}
                   </h3>
                   <p className="text-xs text-slate-500">
                     Akash Technolabs • Single-Issuance Credential
@@ -863,7 +987,7 @@ export default function StudentDocumentsPage() {
             </div>
 
             <p className="text-xs text-slate-600 leading-relaxed">
-              Customize your technical track and placement dates below. Your request will be routed directly to Akash Technolabs administration for verification. Once approved, your official letterhead PDF will unlock for instant download.
+              Select your required document type, technical track, and commencement dates below. Your request will be routed directly to Akash Technolabs administration for verification.
             </p>
 
             {requestMessage && (
@@ -873,6 +997,33 @@ export default function StudentDocumentsPage() {
             )}
 
             <div className="space-y-3.5 pt-1">
+              {/* Document Type Selector */}
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                  Document Type *
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: "OFFER_LETTER", label: "Offer Letter" },
+                    { id: "NOC", label: "College NOC" },
+                    { id: "RECOMMENDATION_LETTER", label: "Recommendation" },
+                  ].map((dt) => (
+                    <button
+                      key={dt.id}
+                      type="button"
+                      onClick={() => setRequestDocType(dt.id as any)}
+                      className={`py-2 px-1 text-xs font-bold rounded-xl border transition-all cursor-pointer text-center ${
+                        requestDocType === dt.id
+                          ? "bg-[#E52329] text-white border-red-600 shadow-xs"
+                          : "bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100"
+                      }`}
+                    >
+                      {dt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Salutation & Candidate Name */}
               <div className="grid grid-cols-3 gap-2">
                 <div>
@@ -911,9 +1062,9 @@ export default function StudentDocumentsPage() {
                   onChange={(e) => setSelectedTrack(e.target.value)}
                   className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white font-medium focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
-                  <option value="PHP / Laravel Web Development">PHP / Laravel Web Development</option>
                   <option value="AI & Machine Learning Engineering">AI &amp; Machine Learning Engineering</option>
                   <option value="Full-Stack Web Development (Next.js & React)">Full-Stack Web Development (Next.js &amp; React)</option>
+                  <option value="PHP / Laravel Web Development">PHP / Laravel Web Development</option>
                   <option value="Python & Data Science">Python &amp; Data Science</option>
                   <option value="Cloud Computing & DevOps">Cloud Computing &amp; DevOps</option>
                   <option value="Software Quality Assurance (QA) & Testing">Software Quality Assurance (QA) &amp; Testing</option>
@@ -933,7 +1084,7 @@ export default function StudentDocumentsPage() {
                 )}
               </div>
 
-              {/* Dates: Commencement & Continue Until */}
+              {/* Dates: Commencement & Continue Until - NO Pre-selected dates */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-[11px] font-bold text-slate-700 block mb-1">
@@ -942,11 +1093,12 @@ export default function StudentDocumentsPage() {
                   <input
                     type="date"
                     value={startDate}
+                    required
                     onChange={(e) => setStartDate(e.target.value)}
                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white font-medium focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                   <p className="text-[10px] text-slate-500 mt-1 font-mono">
-                    Official: {formatDateOrdinal(startDate)}
+                    {startDate ? `Official: ${formatDateOrdinal(startDate)}` : "Select start date"}
                   </p>
                 </div>
                 <div>
@@ -956,11 +1108,12 @@ export default function StudentDocumentsPage() {
                   <input
                     type="date"
                     value={endDate}
+                    required
                     onChange={(e) => setEndDate(e.target.value)}
                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white font-medium focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                   <p className="text-[10px] text-slate-500 mt-1 font-mono">
-                    Official: {formatDateOrdinal(endDate)}
+                    {endDate ? `Official: ${formatDateOrdinal(endDate)}` : "Select end date"}
                   </p>
                 </div>
               </div>
@@ -986,7 +1139,7 @@ export default function StudentDocumentsPage() {
                   <span>Administrative Verification &amp; Single-Issuance</span>
                 </div>
                 <p className="text-[10.5px] leading-relaxed text-amber-800/90">
-                  This letter is strictly restricted to <strong>1 issuance per student</strong>. Upon submission, it will be placed in the Admin Verification Queue. The official letterhead and PDF download will unlock as soon as Akash Technolabs Admin accepts the request.
+                  Upon submission, your request will be placed in the Admin Verification Queue. The official letterhead and PDF download will unlock as soon as Akash Technolabs Admin accepts and approves the request.
                 </p>
               </div>
             </div>
@@ -1010,7 +1163,7 @@ export default function StudentDocumentsPage() {
                 disabled={isRequesting}
                 className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold rounded-xl text-xs px-5 shadow-md shadow-red-500/20 cursor-pointer"
               >
-                {isRequesting ? "Submitting for Admin Approval..." : "Submit Request to Admin (1-Time)"}
+                {isRequesting ? "Submitting for Admin Approval..." : "Submit Request to Admin"}
               </Button>
             </div>
           </div>

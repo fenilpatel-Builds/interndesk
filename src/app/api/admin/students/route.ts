@@ -5,11 +5,116 @@ import { taskStore } from "../../../../lib/tasks/task-store";
 import { activityStore } from "../../../../lib/institute/activity-store";
 import { documentStore } from "../../../../lib/documents/document-store";
 import { createAdminClient } from "../../../../lib/supabase/admin";
+import { isUserAdmin } from "../../../../lib/auth/admin-whitelist";
 
 export async function GET() {
   try {
     const allAccounts = credentialsStore.getAll();
-    const studentAccounts = allAccounts.filter((a) => a.role === "STUDENT");
+    const localStudentAccounts = allAccounts.filter(
+      (a) => a.role === "STUDENT" && !isUserAdmin(a.email)
+    );
+
+    // Dynamic Supabase Auth & Database synchronization
+    const mergedMap = new Map<
+      string,
+      {
+        id: string;
+        name: string;
+        email: string;
+        createdAt?: string;
+        technology?: string;
+        college?: string;
+        university?: string;
+        phone?: string;
+      }
+    >();
+
+    // 1. Add local accounts first
+    for (const acc of localStudentAccounts) {
+      const email = acc.email.toLowerCase().trim();
+      mergedMap.set(email, {
+        id: acc.id,
+        name: acc.name,
+        email: acc.email,
+        createdAt: acc.createdAt,
+      });
+    }
+
+    // 2. Fetch live users from Supabase Auth & DB
+    try {
+      const adminClient = createAdminClient();
+      if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        const { data: authData } = await adminClient.auth.admin.listUsers();
+        if (authData?.users && Array.isArray(authData.users)) {
+          for (const u of authData.users) {
+            const email = (u.email || "").toLowerCase().trim();
+            if (!email || isUserAdmin(email)) continue;
+            if (u.user_metadata?.role === "ADMIN" || u.user_metadata?.role === "SUPER_ADMIN") continue;
+
+            const rawMetaName = u.user_metadata?.full_name || u.user_metadata?.name;
+            const fullName =
+              rawMetaName && rawMetaName.trim().length > 1 && !rawMetaName.startsWith("-")
+                ? rawMetaName.trim()
+                : (email.includes("huntarmy001") || email.includes("fenil")
+                    ? "Fenil Patel"
+                    : email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()));
+
+            const existing = mergedMap.get(email);
+            mergedMap.set(email, {
+              id: u.id || existing?.id || `usr-${Date.now()}`,
+              name: fullName || existing?.name || "Student Intern",
+              email: u.email!,
+              createdAt: u.created_at || existing?.createdAt,
+              technology: u.user_metadata?.technology || existing?.technology,
+              college: u.user_metadata?.college || existing?.college,
+            });
+
+            // Auto-sync into credentialsStore so other features (tasks, attendance) can find this student
+            if (!credentialsStore.findByEmail(email)) {
+              try {
+                credentialsStore.register({
+                  email: u.email!,
+                  password: "SupabaseExternalAuth!2026",
+                  name: fullName,
+                  role: "STUDENT",
+                  organizationId: "org-akash-01",
+                  organizationName: "Akash Technolabs",
+                  organizationType: "CORPORATE",
+                });
+              } catch {
+                // Non-blocking
+              }
+            }
+          }
+        }
+
+        // Also check profiles table
+        try {
+          const { data: profiles } = await adminClient.from("profiles").select("*");
+          if (profiles && Array.isArray(profiles)) {
+            for (const p of profiles) {
+              const email = (p.email || "").toLowerCase().trim();
+              if (!email || isUserAdmin(email) || p.role === "ADMIN" || p.role === "SUPER_ADMIN") continue;
+              if (mergedMap.has(email)) {
+                const item = mergedMap.get(email)!;
+                if (p.full_name) item.name = p.full_name;
+              } else {
+                mergedMap.set(email, {
+                  id: p.id || `usr-${Date.now()}`,
+                  name: p.full_name || email.split("@")[0],
+                  email: p.email,
+                  createdAt: p.created_at,
+                });
+              }
+            }
+          }
+        } catch {
+          // Table check non-blocking
+        }
+      }
+    } catch (err) {
+      console.warn("[AdminStudents] Supabase sync warning:", err);
+    }
 
     // Live state lookups
     const liveAttendanceList = liveAttendanceStore.getAll();
@@ -30,7 +135,9 @@ export async function GET() {
       "Nirma Institute of Technology",
     ];
 
-    const students = studentAccounts.map((account, index) => {
+    const studentAccountsList = Array.from(mergedMap.values());
+
+    const students = studentAccountsList.map((account, index) => {
       const email = account.email.toLowerCase().trim();
       const joinedDate = account.createdAt
         ? account.createdAt.split("T")[0]
@@ -58,10 +165,14 @@ export async function GET() {
       const tasksCompleted = totalTasks > 0 ? `${completedTasks}/${totalTasks}` : "0/0";
 
       // Technology selection
-      let technology = techOptions[index % techOptions.length];
+      let technology = account.technology || techOptions[index % techOptions.length];
       if (email.includes("huntarmy001") || email.includes("fenil")) {
         technology = "AI/ML Systems";
       } else if (email.includes("priya")) {
+        technology = "Full Stack Web Development";
+      } else if (email.includes("huntking001") || account.name.toLowerCase().includes("dev pawar")) {
+        technology = "AI/ML Systems";
+      } else if (email.includes("huntking002") || account.name.toLowerCase().includes("akshat")) {
         technology = "Full Stack Web Development";
       }
 
@@ -69,9 +180,9 @@ export async function GET() {
         id: account.id,
         name: account.name,
         email: account.email,
-        phone: "+91 99786 21654",
-        college: collegeOptions[index % collegeOptions.length],
-        university: "Gujarat Technological University",
+        phone: account.phone || "+91 99786 21654",
+        college: account.college || collegeOptions[index % collegeOptions.length],
+        university: account.university || "Gujarat Technological University",
         technology,
         program: `${technology} Practicum Cohort`,
         enrollmentId: `ENR-AKT-${account.id.replace(/[^0-9]/g, "").slice(-6) || (100000 + index).toString()}`,
@@ -164,17 +275,32 @@ export async function DELETE(request: NextRequest) {
       // 5. Delete student documents/certificates
       documentStore.deleteDocumentsForStudent(cleanEmail);
 
-      // 6. Supabase dual-sync cleanup (best-effort, non-blocking)
+      // 6. Supabase permanent deletion (Auth + DB)
       if (process.env.NODE_ENV !== "test" && process.env.VITEST !== "true") {
         try {
           const adminClient = createAdminClient();
-          await Promise.race([
-            Promise.all([
-              adminClient.from("student_profiles").delete().eq("id", student.id),
+          if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            // Delete from Supabase Auth
+            let authUserId = student.id && student.id.length > 20 && !student.id.startsWith("usr-") ? student.id : null;
+            if (!authUserId) {
+              const { data: usersData } = await adminClient.auth.admin.listUsers();
+              const found = usersData?.users?.find(
+                (u) => u.email?.toLowerCase().trim() === cleanEmail
+              );
+              if (found) authUserId = found.id;
+            }
+
+            if (authUserId) {
+              await adminClient.auth.admin.deleteUser(authUserId).catch(() => {});
+            }
+
+            // Delete from DB tables
+            await Promise.allSettled([
+              adminClient.from("student_profiles").delete().eq("user_id", authUserId || student.id),
               adminClient.from("profiles").delete().eq("email", cleanEmail),
-            ]),
-            new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 500)),
-          ]);
+              adminClient.from("registrations").delete().eq("student_id", student.id),
+            ]);
+          }
         } catch {
           // Non-blocking
         }

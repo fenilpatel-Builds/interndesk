@@ -415,20 +415,24 @@ export class DocumentStore {
     commencementDate?: string;
     continueUntilDate?: string;
     immediateApproval?: boolean;
+    documentType?: "OFFER_LETTER" | "NOC" | "RECOMMENDATION_LETTER" | string;
+    title?: string;
   }): OfficialOfferLetter {
     this.docs = loadFromDisk();
     const cleanEmail = params.studentEmail.toLowerCase().trim();
 
-    // Strict constraint: ONE-TIME REQUEST ONLY
+    // Strict constraint: ONE-TIME REQUEST PER DOCUMENT TYPE
+    const reqType = params.documentType || "OFFER_LETTER";
     const existing = this.docs.find(
       (d) =>
+        (d.recipient_email?.toLowerCase().trim() === cleanEmail) &&
         (d.document_type === "INTERNSHIP_LETTER" || d.document_type === "OFFER_LETTER") &&
-        d.recipient_email?.toLowerCase().trim() === cleanEmail
+        (d.title?.toLowerCase().includes(reqType.toLowerCase()) || reqType === "OFFER_LETTER")
     );
 
     if (existing) {
       throw new Error(
-        "Single-Issuance Policy: You have already requested your official internship letter. Each student is permitted only one internship letter."
+        "Single-Issuance Policy: You have already submitted a request for your official document. Each student is permitted only one issuance per letter type."
       );
     }
 
@@ -442,6 +446,17 @@ export class DocumentStore {
 
     const isApproved = params.immediateApproval === true;
 
+    let docTitle = params.title || "OFFICIAL INTERNSHIP OFFER LETTER";
+    let descContent = `This officially certifies that ${cleanSalutation} ${params.studentName} has been selected for internship training in ${cleanTech} at Akash Technolabs from ${commencementDate} to ${continueUntilDate}.`;
+
+    if (reqType === "NOC") {
+      docTitle = "NO OBJECTION CERTIFICATE (NOC)";
+      descContent = `This is to certify that Akash Technolabs has no objection to ${cleanSalutation} ${params.studentName} undertaking the practical internship program in ${cleanTech} from ${commencementDate} to ${continueUntilDate}.`;
+    } else if (reqType === "RECOMMENDATION_LETTER") {
+      docTitle = "LETTER OF RECOMMENDATION (LOR)";
+      descContent = `It is our pleasure to recommend ${cleanSalutation} ${params.studentName} for future academic and professional endeavors based on their internship practicum in ${cleanTech} from ${commencementDate} to ${continueUntilDate}.`;
+    }
+
     const newDoc: OfficialOfferLetter = {
       id: `doc-akt-intern-${Date.now()}`,
       organization_id: "org-akash-01",
@@ -449,8 +464,8 @@ export class DocumentStore {
       member_id: cleanEmail,
       recipient_email: cleanEmail,
       document_number: documentNumber,
-      document_type: "INTERNSHIP_LETTER",
-      title: "OFFICIAL INTERNSHIP OFFER LETTER",
+      document_type: (params.documentType === "NOC" || params.documentType === "RECOMMENDATION_LETTER") ? "OFFER_LETTER" : "INTERNSHIP_LETTER",
+      title: docTitle,
       recipient_name: `${cleanSalutation} ${params.studentName.replace(/^(Mr\.|Ms\.)\s*/i, "").trim()}`,
       recipient_role: `${cleanTech} Intern`,
       issued_date: new Date()
@@ -465,8 +480,8 @@ export class DocumentStore {
       approved_by: isApproved ? "Akash Padhiyar" : "",
       approved_at: isApproved ? new Date().toISOString() : "",
       verification_code: verificationCode,
-      template_type: `INTERNSHIP OFFER LETTER (${cleanSalutation === "Ms." ? "Girl" : "Boy"})`,
-      description_content: `This officially certifies that ${cleanSalutation} ${params.studentName} has been enrolled in the corporate internship program at Akash Technolabs.`,
+      template_type: reqType === "RECOMMENDATION_LETTER" ? "RECOMMENDATION LETTER" : `INTERNSHIP OFFER LETTER (${cleanSalutation === "Ms." ? "Girl" : "Boy"})`,
+      description_content: descContent,
       template_data: {
         salutation: cleanSalutation,
         student_name: params.studentName.trim(),

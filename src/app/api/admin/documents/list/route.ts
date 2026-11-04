@@ -17,7 +17,14 @@ export async function GET(req: NextRequest) {
     const headerEmail = req.headers.get("x-user-email");
     const adminEmail = session?.email || headerEmail;
 
-    if (!adminEmail || !isUserAdmin(adminEmail)) {
+    const roleStr = String(session?.role || "");
+    const isAdmin =
+      isUserAdmin(adminEmail) ||
+      roleStr === "ORG_ADMIN" ||
+      roleStr === "SUPER_ADMIN" ||
+      roleStr === "ADMIN";
+
+    if (!adminEmail || !isAdmin) {
       return NextResponse.json(
         { error: "Access Denied: Admin authorization required." },
         { status: 403 }

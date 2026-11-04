@@ -24,7 +24,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!isUserAdmin(adminEmail)) {
+    const roleStr = String(session?.role || "");
+    const isAdmin =
+      isUserAdmin(adminEmail) ||
+      roleStr === "ORG_ADMIN" ||
+      roleStr === "SUPER_ADMIN" ||
+      roleStr === "ADMIN";
+
+    if (!isAdmin) {
       return NextResponse.json(
         { error: "Access Denied: Only Akash Technolabs Administrators can generate offer letters." },
         { status: 403 }

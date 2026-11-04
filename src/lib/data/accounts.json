@@ -58,5 +58,29 @@
     "organizationName": "Akash Technolabs",
     "organizationType": "CORPORATE",
     "createdAt": "2026-10-29T05:17:55.287Z"
+  },
+  {
+    "id": "usr-1793772247969-598",
+    "email": "huntking001@gmail.com",
+    "passwordHash": "807450079af85388f2e311216c435aa89db7b318b6c08b676400ccf81a6961d4",
+    "salt": "41ff3669ea914b281eef08a440dd08ed",
+    "name": "Dev Pawar",
+    "role": "STUDENT",
+    "organizationId": "org-akash-01",
+    "organizationName": "Akash Technolabs",
+    "organizationType": "CORPORATE",
+    "createdAt": "2026-11-04T06:04:07.969Z"
+  },
+  {
+    "id": "usr-1793772247973-920",
+    "email": "huntking002@gmail.com",
+    "passwordHash": "9d7da1feb976dac11eeba002572e45d09c030efd0ef61f167a6be81e76356d74",
+    "salt": "3d37da4dcfc42bf54f0df01f80afcc06",
+    "name": "Akshat Nayak",
+    "role": "STUDENT",
+    "organizationId": "org-akash-01",
+    "organizationName": "Akash Technolabs",
+    "organizationType": "CORPORATE",
+    "createdAt": "2026-11-04T06:04:07.973Z"
   }
 ]

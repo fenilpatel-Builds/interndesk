@@ -187,6 +187,15 @@ function DualDateField({
   );
 }
 
+// Helper to format date into "DD-MM-YYYY" based on current date
+export function getTodayFormattedDDMMYYYY(): string {
+  const now = new Date();
+  const day = String(now.getDate()).padStart(2, "0");
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const year = now.getFullYear();
+  return `${day}-${month}-${year}`;
+}
+
 export function LetterGenerateModal({
   isOpen,
   onClose,
@@ -195,17 +204,17 @@ export function LetterGenerateModal({
   const [templateType, setTemplateType] = useState<
     "INTERNSHIP OFFER LETTER (Boy)" | "INTERNSHIP OFFER LETTER (Girl)" | "RECOMMENDATION LETTER"
   >("INTERNSHIP OFFER LETTER (Boy)");
-  const [letterDate, setLetterDate] = useState("30-10-2026");
+  const [letterDate, setLetterDate] = useState(() => getTodayFormattedDDMMYYYY());
   const [letterTitle, setLetterTitle] = useState("INTERNSHIP OFFER LETTER");
 
-  // Dynamic Fields
+  // Dynamic Fields - Empty by default, no pre-selected dates or student
   const [salutation, setSalutation] = useState<"Mr." | "Ms.">("Mr.");
-  const [studentName, setStudentName] = useState("Fenil Patel");
-  const [recipientEmail, setRecipientEmail] = useState("huntarmy001@gmail.com");
-  const [internshipPosition, setInternshipPosition] = useState("AI/ML Intern");
-  const [commencementDate, setCommencementDate] = useState("3rd July 2026");
-  const [continueUntilDate, setContinueUntilDate] = useState("30th April 2027");
-  const [technology, setTechnology] = useState("AI/ML");
+  const [studentName, setStudentName] = useState("");
+  const [recipientEmail, setRecipientEmail] = useState("");
+  const [internshipPosition, setInternshipPosition] = useState("");
+  const [commencementDate, setCommencementDate] = useState(""); // Must be selected by admin
+  const [continueUntilDate, setContinueUntilDate] = useState(""); // Must be selected by admin
+  const [technology, setTechnology] = useState("");
 
   // Registered students list for auto-fill
   const [students, setStudents] = useState<StudentOption[]>([]);
@@ -221,13 +230,24 @@ export function LetterGenerateModal({
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // Always reset to the edit FORM and clear state when modal opens
+  // Always reset to the edit FORM, refresh live student list, and set today's date when modal opens
   useEffect(() => {
     if (isOpen) {
       setViewMode("FORM");
       setStatusMessage(null);
       setIsSubmitting(false);
       setIsCustomEdited(false);
+      setLetterDate(getTodayFormattedDDMMYYYY());
+
+      // Live fetch of all real students from database/Supabase Auth
+      fetch("/api/admin/students", { cache: "no-store" })
+        .then((res) => (res.ok ? res.json() : Promise.reject()))
+        .then((data) => {
+          if (Array.isArray(data.students)) {
+            setStudents(data.students);
+          }
+        })
+        .catch(() => {});
     }
   }, [isOpen]);
 
@@ -241,16 +261,20 @@ export function LetterGenerateModal({
     end: string,
     isGirl: boolean
   ) => {
+    const displayName = name.trim() || "[Candidate Name]";
+    const displayPos = pos.trim() || "[Internship Position]";
+    const displayStart = start.trim() || "[Commencement Date]";
+    const displayEnd = end.trim() || "[Completion Date]";
     const pronounHeShe = isGirl ? "she" : "he";
     const pronounHisHer = isGirl ? "her" : "his";
     const pronounCapitalHisHer = isGirl ? "Her" : "His";
     const pronounCapitalHeShe = isGirl ? "She" : "He";
     const pronounHimHer = isGirl ? "her" : "him";
-    const cleanTech = (tech || deriveTrackTechnology(pos))
+    const cleanTech = (tech || deriveTrackTechnology(displayPos))
       .replace(/\s*technology/i, "")
       .trim() || "Information Technology";
 
-    return `This is to inform that ${sal} ${name} has been selected for an internship at Akash Technolabs as a ${pos}. ${pronounCapitalHisHer} internship will commence on ${start} and continue until ${end}.
+    return `This is to inform that ${sal} ${displayName} has been selected for an internship at Akash Technolabs as a ${displayPos}. ${pronounCapitalHisHer} internship will commence on ${displayStart} and continue until ${displayEnd}.
 
 During the internship period, ${pronounHeShe} will work on ${cleanTech} technology and will be involved in projects and assignments designed to enhance ${pronounHisHer} technical knowledge and practical skills. ${pronounCapitalHeShe} is expected to maintain a professional attitude, follow the company's policies and guidelines, and perform ${pronounHisHer} assigned responsibilities with sincerity and dedication throughout the internship.
 
@@ -378,8 +402,22 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
     setStatusMessage(null);
+
+    if (!studentName.trim()) {
+      setStatusMessage({ type: "error", text: "Please enter or select a student name." });
+      return;
+    }
+    if (!commencementDate.trim()) {
+      setStatusMessage({ type: "error", text: "Please select the Internship Start Date." });
+      return;
+    }
+    if (!continueUntilDate.trim()) {
+      setStatusMessage({ type: "error", text: "Please select the Internship End Date." });
+      return;
+    }
+
+    setIsSubmitting(true);
 
     try {
       const res = await fetch("/api/admin/documents/generate", {
@@ -635,8 +673,22 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                       type="text"
                       value={studentName}
                       onChange={(e) => handleStudentNameChange(e.target.value)}
-                      placeholder="e.g. Fenil Patel"
+                      placeholder="e.g. Dev Pawar or select from dropdown"
                       required
+                      className="w-full text-xs font-semibold text-slate-900 border border-slate-300 rounded-xl px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* Recipient Email */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Recipient Student Email
+                    </label>
+                    <input
+                      type="email"
+                      value={recipientEmail}
+                      onChange={(e) => setRecipientEmail(e.target.value)}
+                      placeholder="e.g. student@akashtechnolabs.com"
                       className="w-full text-xs font-semibold text-slate-900 border border-slate-300 rounded-xl px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
@@ -650,32 +702,32 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                       type="text"
                       value={internshipPosition}
                       onChange={(e) => handlePositionChange(e.target.value)}
-                      placeholder="e.g. AI/ML Intern or PHP / Laravel Developer Intern"
+                      placeholder="e.g. AI/ML Intern or Full Stack Web Developer Intern"
                       required
                       className="w-full text-xs font-semibold text-slate-900 border border-slate-300 rounded-xl px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
 
-                  {/* Internship Start Date with both typing and calendar picker */}
+                  {/* Internship Start Date with both typing and calendar picker - No Pre-selected date */}
                   <DualDateField
                     label="Internship Start Date"
                     value={commencementDate}
                     onChange={setCommencementDate}
-                    placeholder="e.g. 3rd July 2026"
+                    placeholder="Pick date (e.g. 1st July 2026)"
                     mode="ORDINAL"
                   />
 
-                  {/* Internship End Date with both typing and calendar picker */}
+                  {/* Internship End Date with both typing and calendar picker - No Pre-selected date */}
                   <DualDateField
                     label="Internship End Date"
                     value={continueUntilDate}
                     onChange={setContinueUntilDate}
-                    placeholder="e.g. 30th April 2027"
+                    placeholder="Pick date (e.g. 30th April 2027)"
                     mode="ORDINAL"
                   />
 
                   {/* Technology */}
-                  <div className="sm:col-span-2 lg:col-span-1">
+                  <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
                       Technology <span className="text-red-500">*</span>
                     </label>

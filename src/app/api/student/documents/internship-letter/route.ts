@@ -63,12 +63,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Student email is required" }, { status: 400 });
     }
 
-    // Check if student has already requested an internship letter
+    const documentType = body.documentType || "OFFER_LETTER";
+    const title = body.title;
+
+    // Check if student has already requested this document type
     if (documentStore.hasStudentRequestedInternshipLetter(email)) {
       const existingDoc = documentStore.getInternshipLetterForStudent(email);
       return NextResponse.json({
         success: false,
-        error: "Single-Issuance Policy: You have already requested your official internship letter. Each student is allowed only one internship letter.",
+        error: "Single-Issuance Policy: You have already submitted a request. Each student is allowed one official letter request.",
         document: existingDoc,
       }, { status: 409 });
     }
@@ -81,6 +84,8 @@ export async function POST(req: NextRequest) {
       salutation,
       commencementDate,
       continueUntilDate,
+      documentType,
+      title,
       immediateApproval: false, // Strict: Requires Admin Verification & Approval
     });
 
