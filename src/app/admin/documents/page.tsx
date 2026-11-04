@@ -223,6 +223,9 @@ export default function AdminDocumentsPage() {
         continueUntilDate: doc.rawDoc?.template_data?.continue_until_date || "30th April 2027",
         letterDate: doc.appliedAt,
         title: doc.title,
+        customDescription: doc.rawDoc?.description_content,
+        isCustomEdited: !!doc.rawDoc?.description_content,
+        templateType: doc.rawDoc?.template_type,
       });
     } else {
       handlePreviewDoc(doc);

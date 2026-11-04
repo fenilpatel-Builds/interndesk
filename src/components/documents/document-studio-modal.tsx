@@ -366,7 +366,10 @@ export function DocumentStudioModal({
           commencementDate: (doc.template_data as any)?.commencement_date || "3rd July 2026",
           continueUntilDate: (doc.template_data as any)?.continue_until_date || "30th April 2027",
           letterDate: doc.issued_date,
-          title: doc.title,
+          title: doc.title || "INTERNSHIP OFFER LETTER",
+          customDescription: (doc as any).description_content,
+          isCustomEdited: !!(doc as any).description_content,
+          templateType: (doc as any).template_type,
         });
       } else {
         const rawName = doc.recipient_name || "Official";
@@ -1246,12 +1249,71 @@ export function DocumentStudioModal({
                   {/* Centered Bold Underlined Title */}
                   <div className="text-center pt-1 pb-3">
                     <h1 className="text-lg sm:text-xl font-bold tracking-wider text-slate-900 uppercase underline underline-offset-4 decoration-slate-900 decoration-1">
-                      INTERNSHIP OFFER LETTER
+                      {doc.title || "INTERNSHIP OFFER LETTER"}
                     </h1>
                   </div>
 
-                  {/* 4 Official Letter Paragraphs matching authentic PDF with bold highlights */}
+                  {/* Formatted Letter Body */}
                   {(() => {
+                    const descContent = (doc as any).description_content;
+                    if (descContent && typeof descContent === "string" && descContent.trim().length > 0) {
+                      const paras = descContent.split(/\n\s*\n/);
+                      return (
+                        <div className="space-y-4 text-xs sm:text-[13px] leading-relaxed text-slate-800 font-normal text-justify">
+                          {paras.map((para: string, idx: number) => {
+                            const trimmed = para.trim();
+                            if (!trimmed) return null;
+                            if (trimmed === "TO WHOMSOEVER IT MAY CONCERN") {
+                              return (
+                                <p key={idx} className="font-bold text-slate-900 tracking-wide text-sm py-1">
+                                  TO WHOMSOEVER IT MAY CONCERN
+                                </p>
+                              );
+                            }
+                            if (trimmed.startsWith("To,") || trimmed.startsWith("Subject:") || trimmed.startsWith("Dear ")) {
+                              const lines = trimmed.split("\n");
+                              return (
+                                <div key={idx} className="space-y-1 py-1">
+                                  {lines.map((l: string, lIdx: number) => (
+                                    <p
+                                      key={lIdx}
+                                      className={
+                                        l.toLowerCase().startsWith("subject:") || l.startsWith("To,")
+                                          ? "font-bold text-slate-900"
+                                          : "text-slate-800"
+                                      }
+                                    >
+                                      {l}
+                                    </p>
+                                  ))}
+                                </div>
+                              );
+                            }
+                            if (trimmed.includes("• ") || trimmed.includes("- ")) {
+                              const lines = trimmed.split("\n");
+                              return (
+                                <div key={idx} className="space-y-1.5">
+                                  {lines.map((l: string, lIdx: number) => {
+                                    const lTrim = l.trim();
+                                    if (lTrim.startsWith("• ") || lTrim.startsWith("- ")) {
+                                      return (
+                                        <div key={lIdx} className="flex items-start gap-2 pl-4 text-slate-800">
+                                          <span className="font-bold text-slate-900">•</span>
+                                          <span>{lTrim.replace(/^[•\-]\s*/, "")}</span>
+                                        </div>
+                                      );
+                                    }
+                                    return <p key={lIdx}>{lTrim}</p>;
+                                  })}
+                                </div>
+                              );
+                            }
+                            return <p key={idx}>{trimmed}</p>;
+                          })}
+                        </div>
+                      );
+                    }
+
                     const isFemaleDoc = isFemaleCandidate(doc.recipient_name, doc.template_data?.salutation);
                     const pHeShe = isFemaleDoc ? "she" : "he";
                     const pHisHer = isFemaleDoc ? "her" : "his";

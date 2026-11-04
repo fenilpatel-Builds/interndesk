@@ -25,6 +25,8 @@ import {
   Eye,
   ShieldCheck,
   Loader2,
+  GraduationCap,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,10 +35,14 @@ import {
   deriveTrackTechnology,
 } from "@/lib/documents/akash-pdf-generator";
 import {
+  LETTER_TEMPLATES,
+  UNIVERSITY_PRESETS,
+  generateLetterContent,
+  LetterTemplateKey,
+} from "@/lib/documents/letter-templates";
+import {
   AKASH_HEADER_BASE64,
-  AKASH_FOOTER_BASE64,
   AKASH_WATERMARK_BASE64,
-  AKASH_SIGNATURE_BASE64,
   AKASH_STAMP_BASE64,
 } from "@/lib/documents/akash-letterhead-assets";
 
@@ -46,6 +52,7 @@ interface StudentOption {
   email: string;
   college?: string;
   technology?: string;
+  university?: string;
 }
 
 interface LetterGenerateModalProps {
@@ -187,7 +194,7 @@ function DualDateField({
   );
 }
 
-// Helper to format date into "DD-MM-YYYY" based on current date
+// Helper to format date into "DD-MM-YYYY" based on current real date
 export function getTodayFormattedDDMMYYYY(): string {
   const now = new Date();
   const day = String(now.getDate()).padStart(2, "0");
@@ -196,25 +203,76 @@ export function getTodayFormattedDDMMYYYY(): string {
   return `${day}-${month}-${year}`;
 }
 
+// Text Highlighter for preview
+function highlightKeywords(text: string, keywords: string[]): React.ReactNode[] {
+  if (!text) return [];
+  const validKeywords = keywords.filter((k) => k && k.trim().length > 1);
+  if (validKeywords.length === 0) return [text];
+
+  const nodes: React.ReactNode[] = [];
+  let remaining = text;
+  let keyIndex = 0;
+
+  while (remaining.length > 0) {
+    let earliestIdx = -1;
+    let matchedKw = "";
+
+    for (const kw of validKeywords) {
+      const idx = remaining.indexOf(kw);
+      if (idx !== -1 && (earliestIdx === -1 || idx < earliestIdx)) {
+        earliestIdx = idx;
+        matchedKw = kw;
+      }
+    }
+
+    if (earliestIdx !== -1) {
+      if (earliestIdx > 0) {
+        nodes.push(remaining.slice(0, earliestIdx));
+      }
+      nodes.push(
+        <strong key={keyIndex++} className="font-bold text-slate-900">
+          {matchedKw}
+        </strong>
+      );
+      remaining = remaining.slice(earliestIdx + matchedKw.length);
+    } else {
+      nodes.push(remaining);
+      break;
+    }
+  }
+
+  return nodes;
+}
+
 export function LetterGenerateModal({
   isOpen,
   onClose,
   onSuccess,
 }: LetterGenerateModalProps) {
-  const [templateType, setTemplateType] = useState<
-    "INTERNSHIP OFFER LETTER (Boy)" | "INTERNSHIP OFFER LETTER (Girl)" | "RECOMMENDATION LETTER"
-  >("INTERNSHIP OFFER LETTER (Boy)");
+  // Document Template Selection
+  const [templateKey, setTemplateKey] = useState<LetterTemplateKey>("INTERNSHIP_OFFER");
+
+  // University / Affiliation Format Selection (GTU, SOU, GU, Standard, Custom)
+  const [universityId, setUniversityId] = useState<string>("STANDARD");
+  const [customUniversity, setCustomUniversity] = useState<string>("");
+
+  // Letter metadata
   const [letterDate, setLetterDate] = useState(() => getTodayFormattedDDMMYYYY());
   const [letterTitle, setLetterTitle] = useState("INTERNSHIP OFFER LETTER");
 
-  // Dynamic Fields - Empty by default, no pre-selected dates or student
+  // Candidate fields
   const [salutation, setSalutation] = useState<"Mr." | "Ms.">("Mr.");
   const [studentName, setStudentName] = useState("");
   const [recipientEmail, setRecipientEmail] = useState("");
   const [internshipPosition, setInternshipPosition] = useState("");
-  const [commencementDate, setCommencementDate] = useState(""); // Must be selected by admin
-  const [continueUntilDate, setContinueUntilDate] = useState(""); // Must be selected by admin
+  const [commencementDate, setCommencementDate] = useState(""); // Blank by default
+  const [continueUntilDate, setContinueUntilDate] = useState(""); // Blank by default
   const [technology, setTechnology] = useState("");
+  const [purpose, setPurpose] = useState("Academic Project & Practicum Training");
+
+  // Signatory fields
+  const [signatoryName] = useState("Akash Padhiyar");
+  const [signatoryRole] = useState("CEO");
 
   // Registered students list for auto-fill
   const [students, setStudents] = useState<StudentOption[]>([]);
@@ -230,7 +288,47 @@ export function LetterGenerateModal({
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // Always reset to the edit FORM, refresh live student list, and set today's date when modal opens
+  // Synchronize description whenever fields or template changes (unless admin custom edited)
+  const refreshDescriptionFromTemplate = () => {
+    const generated = generateLetterContent({
+      templateKey,
+      salutation,
+      studentName,
+      internshipPosition,
+      technology,
+      commencementDate,
+      continueUntilDate,
+      letterDate,
+      universityId,
+      customUniversity,
+      purpose,
+      signatoryName,
+      signatoryRole,
+    });
+    setLetterTitle(generated.title);
+    setDescription(generated.fullText);
+  };
+
+  useEffect(() => {
+    if (!isCustomEdited) {
+      refreshDescriptionFromTemplate();
+    }
+  }, [
+    templateKey,
+    universityId,
+    customUniversity,
+    salutation,
+    studentName,
+    internshipPosition,
+    technology,
+    commencementDate,
+    continueUntilDate,
+    letterDate,
+    purpose,
+    isCustomEdited,
+  ]);
+
+  // Reset when modal opens and fetch live registered students
   useEffect(() => {
     if (isOpen) {
       setViewMode("FORM");
@@ -239,7 +337,7 @@ export function LetterGenerateModal({
       setIsCustomEdited(false);
       setLetterDate(getTodayFormattedDDMMYYYY());
 
-      // Live fetch of all real students from database/Supabase Auth
+      // Live fetch from Supabase Auth & Database
       fetch("/api/admin/students", { cache: "no-store" })
         .then((res) => (res.ok ? res.json() : Promise.reject()))
         .then((data) => {
@@ -251,85 +349,28 @@ export function LetterGenerateModal({
     }
   }, [isOpen]);
 
-  // Generate body text from dynamic fields
-  const generateBodyText = (
-    sal: "Mr." | "Ms.",
-    name: string,
-    pos: string,
-    tech: string,
-    start: string,
-    end: string,
-    isGirl: boolean
-  ) => {
-    const displayName = name.trim() || "[Candidate Name]";
-    const displayPos = pos.trim() || "[Internship Position]";
-    const displayStart = start.trim() || "[Commencement Date]";
-    const displayEnd = end.trim() || "[Completion Date]";
-    const pronounHeShe = isGirl ? "she" : "he";
-    const pronounHisHer = isGirl ? "her" : "his";
-    const pronounCapitalHisHer = isGirl ? "Her" : "His";
-    const pronounCapitalHeShe = isGirl ? "She" : "He";
-    const pronounHimHer = isGirl ? "her" : "him";
-    const cleanTech = (tech || deriveTrackTechnology(displayPos))
-      .replace(/\s*technology/i, "")
-      .trim() || "Information Technology";
-
-    return `This is to inform that ${sal} ${displayName} has been selected for an internship at Akash Technolabs as a ${displayPos}. ${pronounCapitalHisHer} internship will commence on ${displayStart} and continue until ${displayEnd}.
-
-During the internship period, ${pronounHeShe} will work on ${cleanTech} technology and will be involved in projects and assignments designed to enhance ${pronounHisHer} technical knowledge and practical skills. ${pronounCapitalHeShe} is expected to maintain a professional attitude, follow the company's policies and guidelines, and perform ${pronounHisHer} assigned responsibilities with sincerity and dedication throughout the internship.
-
-Upon successful completion of the internship, ${pronounHeShe} will be awarded an Internship Completion Certificate based on ${pronounHisHer} performance and adherence to the company's rules and regulations.
-
-We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronounHimHer} a successful and enriching internship experience.`;
+  // Handle template change
+  const handleTemplateSelect = (key: LetterTemplateKey) => {
+    setTemplateKey(key);
+    const tmpl = LETTER_TEMPLATES.find((t) => t.key === key);
+    if (tmpl) {
+      setLetterTitle(tmpl.defaultTitle);
+      if (key === "AKASH_STANDARD_GIRL") {
+        setSalutation("Ms.");
+      } else if (key === "AKASH_STANDARD_BOY") {
+        setSalutation("Mr.");
+      }
+    }
+    setIsCustomEdited(false);
   };
 
-  // Keep description synchronized unless manually modified
-  useEffect(() => {
-    if (!isCustomEdited) {
-      const isGirl =
-        templateType === "INTERNSHIP OFFER LETTER (Girl)" ||
-        salutation === "Ms." ||
-        isFemaleCandidate(studentName);
-      const text = generateBodyText(
-        salutation,
-        studentName,
-        internshipPosition,
-        technology,
-        commencementDate,
-        continueUntilDate,
-        isGirl
-      );
-      setDescription(text);
-    }
-  }, [
-    templateType,
-    salutation,
-    studentName,
-    internshipPosition,
-    technology,
-    commencementDate,
-    continueUntilDate,
-    isCustomEdited,
-  ]);
+  // Handle University change
+  const handleUniversitySelect = (uId: string) => {
+    setUniversityId(uId);
+    setIsCustomEdited(false);
+  };
 
-  // Load students for dropdown
-  useEffect(() => {
-    fetch("/api/admin/students")
-      .then((res) => (res.ok ? res.json() : Promise.reject()))
-      .then((data) => {
-        if (Array.isArray(data.students)) {
-          setStudents(data.students);
-        }
-      })
-      .catch(() => {
-        setStudents([
-          { id: "usr-1793251075106-352", name: "Fenil Patel", email: "huntarmy001@gmail.com", technology: "AI/ML" },
-          { id: "usr-student-fenil", name: "Fenil Patel", email: "fenil.patel@akashtechnolabs.com", technology: "AI/ML" },
-          { id: "usr-student-priya", name: "Priya Sharma", email: "priya.sharma@akashtechnolabs.com", technology: "PHP / Laravel" },
-        ]);
-      });
-  }, []);
-
+  // Student dropdown auto-fill
   const handleStudentSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
     setSelectedStudentId(val);
@@ -340,10 +381,11 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
       const isFemale = isFemaleCandidate(found.name);
       const sal = isFemale ? "Ms." : "Mr.";
       setSalutation(sal);
-      if (isFemale) {
-        setTemplateType("INTERNSHIP OFFER LETTER (Girl)");
-      } else {
-        setTemplateType("INTERNSHIP OFFER LETTER (Boy)");
+
+      if (templateKey === "AKASH_STANDARD_BOY" && isFemale) {
+        setTemplateKey("AKASH_STANDARD_GIRL");
+      } else if (templateKey === "AKASH_STANDARD_GIRL" && !isFemale) {
+        setTemplateKey("AKASH_STANDARD_BOY");
       }
 
       if (found.technology) {
@@ -351,27 +393,33 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
         setTechnology(cleanT);
         setInternshipPosition(`${cleanT} Intern`);
       }
+
+      // Check if student's university is known (GTU, SOU, GU)
+      if (found.university) {
+        const uLower = found.university.toLowerCase();
+        if (uLower.includes("gtu") || uLower.includes("technological")) {
+          setUniversityId("GTU");
+        } else if (uLower.includes("silver") || uLower.includes("sou")) {
+          setUniversityId("SOU");
+        } else if (uLower.includes("gujarat university")) {
+          setUniversityId("GU");
+        } else if (uLower.includes("parul")) {
+          setUniversityId("PARUL");
+        } else if (uLower.includes("nirma")) {
+          setUniversityId("NIRMA");
+        }
+      }
+
       setIsCustomEdited(false);
     }
   };
 
-  const handleTemplateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const val = e.target.value as any;
-    setTemplateType(val);
-    if (val === "INTERNSHIP OFFER LETTER (Girl)") {
-      setSalutation("Ms.");
-    } else if (val === "INTERNSHIP OFFER LETTER (Boy)") {
-      setSalutation("Mr.");
-    }
-    setIsCustomEdited(false);
-  };
-
   const handleSalutationChange = (val: "Mr." | "Ms.") => {
     setSalutation(val);
-    if (val === "Ms.") {
-      setTemplateType("INTERNSHIP OFFER LETTER (Girl)");
-    } else {
-      setTemplateType("INTERNSHIP OFFER LETTER (Boy)");
+    if (val === "Ms." && templateKey === "AKASH_STANDARD_BOY") {
+      setTemplateKey("AKASH_STANDARD_GIRL");
+    } else if (val === "Mr." && templateKey === "AKASH_STANDARD_GIRL") {
+      setTemplateKey("AKASH_STANDARD_BOY");
     }
     setIsCustomEdited(false);
   };
@@ -380,7 +428,9 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
     setStudentName(val);
     if (isFemaleCandidate(val)) {
       setSalutation("Ms.");
-      setTemplateType("INTERNSHIP OFFER LETTER (Girl)");
+      if (templateKey === "AKASH_STANDARD_BOY") {
+        setTemplateKey("AKASH_STANDARD_GIRL");
+      }
     }
     setIsCustomEdited(false);
   };
@@ -420,11 +470,13 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
     setIsSubmitting(true);
 
     try {
+      const activeTmpl = LETTER_TEMPLATES.find((t) => t.key === templateKey);
       const res = await fetch("/api/admin/documents/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          templateType,
+          templateType: templateKey,
+          documentType: activeTmpl?.documentType || "OFFER_LETTER",
           letterDate,
           title: letterTitle,
           salutation,
@@ -435,24 +487,25 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
           continueUntilDate,
           technology,
           descriptionContent: description,
+          university: universityId !== "STANDARD" ? (universityId === "CUSTOM" ? customUniversity : universityId) : undefined,
+          purpose,
         }),
       });
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to generate offer letter.");
+        throw new Error(data.error || "Failed to generate official document.");
       }
 
       setStatusMessage({
         type: "success",
-        text: `Official Offer Letter successfully issued for ${salutation} ${studentName}! Available in Student Portal.`,
+        text: `Official Document (${letterTitle}) successfully issued for ${salutation} ${studentName}! Available in Student Portal.`,
       });
 
       if (onSuccess) {
         onSuccess(data.document);
       }
 
-      // Switch to preview of the generated document
       setViewMode("PREVIEW");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Error generating letter";
@@ -462,7 +515,7 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
     }
   };
 
-  // Direct client-side PDF download without print dialog matching authentic PDF
+  // Direct client-side PDF download without print dialog
   const handleDownloadPdf = async () => {
     setIsDownloadingPdf(true);
     try {
@@ -477,6 +530,12 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
         title: letterTitle,
         customDescription: description,
         isCustomEdited,
+        templateType: templateKey,
+        universityId,
+        customUniversity,
+        purpose,
+        signatoryName,
+        signatoryRole,
       });
     } catch (err) {
       console.error("PDF download failed:", err);
@@ -485,18 +544,16 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
     }
   };
 
-  const isGirl =
-    templateType === "INTERNSHIP OFFER LETTER (Girl)" ||
-    salutation === "Ms." ||
-    isFemaleCandidate(studentName);
-  const pronounHeShe = isGirl ? "she" : "he";
-  const pronounHisHer = isGirl ? "her" : "his";
-  const pronounCapitalHisHer = isGirl ? "Her" : "His";
-  const pronounCapitalHeShe = isGirl ? "She" : "He";
-  const pronounHimHer = isGirl ? "her" : "him";
-  const cleanTech = (technology || deriveTrackTechnology(internshipPosition))
-    .replace(/\s*technology/i, "")
-    .trim() || "Information Technology";
+  const previewKeywords = [
+    `${salutation} ${studentName}`.trim(),
+    studentName.trim(),
+    "Akash Technolabs",
+    internshipPosition.trim(),
+    technology.trim(),
+    commencementDate.trim(),
+    continueUntilDate.trim(),
+    "Internship Completion Certificate",
+  ].filter(Boolean);
 
   if (!isOpen) return null;
 
@@ -510,10 +567,10 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
         <div className="px-6 py-3.5 border-b border-slate-200/90 flex items-center justify-between bg-slate-50/70 shrink-0">
           <div className="flex items-center gap-3">
             <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
-              Letter Generate
+              Official Document Dispatch &amp; Letter Generator
             </h2>
             <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
-              Akash Technolabs Admin Dispatch
+              Akash Technolabs Enterprise
             </span>
           </div>
 
@@ -567,12 +624,111 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
         <div className="flex-1 overflow-y-auto p-6">
           {viewMode === "FORM" ? (
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Card 1: Auto-fill from Registered Student */}
-              <div className="bg-slate-50/80 rounded-2xl border border-slate-200/90 p-4 space-y-3">
+              {/* Card 1: Document Template & Category Selection */}
+              <div className="bg-white rounded-2xl border border-slate-200/90 p-5 space-y-3 shadow-2xs">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#0F4C81]" />
+                    <span>Select Professional Document Template (All 8 Standards + Akash Appointment)</span>
+                  </div>
+                  <span className="text-[11px] font-mono text-blue-600">
+                    {LETTER_TEMPLATES.find((t) => t.key === templateKey)?.category}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 pt-1">
+                  {LETTER_TEMPLATES.map((tmpl) => {
+                    const isSelected = templateKey === tmpl.key;
+                    return (
+                      <button
+                        key={tmpl.key}
+                        type="button"
+                        onClick={() => handleTemplateSelect(tmpl.key)}
+                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
+                          isSelected
+                            ? "border-[#0F4C81] bg-blue-50/80 ring-2 ring-[#0F4C81]/30 shadow-xs"
+                            : "border-slate-200 hover:border-blue-300 hover:bg-slate-50"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-base">{tmpl.icon}</span>
+                          <span
+                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
+                              isSelected
+                                ? "bg-[#0F4C81] text-white"
+                                : "bg-slate-100 text-slate-600"
+                            }`}
+                          >
+                            {tmpl.shortName}
+                          </span>
+                        </div>
+                        <p className="text-xs font-bold text-slate-800 leading-snug">
+                          {tmpl.label}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Card 2: University & Affiliation Presets (GTU, SOU, GU, Parul, etc.) */}
+              <div className="bg-slate-50/90 rounded-2xl border border-slate-200/90 p-5 space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+                    <GraduationCap className="w-4 h-4 text-purple-600" />
+                    <span>University Academic Practicum Format &amp; Affiliation</span>
+                  </div>
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    Auto-inserts university-specific curriculum standards
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {UNIVERSITY_PRESETS.map((uni) => {
+                    const isSelected = universityId === uni.id;
+                    return (
+                      <button
+                        key={uni.id}
+                        type="button"
+                        onClick={() => handleUniversitySelect(uni.id)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 ${
+                          isSelected
+                            ? "bg-purple-700 text-white shadow-xs ring-2 ring-purple-300"
+                            : "bg-white text-slate-700 border border-slate-200 hover:border-purple-300 hover:bg-purple-50/50"
+                        }`}
+                      >
+                        <span>🏛️</span>
+                        <span>{uni.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {universityId === "CUSTOM" && (
+                  <div className="pt-2">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Custom University / College Name
+                    </label>
+                    <input
+                      type="text"
+                      value={customUniversity}
+                      onChange={(e) => {
+                        setCustomUniversity(e.target.value);
+                        setIsCustomEdited(false);
+                      }}
+                      placeholder="e.g. Ahmedabad Institute of Technology / Nirma University"
+                      className="w-full text-xs font-semibold text-slate-900 border border-slate-300 rounded-xl px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Card 3: Auto-fill from Registered Student */}
+              <div className="bg-white rounded-2xl border border-slate-200/90 p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
                     <UserCheck className="w-4 h-4 text-blue-600" />
-                    <span>Auto-fill from Registered Student (Optional)</span>
+                    <span>Auto-fill from Registered Student (Live Supabase &amp; DB)</span>
                   </div>
                   <span className="text-[11px] text-slate-500 font-medium">
                     Links letter directly to verified student portal profile
@@ -588,14 +744,14 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                     <option value="">-- Choose a student or fill manually below --</option>
                     {students.map((st) => (
                       <option key={st.id} value={st.id}>
-                        {st.name} ({st.email}) {st.technology ? `• ${st.technology}` : ""}
+                        {st.name} ({st.email}) {st.technology ? `• ${st.technology}` : ""} {st.university ? `[${st.university}]` : ""}
                       </option>
                     ))}
                   </select>
                 </div>
               </div>
 
-              {/* Card 2: Predefined Track Quick Select (AI/ML, Cybersecurity, Python, Full Stack...) */}
+              {/* Card 4: Predefined Track Quick Select */}
               <div className="bg-white rounded-2xl border border-slate-200/90 p-5 space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2">
@@ -629,23 +785,23 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                 </div>
               </div>
 
-              {/* Card 3: Predefined Dynamic Letter Fields */}
+              {/* Card 5: Predefined Dynamic Letter Fields */}
               <div className="bg-white rounded-2xl border border-slate-200/90 p-5 space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-[#E52329]" />
-                    Predefined Dynamic Letter Fields
+                    Candidate &amp; Practicum Variables
                   </h3>
                   <span className="text-[11px] text-slate-400 font-mono">Official Letterhead Variables</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {/* Letter Date with both typing and calendar picker */}
+                  {/* Letter Date */}
                   <DualDateField
                     label="Letter Date"
                     value={letterDate}
                     onChange={setLetterDate}
-                    placeholder="DD-MM-YYYY (e.g. 30-10-2026)"
+                    placeholder="DD-MM-YYYY (e.g. 04-11-2026)"
                     mode="DD-MM-YYYY"
                   />
 
@@ -673,7 +829,7 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                       type="text"
                       value={studentName}
                       onChange={(e) => handleStudentNameChange(e.target.value)}
-                      placeholder="e.g. Dev Pawar or select from dropdown"
+                      placeholder="e.g. Fenil Patel"
                       required
                       className="w-full text-xs font-semibold text-slate-900 border border-slate-300 rounded-xl px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     />
@@ -688,7 +844,7 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                       type="email"
                       value={recipientEmail}
                       onChange={(e) => setRecipientEmail(e.target.value)}
-                      placeholder="e.g. student@akashtechnolabs.com"
+                      placeholder="e.g. fenil.patel@akashtechnolabs.com"
                       className="w-full text-xs font-semibold text-slate-900 border border-slate-300 rounded-xl px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
@@ -702,29 +858,11 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                       type="text"
                       value={internshipPosition}
                       onChange={(e) => handlePositionChange(e.target.value)}
-                      placeholder="e.g. AI/ML Intern or Full Stack Web Developer Intern"
+                      placeholder="e.g. AI/ML Intern or Python Intern"
                       required
                       className="w-full text-xs font-semibold text-slate-900 border border-slate-300 rounded-xl px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
-
-                  {/* Internship Start Date with both typing and calendar picker - No Pre-selected date */}
-                  <DualDateField
-                    label="Internship Start Date"
-                    value={commencementDate}
-                    onChange={setCommencementDate}
-                    placeholder="Pick date (e.g. 1st July 2026)"
-                    mode="ORDINAL"
-                  />
-
-                  {/* Internship End Date with both typing and calendar picker - No Pre-selected date */}
-                  <DualDateField
-                    label="Internship End Date"
-                    value={continueUntilDate}
-                    onChange={setContinueUntilDate}
-                    placeholder="Pick date (e.g. 30th April 2027)"
-                    mode="ORDINAL"
-                  />
 
                   {/* Technology */}
                   <div>
@@ -738,67 +876,94 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                         setTechnology(e.target.value);
                         setIsCustomEdited(false);
                       }}
-                      placeholder="e.g. AI/ML, PHP / Laravel, Cybersecurity..."
+                      placeholder="e.g. AI/ML, Python, PHP / Laravel..."
                       required
+                      className="w-full text-xs font-semibold text-slate-900 border border-slate-300 rounded-xl px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* Internship Start Date - Blank by default */}
+                  <DualDateField
+                    label="Internship Start Date"
+                    value={commencementDate}
+                    onChange={setCommencementDate}
+                    placeholder="Pick date (e.g. 3rd July 2026)"
+                    mode="ORDINAL"
+                  />
+
+                  {/* Internship End Date - Blank by default */}
+                  <DualDateField
+                    label="Internship End Date"
+                    value={continueUntilDate}
+                    onChange={setContinueUntilDate}
+                    placeholder="Pick date (e.g. 30th April 2027)"
+                    mode="ORDINAL"
+                  />
+
+                  {/* Purpose / Activity (for NOC / Custom) */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Purpose / Academic Activity
+                    </label>
+                    <input
+                      type="text"
+                      value={purpose}
+                      onChange={(e) => {
+                        setPurpose(e.target.value);
+                        setIsCustomEdited(false);
+                      }}
+                      placeholder="e.g. Semester Practicum & Degree Project"
                       className="w-full text-xs font-semibold text-slate-900 border border-slate-300 rounded-xl px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Card 4: Letter Template, Date, Title & Rich Description */}
+              {/* Card 6: Letter Title & Rich Description Editor */}
               <div className="bg-white rounded-2xl border border-slate-200/90 p-5 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {/* Letter Template */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Title */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Letter Template
-                    </label>
-                    <select
-                      value={templateType}
-                      onChange={handleTemplateChange}
-                      className="w-full text-xs font-semibold text-slate-900 border border-slate-300 rounded-xl px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="INTERNSHIP OFFER LETTER (Boy)">INTERNSHIP OFFER LETTER (Boy)</option>
-                      <option value="INTERNSHIP OFFER LETTER (Girl)">INTERNSHIP OFFER LETTER (Girl)</option>
-                      <option value="RECOMMENDATION LETTER">RECOMMENDATION LETTER</option>
-                    </select>
-                  </div>
-
-                  {/* Date * with both typing and calendar picker */}
-                  <DualDateField
-                    label="Date"
-                    value={letterDate}
-                    onChange={setLetterDate}
-                    placeholder="DD-MM-YYYY (e.g. 30-10-2026)"
-                    mode="DD-MM-YYYY"
-                  />
-
-                  {/* Title * */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Title <span className="text-red-500">*</span>
+                      Official Document Title <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       value={letterTitle}
                       onChange={(e) => setLetterTitle(e.target.value)}
                       required
-                      className="w-full text-xs font-semibold text-slate-900 border border-slate-300 rounded-xl px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                      className="w-full text-xs font-bold text-slate-900 border border-slate-300 rounded-xl px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     />
+                  </div>
+
+                  {/* Signatory Note */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Authorized Signatory
+                    </label>
+                    <div className="w-full text-xs font-semibold text-slate-700 border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 flex items-center justify-between">
+                      <span>{signatoryName} ({signatoryRole})</span>
+                      <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">
+                        Digital Signature &amp; Stamp Attached
+                      </span>
+                    </div>
                   </div>
                 </div>
 
                 {/* Description Rich Text Editor Box */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-bold text-slate-700">Description</label>
+                    <label className="text-xs font-bold text-slate-700">Document Body &amp; Terms</label>
                     <button
                       type="button"
-                      onClick={() => setIsCustomEdited(false)}
-                      className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 cursor-pointer"
+                      onClick={() => {
+                        setIsCustomEdited(false);
+                        refreshDescriptionFromTemplate();
+                      }}
+                      className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 cursor-pointer flex items-center gap-1"
                     >
-                      Reset to Official Template
+                      <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+                      <span>Reset to Official Template</span>
                     </button>
                   </div>
 
@@ -825,14 +990,14 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
 
                     {/* Textarea for Description */}
                     <textarea
-                      rows={9}
+                      rows={11}
                       value={description}
                       onChange={(e) => {
                         setDescription(e.target.value);
                         setIsCustomEdited(true);
                       }}
                       className="w-full p-4 text-xs sm:text-sm font-sans text-slate-800 bg-white leading-relaxed focus:outline-hidden"
-                      placeholder="Type or format your offer letter body..."
+                      placeholder="Type or format your document body..."
                     />
                   </div>
                 </div>
@@ -859,14 +1024,14 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                   className="bg-[#0F4C81] hover:bg-[#0C3D68] text-white font-bold px-6 py-2.5 rounded-xl shadow-md text-xs cursor-pointer flex items-center gap-1.5"
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>{isSubmitting ? "Generating..." : "✔ Submit"}</span>
+                  <span>{isSubmitting ? "Generating..." : "✔ Issue & Dispatch Official Letter"}</span>
                 </Button>
 
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => setViewMode("PREVIEW")}
-                  className="text-xs font-bold rounded-xl"
+                  className="text-xs font-bold rounded-xl cursor-pointer"
                 >
                   <Eye className="w-3.5 h-3.5 mr-1 text-blue-600" />
                   Preview Letterhead
@@ -874,7 +1039,7 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
               </div>
             </form>
           ) : (
-            /* OFFICIAL A4 LETTERHEAD PREVIEW MATCHING USER'S ATTACHED PDF EXACTLY */
+            /* OFFICIAL A4 LETTERHEAD PREVIEW */
             <div className="space-y-4">
               <div className="flex items-center justify-between pb-2 border-b border-slate-200 print:hidden">
                 <div className="flex items-center gap-2">
@@ -907,7 +1072,7 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                     size="sm"
                     variant="outline"
                     onClick={() => setViewMode("FORM")}
-                    className="text-xs font-bold rounded-xl"
+                    className="text-xs font-bold rounded-xl cursor-pointer"
                   >
                     Edit Information
                   </Button>
@@ -953,63 +1118,83 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                       </h1>
                     </div>
 
-                    {/* 4 Paragraphs of Body Text with exact highlighted bold keywords matching PDF */}
+                    {/* Dynamic Formatted Body Text */}
                     <div className="space-y-4 text-xs sm:text-[13px] leading-relaxed text-slate-800 font-normal text-justify">
-                      {isCustomEdited ? (
-                        description.split("\n\n").map((para, idx) => (
-                          <p key={idx}>{para}</p>
-                        ))
-                      ) : (
-                        <>
-                          {/* Paragraph 1 */}
-                          <p>
-                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;This is to inform that{" "}
-                            <strong>
-                              {salutation} {studentName}
-                            </strong>{" "}
-                            has been selected for an internship at{" "}
-                            <strong>Akash Technolabs</strong> as a{" "}
-                            <strong>{internshipPosition}</strong>. {pronounCapitalHisHer}{" "}
-                            internship will commence on <strong>{commencementDate}</strong>{" "}
-                            and continue until <strong>{continueUntilDate}</strong>.
-                          </p>
+                      {description.split(/\n\s*\n/).map((para, pIdx) => {
+                        const trimmed = para.trim();
+                        if (!trimmed) return null;
 
-                          {/* Paragraph 2 with technology highlighted in bold */}
-                          <p>
-                            During the internship period, {pronounHeShe} will work on{" "}
-                            <strong>{cleanTech}</strong> technology and will be involved in projects and
-                            assignments designed to enhance {pronounHisHer} technical
-                            knowledge and practical skills. {pronounCapitalHeShe} is
-                            expected to maintain a professional attitude, follow the
-                            company&apos;s policies and guidelines, and perform{" "}
-                            {pronounHisHer} assigned responsibilities with sincerity and
-                            dedication throughout the internship.
-                          </p>
+                        if (trimmed === "TO WHOMSOEVER IT MAY CONCERN") {
+                          return (
+                            <p key={pIdx} className="font-bold text-slate-900 tracking-wide text-sm py-1">
+                              TO WHOMSOEVER IT MAY CONCERN
+                            </p>
+                          );
+                        }
 
-                          {/* Paragraph 3 */}
-                          <p>
-                            Upon successful completion of the internship, {pronounHeShe}{" "}
-                            will be awarded an{" "}
-                            <strong>Internship Completion Certificate</strong> based on{" "}
-                            {pronounHisHer} performance and adherence to the company&apos;s
-                            rules and regulations.
-                          </p>
+                        if (
+                          trimmed.startsWith("To,") ||
+                          trimmed.startsWith("Subject:") ||
+                          trimmed.startsWith("Dear ")
+                        ) {
+                          const lines = trimmed.split("\n");
+                          return (
+                            <div key={pIdx} className="space-y-1 py-1">
+                              {lines.map((l, lIdx) => {
+                                const isSubj = l.toLowerCase().startsWith("subject:");
+                                const isBold = isSubj || l.startsWith("To,");
+                                return (
+                                  <p
+                                    key={lIdx}
+                                    className={isBold ? "font-bold text-slate-900" : "text-slate-800"}
+                                  >
+                                    {l}
+                                  </p>
+                                );
+                              })}
+                            </div>
+                          );
+                        }
 
-                          {/* Paragraph 4 */}
-                          <p>
-                            We are pleased to welcome {pronounHimHer} to Akash Technolabs
-                            and wish {pronounHimHer} a successful and enriching internship
-                            experience.
+                        if (trimmed.includes("• ") || trimmed.includes("- ")) {
+                          const lines = trimmed.split("\n");
+                          return (
+                            <div key={pIdx} className="space-y-1.5">
+                              {lines.map((l, lIdx) => {
+                                const lTrim = l.trim();
+                                if (lTrim.startsWith("• ") || lTrim.startsWith("- ")) {
+                                  return (
+                                    <div key={lIdx} className="flex items-start gap-2 pl-4 text-slate-800">
+                                      <span className="font-bold text-slate-900">•</span>
+                                      <span>{lTrim.replace(/^[•\-]\s*/, "")}</span>
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <p key={lIdx}>
+                                    {highlightKeywords(lTrim, previewKeywords)}
+                                  </p>
+                                );
+                              })}
+                            </div>
+                          );
+                        }
+
+                        const isIntroIndent = trimmed.startsWith("This is to inform");
+
+                        return (
+                          <p key={pIdx} className={isIntroIndent ? "indent-6" : ""}>
+                            {highlightKeywords(trimmed, previewKeywords)}
                           </p>
-                        </>
-                      )}
+                        );
+                      })}
                     </div>
 
-                    {/* Sign-Off Block (Bottom Left) matching authentic PDF */}
+                    {/* Sign-Off Block matching authentic PDF */}
                     <div className="pt-8 space-y-0.5 text-xs sm:text-sm">
                       <p className="text-slate-800 font-medium">Sincerely</p>
 
-                      {/* Official CEO Rubber Seal & Signature matching authentic Fenil Offer Letter */}
+                      {/* Official CEO Rubber Seal & Signature */}
                       <div className="py-1">
                         <img
                           src={AKASH_STAMP_BASE64}
@@ -1018,8 +1203,8 @@ We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronou
                         />
                       </div>
 
-                      <p className="font-bold text-slate-900 text-sm">Akash Padhiyar</p>
-                      <p className="font-medium text-slate-700 text-xs">CEO</p>
+                      <p className="font-bold text-slate-900 text-sm">{signatoryName}</p>
+                      <p className="font-medium text-slate-700 text-xs">{signatoryRole}</p>
                     </div>
                   </div>
 

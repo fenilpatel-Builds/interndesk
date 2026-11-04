@@ -9,7 +9,19 @@ export interface OfficialOfferLetter {
   member_id: string;
   recipient_email: string;
   document_number: string;
-  document_type: "OFFER_LETTER" | "INTERNSHIP_LETTER" | "COMPLETION_CERTIFICATE" | "PERFORMANCE_TRANSCRIPT";
+  document_type:
+    | "OFFER_LETTER"
+    | "INTERNSHIP_LETTER"
+    | "COMPLETION_CERTIFICATE"
+    | "PERFORMANCE_TRANSCRIPT"
+    | "JOINING_LETTER"
+    | "CONFIRMATION_LETTER"
+    | "COMPLETION_LETTER"
+    | "NOC"
+    | "EXPERIENCE_LETTER"
+    | "RELIEVING_LETTER"
+    | "RECOMMENDATION_LETTER"
+    | string;
   title: string;
   recipient_name: string;
   recipient_role: string;
@@ -41,6 +53,8 @@ export interface OfficialOfferLetter {
     secondary_color: string;
     is_akash_template: boolean;
     validity: string;
+    university?: string;
+    purpose?: string;
   };
   created_at: string;
   updated_at?: string;
@@ -294,6 +308,7 @@ export class DocumentStore {
     adminEmail: string,
     payload: {
       templateType?: string;
+      documentType?: string;
       letterDate: string; // "30-10-2026"
       title?: string; // "INTERNSHIP OFFER LETTER"
       salutation: "Mr." | "Ms.";
@@ -304,6 +319,8 @@ export class DocumentStore {
       continueUntilDate: string; // "30th April 2027"
       technology: string; // "AI/ML"
       descriptionContent?: string;
+      university?: string;
+      purpose?: string;
     }
   ): OfficialOfferLetter {
     if (!isUserAdmin(adminEmail)) {
@@ -311,10 +328,10 @@ export class DocumentStore {
     }
 
     this.docs = loadFromDisk();
-    const docCount = this.docs.filter((d) => d.document_type === "OFFER_LETTER").length + 1;
-    const documentNumber = `ID-AKT-2026-OF${docCount.toString().padStart(2, "0")}`;
-    const verificationCode = `VRF-AKT-${Date.now().toString().slice(-4)}-OFR`;
-    const docId = `doc-akt-offer-${Date.now()}`;
+    const docCount = this.docs.length + 1;
+    const documentNumber = `ID-AKT-2026-DOC${docCount.toString().padStart(2, "0")}`;
+    const verificationCode = `VRF-AKT-${Date.now().toString().slice(-4)}-GEN`;
+    const docId = `doc-akt-${Date.now()}`;
 
     const formattedRecipient = `${payload.salutation} ${payload.studentName.trim()}`;
 
@@ -325,7 +342,7 @@ export class DocumentStore {
       member_id: payload.recipientEmail ? `usr-${payload.recipientEmail.replace(/[^a-z0-9]/g, "")}` : docId,
       recipient_email: payload.recipientEmail?.toLowerCase().trim() || "",
       document_number: documentNumber,
-      document_type: "OFFER_LETTER",
+      document_type: payload.documentType || "OFFER_LETTER",
       title: payload.title || "INTERNSHIP OFFER LETTER",
       recipient_name: formattedRecipient,
       recipient_role: payload.internshipPosition.trim(),
@@ -358,6 +375,8 @@ export class DocumentStore {
         secondary_color: "#1e3a8a",
         is_akash_template: true,
         validity: "Active / Verified",
+        university: payload.university,
+        purpose: payload.purpose,
       },
       created_at: new Date().toISOString(),
     };

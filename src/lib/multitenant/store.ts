@@ -2012,6 +2012,12 @@ class MultiTenantStore {
       TRAINING_CERTIFICATE: "Professional Practicum Completion Certificate",
       PARTICIPATION_CERTIFICATE: "Certificate of Active Technical Participation",
       PERFORMANCE_TRANSCRIPT: "Official Internship Performance Transcript & Skill Dossier",
+      JOINING_LETTER: "Internship Joining Confirmation Letter",
+      CONFIRMATION_LETTER: "Internship Confirmation Letter",
+      COMPLETION_LETTER: "Internship Completion Letter",
+      NOC: "No Objection Certificate (NOC)",
+      RELIEVING_LETTER: "Internship Relieving Letter",
+      RECOMMENDATION_LETTER: "Letter of Recommendation (LOR)",
     };
 
     const typePrefixes: Record<DocumentType, string> = {
@@ -2022,6 +2028,12 @@ class MultiTenantStore {
       TRAINING_CERTIFICATE: "TRN",
       PARTICIPATION_CERTIFICATE: "PART",
       PERFORMANCE_TRANSCRIPT: "TRSC",
+      JOINING_LETTER: "JOIN",
+      CONFIRMATION_LETTER: "CONF",
+      COMPLETION_LETTER: "CMPL",
+      NOC: "NOC",
+      RELIEVING_LETTER: "REL",
+      RECOMMENDATION_LETTER: "LOR",
     };
 
     const issuedBatch: IssuedDocument[] = [];

@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const {
       templateType,
+      documentType,
       letterDate,
       title,
       salutation,
@@ -51,6 +52,8 @@ export async function POST(req: NextRequest) {
       continueUntilDate,
       technology,
       descriptionContent,
+      university,
+      purpose,
     } = body;
 
     if (!studentName || !internshipPosition || !letterDate) {
@@ -62,6 +65,7 @@ export async function POST(req: NextRequest) {
 
     const newDoc = documentStore.createOfferLetter(adminEmail, {
       templateType: templateType || "INTERNSHIP OFFER LETTER (Boy)",
+      documentType: documentType || "OFFER_LETTER",
       letterDate: letterDate || "30-10-2026",
       title: title || "INTERNSHIP OFFER LETTER",
       salutation: salutation || "Mr.",
@@ -72,6 +76,8 @@ export async function POST(req: NextRequest) {
       continueUntilDate: continueUntilDate || "30th April 2027",
       technology: technology || "AI/ML",
       descriptionContent,
+      university,
+      purpose,
     });
 
     return NextResponse.json({

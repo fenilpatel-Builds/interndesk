@@ -251,7 +251,19 @@ export default function StudentDocumentsPage() {
   };
 
   const handleDirectStudentDownload = async (doc: IssuedDocument) => {
-    if (doc.document_type === "OFFER_LETTER" || doc.document_type === "INTERNSHIP_LETTER") {
+    const dt = String(doc.document_type || "");
+    if (
+      dt === "OFFER_LETTER" ||
+      dt === "INTERNSHIP_LETTER" ||
+      dt === "JOINING_LETTER" ||
+      dt === "CONFIRMATION_LETTER" ||
+      dt === "COMPLETION_LETTER" ||
+      dt === "NOC" ||
+      dt === "EXPERIENCE_LETTER" ||
+      dt === "RELIEVING_LETTER" ||
+      dt === "RECOMMENDATION_LETTER" ||
+      Boolean((doc as any).description_content)
+    ) {
       const isFemale = isFemaleCandidate(doc.recipient_name, (doc.template_data as any)?.salutation);
       const cleanTech = deriveTrackTechnology(
         doc.recipient_role,
@@ -265,7 +277,10 @@ export default function StudentDocumentsPage() {
         commencementDate: (doc.template_data as any)?.commencement_date || "3rd July 2026",
         continueUntilDate: (doc.template_data as any)?.continue_until_date || "30th April 2027",
         letterDate: doc.issued_date,
-        title: doc.document_type === "INTERNSHIP_LETTER" ? "INTERNSHIP APPOINTMENT LETTER" : doc.title,
+        title: doc.title || (doc.document_type === "INTERNSHIP_LETTER" ? "INTERNSHIP APPOINTMENT LETTER" : "INTERNSHIP DOCUMENT"),
+        customDescription: (doc as any).description_content,
+        isCustomEdited: Boolean((doc as any).description_content),
+        templateType: (doc as any).template_type,
       });
     } else {
       setSelectedStudioDoc(doc);

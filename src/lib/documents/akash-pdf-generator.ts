@@ -5,6 +5,10 @@ import {
   AKASH_WATERMARK_BASE64,
   AKASH_STAMP_BASE64,
 } from "./akash-letterhead-assets";
+import {
+  generateLetterContent,
+  LetterTemplateKey,
+} from "./letter-templates";
 
 export interface OfferLetterData {
   salutation?: "Mr." | "Ms." | string;
@@ -17,6 +21,12 @@ export interface OfferLetterData {
   title?: string;
   customDescription?: string;
   isCustomEdited?: boolean;
+  templateType?: LetterTemplateKey | string;
+  universityId?: string;
+  customUniversity?: string;
+  purpose?: string;
+  signatoryName?: string;
+  signatoryRole?: string;
 }
 
 export function isFemaleCandidate(name?: string, salutation?: string): boolean {
@@ -135,44 +145,116 @@ export async function generateAkashOfferLetterPdf(data: OfferLetterData): Promis
     color: rgb(0, 0, 0),
   });
 
-  // 5. Title centered & underlined matching authentic PDF
+  // 5. Title centered & underlined with dynamic width matching text
   const titleText = (data.title || "INTERNSHIP OFFER LETTER").toUpperCase();
+  const titleFontSize = 17.0;
+  const titleWidth = fontBold.widthOfTextAtSize(titleText, titleFontSize);
+  const titleX = Math.max(45, (595.28 - titleWidth) / 2);
+
   page.drawText(titleText, {
-    x: 172.63,
+    x: titleX,
     y: 695.324,
     font: fontBold,
-    size: 18.0,
+    size: titleFontSize,
     color: rgb(0, 0, 0),
   });
+
   page.drawLine({
-    start: { x: 172.63, y: 691.409 },
-    end: { x: 422.65, y: 691.409 },
+    start: { x: titleX, y: 691.409 },
+    end: { x: titleX + titleWidth, y: 691.409 },
     thickness: 0.9,
     color: rgb(0, 0, 0),
   });
 
-  // Layout parameters matching authentic PDF
-  const maxWidth = 475.28;
-  const leftX = 60.0;
-  let currentY = 642.753;
-  const lineHeight = 17.094;
-  const fontSize = 12.0;
+  // Candidate and role information
+  const rawName = data.studentName.replace(/^(Mr\.|Ms\.)\s*/i, "").trim();
+  const isGirl = isFemaleCandidate(data.studentName, data.salutation);
+  const sal = (data.salutation as "Mr." | "Ms.") || (isGirl ? "Ms." : "Mr.");
+  const position = data.internshipPosition || "AI/ML Intern";
+  const tech = deriveTrackTechnology(position, data.technology);
+  const startDate = data.commencementDate || "3rd July 2026";
+  const endDate = data.continueUntilDate || "30th April 2027";
 
-  function renderTokensAsLines(tokens: { text: string; bold: boolean }[]) {
+  // Layout parameters
+  const leftX = 60.0;
+  let currentY = 650.0;
+
+  // Determine text content to render
+  let fullBodyText = "";
+  if (data.isCustomEdited && data.customDescription?.trim()) {
+    fullBodyText = data.customDescription.trim();
+  } else {
+    // Generate text from template catalog
+    const generated = generateLetterContent({
+      templateKey: data.templateType || (isGirl ? "AKASH_STANDARD_GIRL" : "AKASH_STANDARD_BOY"),
+      salutation: sal,
+      studentName: rawName,
+      internshipPosition: position,
+      technology: tech,
+      commencementDate: startDate,
+      continueUntilDate: endDate,
+      letterDate,
+      universityId: data.universityId,
+      customUniversity: data.customUniversity,
+      purpose: data.purpose,
+      signatoryName: data.signatoryName,
+      signatoryRole: data.signatoryRole,
+    });
+    fullBodyText = generated.fullText;
+  }
+
+  // Keywords that should be bolded automatically in paragraphs
+  const boldKeywords = [
+    `${sal} ${rawName}`,
+    rawName,
+    "Akash Technolabs",
+    position,
+    startDate,
+    endDate,
+    tech,
+    "Internship Completion Certificate",
+    "TO WHOMSOEVER IT MAY CONCERN",
+  ].filter(Boolean);
+
+  // Split text into paragraphs
+  const paragraphs = fullBodyText.split(/\n\s*\n/);
+  const totalParas = paragraphs.length;
+
+  // Dynamic typography to fit any document density cleanly on 1 page
+  let fontSize = 11.5;
+  let lineHeight = 16.5;
+  let paraGap = 10.0;
+
+  if (totalParas > 6 || fullBodyText.length > 1200) {
+    fontSize = 10.2;
+    lineHeight = 14.5;
+    paraGap = 7.5;
+  } else if (totalParas > 4 || fullBodyText.length > 850) {
+    fontSize = 11.0;
+    lineHeight = 15.5;
+    paraGap = 9.0;
+  }
+
+  function renderTokens(
+    tokens: { text: string; bold: boolean }[],
+    indentX: number = leftX
+  ) {
     const lines: { text: string; bold: boolean; font: any; width: number }[][] = [];
     let curLine: { text: string; bold: boolean; font: any; width: number }[] = [];
     let curWidth = 0;
+    const availWidth = 595.28 - indentX - 60.0;
 
     for (const tok of tokens) {
       const font = tok.bold ? fontBold : fontRegular;
       const parts = tok.text.split(" ");
       for (let i = 0; i < parts.length; i++) {
         const p = parts[i];
+        if (!p && i > 0 && i < parts.length - 1) continue;
         const isLastInToken = i === parts.length - 1;
         const textWithSpace = isLastInToken ? p : p + " ";
         const w = font.widthOfTextAtSize(textWithSpace, fontSize);
 
-        if (curWidth + w > maxWidth && curLine.length > 0) {
+        if (curWidth + w > availWidth && curLine.length > 0) {
           lines.push(curLine);
           curLine = [];
           curWidth = 0;
@@ -190,93 +272,121 @@ export async function generateAkashOfferLetterPdf(data: OfferLetterData): Promis
     if (curLine.length > 0) lines.push(curLine);
 
     for (const l of lines) {
-      let x = leftX;
+      let x = indentX;
       for (const chk of l) {
-        page.drawText(chk.text, { x, y: currentY, font: chk.font, size: fontSize, color: rgb(0, 0, 0) });
+        page.drawText(chk.text, {
+          x,
+          y: currentY,
+          font: chk.font,
+          size: fontSize,
+          color: rgb(0, 0, 0),
+        });
         x += chk.width;
       }
       currentY -= lineHeight;
     }
-    currentY -= 12.0; // Paragraph gap
   }
 
-  const rawName = data.studentName.replace(/^(Mr\.|Ms\.)\s*/i, "").trim();
-  const isGirl = isFemaleCandidate(data.studentName, data.salutation);
-  const sal = data.salutation || (isGirl ? "Ms." : "Mr.");
-  const pronounHeShe = isGirl ? "she" : "he";
-  const pronounHisHer = isGirl ? "her" : "his";
-  const pronounCapitalHisHer = isGirl ? "Her" : "His";
-  const pronounCapitalHeShe = isGirl ? "She" : "He";
-  const pronounHimHer = isGirl ? "her" : "him";
+  for (const para of paragraphs) {
+    const trimmed = para.trim();
+    if (!trimmed) continue;
 
-  const position = data.internshipPosition || "AI/ML Intern";
-  const tech = deriveTrackTechnology(position, data.technology);
-  const startDate = data.commencementDate || "3rd July 2026";
-  const endDate = data.continueUntilDate || "30th April 2027";
+    // Check if paragraph is a single line header (like "TO WHOMSOEVER IT MAY CONCERN")
+    if (trimmed === "TO WHOMSOEVER IT MAY CONCERN") {
+      page.drawText(trimmed, {
+        x: leftX,
+        y: currentY,
+        font: fontBold,
+        size: fontSize + 0.5,
+        color: rgb(0, 0, 0),
+      });
+      currentY -= lineHeight + paraGap;
+      continue;
+    }
 
-  if (data.isCustomEdited && data.customDescription) {
-    const paras = data.customDescription.split("\n\n");
-    for (const para of paras) {
-      if (!para.trim()) continue;
-      if (para.includes(tech)) {
-        const parts = para.split(tech);
-        const tokens: { text: string; bold: boolean }[] = [];
-        for (let i = 0; i < parts.length; i++) {
-          if (parts[i]) tokens.push({ text: parts[i], bold: false });
-          if (i < parts.length - 1) tokens.push({ text: tech, bold: true });
+    if (trimmed.startsWith("To,") || trimmed.startsWith("Subject:") || trimmed.startsWith("Dear ")) {
+      const lines = trimmed.split("\n");
+      for (const line of lines) {
+        const isSubj = line.toLowerCase().startsWith("subject:");
+        const isBoldLine = isSubj || line.startsWith("To,");
+        renderTokens(
+          [{ text: line, bold: isBoldLine }],
+          leftX
+        );
+      }
+      currentY -= paraGap;
+      continue;
+    }
+
+    // Check if paragraph contains bullet items (e.g. Experience Letter)
+    if (trimmed.includes("• ") || trimmed.includes("- ")) {
+      const lines = trimmed.split("\n");
+      for (const line of lines) {
+        const lTrim = line.trim();
+        if (lTrim.startsWith("• ") || lTrim.startsWith("- ")) {
+          const bulletText = lTrim.replace(/^[•\-]\s*/, "");
+          // Draw bullet
+          page.drawText("•", {
+            x: leftX + 12,
+            y: currentY,
+            font: fontBold,
+            size: fontSize,
+            color: rgb(0, 0, 0),
+          });
+          renderTokens([{ text: bulletText, bold: false }], leftX + 24);
+        } else {
+          renderTokens([{ text: lTrim, bold: false }], leftX);
         }
-        renderTokensAsLines(tokens);
+      }
+      currentY -= paraGap;
+      continue;
+    }
+
+    // Standard paragraph with bold keyword matching
+    const tokens: { text: string; bold: boolean }[] = [];
+    let remaining = trimmed;
+
+    // Indent first line of normal paragraph slightly if it starts with "This is to inform"
+    const isIntroIndent = trimmed.startsWith("This is to inform");
+    const prefix = isIntroIndent ? "     " : "";
+    remaining = prefix + remaining;
+
+    while (remaining.length > 0) {
+      let earliestIdx = -1;
+      let matchedKeyword = "";
+
+      for (const kw of boldKeywords) {
+        if (!kw || kw.length < 2) continue;
+        const idx = remaining.indexOf(kw);
+        if (idx !== -1 && (earliestIdx === -1 || idx < earliestIdx)) {
+          earliestIdx = idx;
+          matchedKeyword = kw;
+        }
+      }
+
+      if (earliestIdx !== -1) {
+        if (earliestIdx > 0) {
+          tokens.push({ text: remaining.slice(0, earliestIdx), bold: false });
+        }
+        tokens.push({ text: matchedKeyword, bold: true });
+        remaining = remaining.slice(earliestIdx + matchedKeyword.length);
       } else {
-        renderTokensAsLines([{ text: para.trim(), bold: false }]);
+        tokens.push({ text: remaining, bold: false });
+        break;
       }
     }
-  } else {
-    // Paragraph 1 with authentic bold highlights
-    renderTokensAsLines([
-      { text: "     This is to inform that ", bold: false },
-      { text: `${sal} ${rawName}`, bold: true },
-      { text: " has been selected for an internship at ", bold: false },
-      { text: "Akash Technolabs", bold: true },
-      { text: " as a ", bold: false },
-      { text: position, bold: true },
-      { text: `. ${pronounCapitalHisHer} internship will commence on `, bold: false },
-      { text: startDate, bold: true },
-      { text: " and continue until ", bold: false },
-      { text: endDate, bold: true },
-      { text: ".", bold: false },
-    ]);
 
-    // Paragraph 2 with technology highlighted in bold
-    renderTokensAsLines([
-      { text: `During the internship period, ${pronounHeShe} will work on `, bold: false },
-      { text: tech, bold: true },
-      {
-        text: ` technology and will be involved in projects and assignments designed to enhance ${pronounHisHer} technical knowledge and practical skills. ${pronounCapitalHeShe} is expected to maintain a professional attitude, follow the company's policies and guidelines, and perform ${pronounHisHer} assigned responsibilities with sincerity and dedication throughout the internship.`,
-        bold: false,
-      },
-    ]);
-
-    // Paragraph 3 with authentic bold highlights
-    renderTokensAsLines([
-      { text: `Upon successful completion of the internship, ${pronounHeShe} will be awarded an `, bold: false },
-      { text: "Internship Completion Certificate", bold: true },
-      { text: ` based on ${pronounHisHer} performance and adherence to the company's rules and regulations.`, bold: false },
-    ]);
-
-    // Paragraph 4
-    renderTokensAsLines([
-      {
-        text: `We are pleased to welcome ${pronounHimHer} to Akash Technolabs and wish ${pronounHimHer} a successful and enriching internship experience.`,
-        bold: false,
-      },
-    ]);
+    renderTokens(tokens, leftX);
+    currentY -= paraGap;
   }
 
-  // Signatory matching authentic PDF
-  currentY = 345.078;
+  // Calculate clean, collision-free position for Signatory Block
+  // Ensure it never overlaps body text AND never overlaps footer (footer top is at y: 47)
+  const signOffY = Math.max(Math.min(currentY - 10, 345), 160);
+
   page.drawText("Sincerely", {
     x: leftX,
-    y: currentY,
+    y: signOffY,
     font: fontRegular,
     size: fontSize,
     color: rgb(0, 0, 0),
@@ -284,22 +394,22 @@ export async function generateAkashOfferLetterPdf(data: OfferLetterData): Promis
 
   page.drawImage(stampImg, {
     x: leftX,
-    y: 277.004,
+    y: signOffY - 68,
     width: 75.0,
     height: 64.167,
   });
 
-  page.drawText("Akash Padhiyar", {
+  page.drawText(data.signatoryName || "Akash Padhiyar", {
     x: leftX,
-    y: 261.375,
+    y: signOffY - 84,
     font: fontRegular,
     size: fontSize,
     color: rgb(0, 0, 0),
   });
 
-  page.drawText("CEO", {
+  page.drawText(data.signatoryRole || "CEO", {
     x: leftX,
-    y: 241.839,
+    y: signOffY - 100,
     font: fontRegular,
     size: fontSize,
     color: rgb(0, 0, 0),
@@ -317,8 +427,9 @@ export async function downloadAkashOfferLetterPdf(
 ): Promise<void> {
   const pdfBytes = await generateAkashOfferLetterPdf(data);
   const rawName = data.studentName.replace(/^(Mr\.|Ms\.)\s*/i, "").trim();
+  const cleanTitle = (data.title || "Internship_Document").replace(/[^a-zA-Z0-9_-]/g, "_");
   const safeFilename =
-    filename || `${rawName.replace(/\s+/g, "_")}_Internship_Offer_Letter.pdf`;
+    filename || `${rawName.replace(/\s+/g, "_")}_${cleanTitle}.pdf`;
 
   const blob = new Blob([pdfBytes as unknown as BlobPart], { type: "application/pdf" });
   const url = URL.createObjectURL(blob);
@@ -330,4 +441,3 @@ export async function downloadAkashOfferLetterPdf(
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-
