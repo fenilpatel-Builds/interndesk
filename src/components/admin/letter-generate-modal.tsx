@@ -31,6 +31,10 @@ import {
   Edit3,
   Trash2,
   RefreshCw,
+  Paperclip,
+  Upload,
+  Columns,
+  FileUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -299,8 +303,20 @@ export function LetterGenerateModal({
   const [showPasteHelper, setShowPasteHelper] = useState(false);
   const [pastedRawText, setPastedRawText] = useState("");
 
-  // View mode: Form or Full Official Preview
-  const [viewMode, setViewMode] = useState<"FORM" | "PREVIEW">("FORM");
+  // Attached File State (Upload Drafts / Syllabus / NOC attachments)
+  const [attachedFile, setAttachedFile] = useState<{
+    name: string;
+    size: number;
+    type: string;
+    uploadedAt: string;
+  } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Content Assistant Mode: "PASTE" or "ATTACH"
+  const [contentAssistantTab, setContentAssistantTab] = useState<"PASTE" | "ATTACH">("PASTE");
+
+  // View mode: Fullscreen Split Studio (Side-by-Side), Editor Form only, or Fullscreen Official A4 Preview
+  const [viewMode, setViewMode] = useState<"SPLIT" | "FORM" | "PREVIEW">("SPLIT");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -426,11 +442,6 @@ export function LetterGenerateModal({
     const tmpl = LETTER_TEMPLATES.find((t) => t.key === key);
     if (tmpl) {
       setLetterTitle(tmpl.defaultTitle);
-      if (key === "AKASH_STANDARD_GIRL") {
-        setSalutation("Ms.");
-      } else if (key === "AKASH_STANDARD_BOY") {
-        setSalutation("Mr.");
-      }
     }
     setIsCustomEdited(false);
   };
@@ -452,12 +463,6 @@ export function LetterGenerateModal({
       const isFemale = isFemaleCandidate(found.name);
       const sal = isFemale ? "Ms." : "Mr.";
       setSalutation(sal);
-
-      if (templateKey === "AKASH_STANDARD_BOY" && isFemale) {
-        setTemplateKey("AKASH_STANDARD_GIRL");
-      } else if (templateKey === "AKASH_STANDARD_GIRL" && !isFemale) {
-        setTemplateKey("AKASH_STANDARD_BOY");
-      }
 
       if (found.technology) {
         const cleanT = deriveTrackTechnology(found.technology);
@@ -487,11 +492,6 @@ export function LetterGenerateModal({
 
   const handleSalutationChange = (val: "Mr." | "Ms.") => {
     setSalutation(val);
-    if (val === "Ms." && templateKey === "AKASH_STANDARD_BOY") {
-      setTemplateKey("AKASH_STANDARD_GIRL");
-    } else if (val === "Mr." && templateKey === "AKASH_STANDARD_GIRL") {
-      setTemplateKey("AKASH_STANDARD_BOY");
-    }
     setIsCustomEdited(false);
   };
 
@@ -499,9 +499,6 @@ export function LetterGenerateModal({
     setStudentName(val);
     if (isFemaleCandidate(val)) {
       setSalutation("Ms.");
-      if (templateKey === "AKASH_STANDARD_BOY") {
-        setTemplateKey("AKASH_STANDARD_GIRL");
-      }
     }
     setIsCustomEdited(false);
   };
@@ -554,6 +551,70 @@ export function LetterGenerateModal({
     setPastedRawText("");
   };
 
+  // File Upload Handler (Text import or PDF/Doc attachment)
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const isTextFile =
+      file.name.endsWith(".txt") ||
+      file.name.endsWith(".md") ||
+      file.type.startsWith("text/");
+
+    if (isTextFile) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const rawText = event.target?.result as string;
+        if (rawText) {
+          const result = cleanAndSanitizePastedText(rawText, {
+            salutation,
+            studentName,
+            internshipPosition: internshipPosition || "AI/ML Intern",
+            technology: technology || "AI/ML Systems",
+            commencementDate: commencementDate || "[Joining Date]",
+            continueUntilDate: continueUntilDate || "[End Date]",
+            letterDate,
+            mentorName: mentorName || "Dr. Rajesh Vaghela (Tech Lead)",
+            mentorDesignation: mentorDesignation || "Senior Technical Project Guide",
+          });
+
+          if (result.detectedTitle) {
+            setLetterTitle(result.detectedTitle.toUpperCase());
+          }
+          if (result.detectedDate) {
+            setLetterDate(result.detectedDate);
+          }
+          setDescription(result.cleanedText);
+          setIsCustomEdited(true);
+          setStatusMessage({
+            type: "success",
+            text: `Imported and sanitized draft content from "${file.name}"!`,
+          });
+        }
+      };
+      reader.readAsText(file);
+    } else {
+      setStatusMessage({
+        type: "success",
+        text: `Attached file "${file.name}" (${(file.size / 1024).toFixed(1)} KB) to official document record.`,
+      });
+    }
+
+    setAttachedFile({
+      name: file.name,
+      size: file.size,
+      type: file.type || "application/octet-stream",
+      uploadedAt: new Date().toISOString(),
+    });
+  };
+
+  const handleRemoveAttachment = () => {
+    setAttachedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   // Submit Handler: Supports both CREATE and UPDATE
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -591,6 +652,7 @@ export function LetterGenerateModal({
         descriptionContent: description,
         university: universityId !== "STANDARD" ? (universityId === "CUSTOM" ? customUniversity : universityId) : undefined,
         purpose,
+        attachedFile: attachedFile ? { name: attachedFile.name, size: attachedFile.size, type: attachedFile.type } : undefined,
       };
 
       let res: Response;
@@ -676,104 +738,255 @@ export function LetterGenerateModal({
     "Internship Completion Certificate",
   ].filter(Boolean);
 
-  if (!isOpen) return null;
+  // Render the authentic A4 Letterhead sheet (used in Split Studio and Full Preview)
+  const renderLetterheadSheet = (isSplitView: boolean = false) => (
+    <div
+      id="akash-official-offer-letter-sheet"
+      className={`relative bg-white mx-auto w-full ${
+        isSplitView ? "max-w-[720px] p-5 sm:p-9" : "max-w-[800px] p-8 sm:p-14"
+      } shadow-xl border border-slate-300 rounded-sm text-slate-900 select-text overflow-hidden transition-all`}
+      style={{ minHeight: isSplitView ? "960px" : "1050px" }}
+    >
+      {/* Center Dual-Tone Translucent Watermark matching authentic PDF */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
+        <img
+          src={AKASH_WATERMARK_BASE64}
+          alt="Akash Technolabs Official Watermark"
+          className="w-[280px] max-w-[85%] object-contain select-none pointer-events-none"
+          style={{ opacity: 0.12 }}
+        />
+      </div>
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-xs overflow-y-auto">
-      <div className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[92vh] flex flex-col">
-        {/* Top brand line: Cyan, Navy, Red */}
-        <div className="h-1.5 w-full bg-gradient-to-r from-[#00A8CC] via-[#0F4C81] to-[#E52329]" />
-
-        {/* Header Bar */}
-        <div className="px-6 py-3.5 border-b border-slate-200/90 flex items-center justify-between bg-slate-50/70 shrink-0">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
-              {isEditMode ? (
-                <>
-                  <Edit3 className="w-5 h-5 text-amber-600" />
-                  <span>Edit &amp; Update Official Document</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-5 h-5 text-blue-600" />
-                  <span>Official Document Dispatch &amp; Letter Generator</span>
-                </>
-              )}
-            </h2>
-            <span
-              className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                isEditMode
-                  ? "bg-amber-100 text-amber-800 border-amber-200"
-                  : "bg-blue-100 text-blue-800 border-blue-200"
-              }`}
-            >
-              {isEditMode ? `Editing: ${initialDoc.docNumber || initialDoc.id}` : "Akash Technolabs Enterprise"}
-            </span>
+      <div className="relative z-10 flex flex-col justify-between" style={{ minHeight: isSplitView ? "890px" : "960px" }}>
+        <div>
+          {/* Header with Official Akash Technolabs Banner matching authentic PDF */}
+          <div className="pb-3">
+            <img
+              src={AKASH_HEADER_BASE64}
+              alt="Akash Technolabs Official Banner"
+              className="w-full object-contain select-none"
+            />
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setViewMode(viewMode === "FORM" ? "PREVIEW" : "FORM")}
-              className="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 flex items-center gap-1.5 cursor-pointer transition-colors"
-            >
-              {viewMode === "FORM" ? (
-                <>
-                  <Eye className="w-3.5 h-3.5 text-blue-600" />
-                  <span>View Official Letterhead</span>
-                </>
-              ) : (
-                <>
-                  <FileText className="w-3.5 h-3.5 text-slate-600" />
-                  <span>Back to Edit Form</span>
-                </>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
+          {/* Right-aligned Date matching authentic PDF */}
+          <div className="text-right text-xs sm:text-sm font-medium text-slate-900 pr-1 pt-1 pb-4">
+            <span>Date :{letterDate}</span>
+          </div>
+
+          {/* Centered Bold Underlined Title */}
+          <div className="text-center pt-1 pb-6">
+            <h1 className="text-base sm:text-lg lg:text-xl font-bold tracking-wider text-slate-900 uppercase underline underline-offset-4 decoration-slate-900 decoration-1">
+              {letterTitle}
+            </h1>
+          </div>
+
+          {/* Dynamic Formatted Body Text with Markdown Tokenization */}
+          <div className="space-y-4 text-xs sm:text-[13px] leading-relaxed text-slate-800 font-normal text-justify">
+            {description.split(/\n\s*\n/).map((para, pIdx) => {
+              const trimmed = para.trim();
+              if (!trimmed) return null;
+
+              // Filter out redundant elements that are already part of official letterhead
+              const cleanLine = trimmed.replace(/^\*\*|\*\*$/g, "").replace(/^<b>|<\/b>$/gi, "").trim();
+              if (/^akash\s*technolabs$/i.test(cleanLine)) return null;
+              if (cleanLine.toUpperCase() === letterTitle.toUpperCase()) return null;
+              if (/^date\s*:/i.test(cleanLine)) return null;
+              if (/^for\s*akash\s*technolabs$/i.test(cleanLine)) return null;
+              if (/^authorized\s*signatory$/i.test(cleanLine)) return null;
+
+              if (/^(\*\*)?TO WHOMSOEVER IT MAY CONCERN(\*\*)?$/i.test(trimmed)) {
+                return (
+                  <p key={pIdx} className="font-bold text-slate-900 tracking-wide text-sm py-1">
+                    TO WHOMSOEVER IT MAY CONCERN
+                  </p>
+                );
+              }
+
+              if (
+                /^(\*\*)?To,/i.test(trimmed) ||
+                /^(\*\*)?Subject:/i.test(trimmed) ||
+                /^(\*\*)?Dear\s/i.test(trimmed)
+              ) {
+                const lines = trimmed.split("\n");
+                return (
+                  <div key={pIdx} className="space-y-1 py-1">
+                    {lines.map((l, lIdx) => {
+                      const isSubj = l.toLowerCase().includes("subject:");
+                      const isTo = l.toLowerCase().includes("to,");
+                      const tokens = tokenizeMarkdown(l, previewKeywords);
+                      return (
+                        <p
+                          key={lIdx}
+                          className={isSubj || isTo ? "font-bold text-slate-900" : "text-slate-800"}
+                        >
+                          {tokens.map((tok, tIdx) => (
+                            <span
+                              key={tIdx}
+                              className={tok.bold || isSubj || isTo ? "font-bold text-slate-900" : ""}
+                            >
+                              {tok.text}
+                            </span>
+                          ))}
+                        </p>
+                      );
+                    })}
+                  </div>
+                );
+              }
+
+              if (trimmed.includes("• ") || trimmed.includes("- ")) {
+                const lines = trimmed.split("\n");
+                return (
+                  <div key={pIdx} className="space-y-1.5">
+                    {lines.map((l, lIdx) => {
+                      const lTrim = l.trim();
+                      if (lTrim.startsWith("• ") || lTrim.startsWith("- ")) {
+                        const bulletText = lTrim.replace(/^[•\-]\s*/, "");
+                        const bTokens = tokenizeMarkdown(bulletText, previewKeywords);
+                        return (
+                          <div key={lIdx} className="flex items-start gap-2 pl-4 text-slate-800">
+                            <span className="font-bold text-slate-900">•</span>
+                            <span>
+                              {bTokens.map((tok, tIdx) =>
+                                tok.bold ? (
+                                  <strong key={tIdx} className="font-bold text-slate-900">
+                                    {tok.text}
+                                  </strong>
+                                ) : tok.italic ? (
+                                  <em key={tIdx} className="italic text-slate-800">
+                                    {tok.text}
+                                  </em>
+                                ) : (
+                                  <span key={tIdx}>{tok.text}</span>
+                                )
+                              )}
+                            </span>
+                          </div>
+                        );
+                      }
+                      const lTokens = tokenizeMarkdown(lTrim, previewKeywords);
+                      return (
+                        <p key={lIdx}>
+                          {lTokens.map((tok, tIdx) =>
+                            tok.bold ? (
+                              <strong key={tIdx} className="font-bold text-slate-900">
+                                {tok.text}
+                              </strong>
+                            ) : tok.italic ? (
+                              <em key={tIdx} className="italic text-slate-800">
+                                {tok.text}
+                              </em>
+                            ) : (
+                              <span key={tIdx}>{tok.text}</span>
+                            )
+                          )}
+                        </p>
+                      );
+                    })}
+                  </div>
+                );
+              }
+
+              const isIntroIndent = trimmed.startsWith("This is to inform");
+              const tokens = tokenizeMarkdown(trimmed, previewKeywords);
+
+              return (
+                <p key={pIdx} className={isIntroIndent ? "indent-6" : ""}>
+                  {tokens.map((tok, tIdx) =>
+                    tok.bold ? (
+                      <strong key={tIdx} className="font-bold text-slate-900">
+                        {tok.text}
+                      </strong>
+                    ) : tok.italic ? (
+                      <em key={tIdx} className="italic text-slate-800">
+                        {tok.text}
+                      </em>
+                    ) : (
+                      <span key={tIdx}>{tok.text}</span>
+                    )
+                  )}
+                </p>
+              );
+            })}
+          </div>
+
+          {/* Official Attachment Badge if file attached */}
+          {attachedFile && (
+            <div className="mt-5 p-2.5 rounded-xl border border-dashed border-blue-300 bg-blue-50/60 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2 text-slate-800">
+                <Paperclip className="w-4 h-4 text-blue-600" />
+                <span className="font-semibold">Official Attachment:</span>
+                <span className="font-mono text-blue-700">{attachedFile.name}</span>
+                <span className="text-slate-500 text-[11px]">({(attachedFile.size / 1024).toFixed(1)} KB)</span>
+              </div>
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                Verified Attached
+              </span>
+            </div>
+          )}
+
+          {/* Sign-Off Block matching authentic PDF */}
+          <div className="pt-8 space-y-0.5 text-xs sm:text-sm">
+            <p className="text-slate-800 font-medium">Sincerely</p>
+
+            {/* Official CEO Rubber Seal & Signature */}
+            <div className="py-1">
+              <img
+                src={AKASH_STAMP_BASE64}
+                alt="Akash Padhiyar CEO Signature & Stamp"
+                className="h-16 w-auto object-contain select-none"
+              />
+            </div>
+
+            <p className="font-bold text-slate-900 text-sm">{signatoryName}</p>
+            <p className="font-medium text-slate-700 text-xs">{signatoryRole}</p>
           </div>
         </div>
 
-        {/* Feedback message banner */}
-        {statusMessage && (
-          <div
-            className={`px-6 py-2.5 text-xs font-semibold flex items-center gap-2 border-b ${
-              statusMessage.type === "success"
-                ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                : "bg-red-50 text-red-800 border-red-200"
-            }`}
-          >
-            {statusMessage.type === "success" ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            ) : (
-              <X className="w-4 h-4 text-red-600 shrink-0" />
-            )}
-            <span>{statusMessage.text}</span>
+        {/* Footer matching PDF with split bar and contact info */}
+        <div className="pt-8 mt-auto">
+          <div className="w-full flex h-1 mb-3">
+            <div className="w-[28%] bg-[#1e3264]" />
+            <div className="w-[72%] bg-[#d32f2f]" />
           </div>
-        )}
 
-        {/* Content Area */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {viewMode === "FORM" ? (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Card 1: Document Template & Category Selection */}
+          <div className="text-center space-y-1 text-[10px] sm:text-[11px] text-slate-600">
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 font-medium text-slate-700">
+              <span className="inline-flex items-center gap-1">
+                <span className="text-[#1e3264]">🌐</span> www.akashtechnolabs.com
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="text-[#d32f2f]">✉</span> info@akashtechnolabs.com
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="text-[#1e3264]">📞</span> +91 99786 21654
+              </span>
+            </div>
+            <p className="text-slate-600 font-medium">
+              202, Aarya Arcade, Above Passport Seva Kendra, Mithakhali Six Road, Navrangpura, Ahmedabad-09.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Render the interactive drafting form (used in Split Studio and Form-only mode)
+  const renderEditorForm = () => (
+    <form id="letter-editor-form" onSubmit={handleSubmit} className="space-y-6">
+      {/* Card 1: Document Template & Category Selection */}
               <div className="bg-white rounded-2xl border border-slate-200/90 p-5 space-y-3 shadow-2xs">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                   <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
                     <span className="w-2.5 h-2.5 rounded-full bg-[#0F4C81]" />
-                    <span>Select Professional Document Template (All 8 Standards + Akash Appointment)</span>
+                    <span>Select Professional Document Template (8 Official Corporate Standards)</span>
                   </div>
                   <span className="text-[11px] font-mono text-blue-600">
                     {LETTER_TEMPLATES.find((t) => t.key === templateKey)?.category}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1">
                   {LETTER_TEMPLATES.map((tmpl) => {
                     const isSelected = templateKey === tmpl.key;
                     return (
@@ -1105,38 +1318,56 @@ export function LetterGenerateModal({
                   </div>
                 </div>
 
-                {/* PASTE CUSTOM FORMAT ASSISTANT */}
-                <div className="p-3.5 rounded-xl border border-blue-200 bg-blue-50/60 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <ClipboardPaste className="w-4 h-4 text-blue-600" />
-                      <span className="text-xs font-bold text-slate-900">
-                        Paste Any Custom Letter Format / Draft
-                      </span>
+                {/* DUAL DOCUMENT SOURCE: BOTH OPTIONS PROMINENTLY AVAILABLE */}
+                <div className="p-4 rounded-2xl border border-blue-200/90 bg-blue-50/50 space-y-3.5 shadow-2xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-200/70 pb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <FileUp className="w-4 h-4 text-blue-700" />
+                        <h4 className="text-xs font-bold text-slate-900">
+                          Custom Content Source: Attach Document File or Paste Draft
+                        </h4>
+                      </div>
+                      <p className="text-[11px] text-slate-600 mt-0.5">
+                        Choose either option: paste custom draft text or upload a document file (.txt, .md, .pdf, .docx)
+                      </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowPasteHelper(!showPasteHelper)}
-                      className="text-xs font-bold text-blue-600 hover:text-blue-800 underline cursor-pointer"
-                    >
-                      {showPasteHelper ? "Hide Paste Tool" : "📋 Paste New Format or Draft Here"}
-                    </button>
+
+                    {/* Prominent Dual Switcher */}
+                    <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-blue-200 shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => setContentAssistantTab("PASTE")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                          contentAssistantTab === "PASTE"
+                            ? "bg-[#0F4C81] text-white shadow-xs"
+                            : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                        }`}
+                      >
+                        <ClipboardPaste className="w-3.5 h-3.5" />
+                        <span>📋 Paste Draft Text</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setContentAssistantTab("ATTACH")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                          contentAssistantTab === "ATTACH"
+                            ? "bg-[#0F4C81] text-white shadow-xs"
+                            : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                        }`}
+                      >
+                        <Paperclip className="w-3.5 h-3.5" />
+                        <span>📎 Attach File / Upload</span>
+                      </button>
+                    </div>
                   </div>
 
-                  {showPasteHelper && (
-                    <div className="pt-2 space-y-3">
-                      <p className="text-[11px] text-slate-600">
-                        Paste your custom letter draft below. You can include placeholders like{" "}
-                        <code className="bg-white px-1 py-0.5 rounded text-blue-600 font-mono">[Intern Name]</code>,{" "}
-                        <code className="bg-white px-1 py-0.5 rounded text-blue-600 font-mono">[Mentor Name]</code>,{" "}
-                        <code className="bg-white px-1 py-0.5 rounded text-blue-600 font-mono">[Joining Date]</code>,{" "}
-                        <code className="bg-white px-1 py-0.5 rounded text-blue-600 font-mono">[End Date]</code>,{" "}
-                        <code className="bg-white px-1 py-0.5 rounded text-blue-600 font-mono">[Internship Role]</code>, or{" "}
-                        <code className="bg-white px-1 py-0.5 rounded text-blue-600 font-mono">[Technology/Domain]</code>.
-                      </p>
-
+                  {/* OPTION 1: PASTE DRAFT TEXT */}
+                  {contentAssistantTab === "PASTE" && (
+                    <div className="space-y-3 pt-1">
                       {/* Optional Mentor Inputs for Mentorship/Guide Assignment letters */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 bg-white p-2.5 rounded-xl border border-slate-200">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 bg-white p-3 rounded-xl border border-slate-200">
                         <div>
                           <label className="block text-[11px] font-bold text-slate-700 mb-1">
                             Mentor Name (for Mentor Assignment Letters)
@@ -1164,11 +1395,11 @@ export function LetterGenerateModal({
                       </div>
 
                       <textarea
-                        rows={6}
+                        rows={5}
                         value={pastedRawText}
                         onChange={(e) => setPastedRawText(e.target.value)}
-                        placeholder="Paste letter draft or new format here..."
-                        className="w-full p-3 text-xs font-sans text-slate-900 bg-white border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                        placeholder="Paste your custom letter draft, NOC text, or university format here..."
+                        className="w-full p-3 text-xs font-sans text-slate-900 bg-white border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500 leading-relaxed"
                       />
 
                       <div className="flex flex-wrap items-center gap-2">
@@ -1194,19 +1425,72 @@ export function LetterGenerateModal({
                           Paste Raw Draft (As-Is)
                         </Button>
 
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setPastedRawText("");
-                            setShowPasteHelper(false);
-                          }}
-                          className="text-xs text-slate-500"
-                        >
-                          Cancel
-                        </Button>
+                        {pastedRawText && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setPastedRawText("")}
+                            className="text-xs text-slate-500 hover:text-slate-800"
+                          >
+                            Clear
+                          </Button>
+                        )}
                       </div>
+                    </div>
+                  )}
+
+                  {/* OPTION 2: ATTACH FILE / DOCUMENT */}
+                  {contentAssistantTab === "ATTACH" && (
+                    <div className="space-y-3 pt-1">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        onChange={handleFileUpload}
+                        accept=".txt,.md,.doc,.docx,.pdf,image/*"
+                        className="hidden"
+                      />
+
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className="border-2 border-dashed border-blue-300 hover:border-blue-500 bg-white hover:bg-blue-50/50 rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shadow-2xs">
+                          <Upload className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-800">
+                            Click to Browse or Drag &amp; Drop Document File
+                          </p>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            Supports .txt, .md (auto-imported into letter body), .pdf, .docx, and images
+                          </p>
+                        </div>
+                      </div>
+
+                      {attachedFile && (
+                        <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                              <Paperclip className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-slate-900">{attachedFile.name}</p>
+                              <p className="text-[10px] text-slate-500">
+                                {(attachedFile.size / 1024).toFixed(1)} KB • Uploaded just now
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleRemoveAttachment}
+                            className="text-red-500 hover:text-red-700 p-1 rounded-md text-xs font-semibold cursor-pointer"
+                            title="Remove attachment"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1315,29 +1599,225 @@ export function LetterGenerateModal({
                   </span>
                 </Button>
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setViewMode("PREVIEW")}
-                  className="text-xs font-bold rounded-xl cursor-pointer"
-                >
-                  <Eye className="w-3.5 h-3.5 mr-1 text-blue-600" />
-                  Preview Letterhead
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setViewMode(viewMode === "SPLIT" ? "PREVIEW" : "SPLIT")}
+                    className="text-xs font-bold rounded-xl cursor-pointer bg-white"
+                  >
+                    <Eye className="w-3.5 h-3.5 mr-1 text-blue-600" />
+                    {viewMode === "SPLIT" ? "Full Letterhead" : "Split Studio"}
+                  </Button>
+                </div>
               </div>
-            </form>
-          ) : (
-            /* OFFICIAL A4 LETTERHEAD PREVIEW */
-            <div className="space-y-4">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-200 print:hidden">
+    </form>
+  );
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-slate-950/85 backdrop-blur-sm p-1 sm:p-2.5 overflow-hidden">
+      <div className="relative w-full h-full bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+        {/* Top brand line: Cyan, Navy, Red */}
+        <div className="h-1.5 w-full bg-gradient-to-r from-[#00A8CC] via-[#0F4C81] to-[#E52329] shrink-0" />
+
+        {/* Studio Top Navigation Bar */}
+        <div className="px-4 sm:px-6 py-2.5 sm:py-3 border-b border-slate-200 bg-slate-50/90 flex flex-wrap items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#0F4C81] to-[#00A8CC] flex items-center justify-center text-white shadow-xs">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">
+                  {isEditMode ? "Edit & Update Official Document" : "Official Document Dispatch & Letter Studio"}
+                </h2>
+                <span
+                  className={`hidden sm:inline-block text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                    isEditMode
+                      ? "bg-amber-100 text-amber-800 border-amber-200"
+                      : "bg-blue-100 text-blue-800 border-blue-200"
+                  }`}
+                >
+                  {isEditMode ? `Editing: ${initialDoc.docNumber || initialDoc.id}` : "Akash Technolabs Enterprise"}
+                </span>
+              </div>
+              <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium">
+                Full-screen studio with live A4 letterhead sync, university presets &amp; direct PDF dispatch
+              </p>
+            </div>
+          </div>
+
+          {/* Mode Switcher Tabs */}
+          <div className="flex items-center bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setViewMode("SPLIT")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                viewMode === "SPLIT"
+                  ? "bg-[#0F4C81] text-white shadow-xs"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              }`}
+            >
+              <Columns className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">⚡ Split Studio</span>
+              <span className="sm:hidden">Split</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("FORM")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                viewMode === "FORM"
+                  ? "bg-[#0F4C81] text-white shadow-xs"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">📝 Editor Only</span>
+              <span className="sm:hidden">Edit</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("PREVIEW")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                viewMode === "PREVIEW"
+                  ? "bg-[#0F4C81] text-white shadow-xs"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              }`}
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">📄 Full Letterhead</span>
+              <span className="sm:hidden">Letterhead</span>
+            </button>
+          </div>
+
+          {/* Action buttons on top bar */}
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              disabled={isDownloadingPdf}
+              onClick={handleDownloadPdf}
+              className="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 font-bold text-xs rounded-xl shadow-2xs cursor-pointer flex items-center gap-1.5 px-3 py-1.5"
+            >
+              {isDownloadingPdf ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span className="hidden md:inline">Generating PDF...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-3.5 h-3.5 text-[#0F4C81]" />
+                  <span className="hidden md:inline">Download PDF</span>
+                </>
+              )}
+            </Button>
+
+            <Button
+              type="button"
+              onClick={(e) => {
+                const formElem = document.getElementById("letter-editor-form") as HTMLFormElement | null;
+                if (formElem) {
+                  formElem.requestSubmit();
+                } else {
+                  handleSubmit(e as unknown as React.FormEvent);
+                }
+              }}
+              disabled={isSubmitting}
+              className={`${
+                isEditMode ? "bg-amber-600 hover:bg-amber-700" : "bg-[#0F4C81] hover:bg-[#0C3D68]"
+              } text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5 px-3.5 py-1.5`}
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>
+                {isSubmitting
+                  ? "Saving..."
+                  : isEditMode
+                  ? "Save Changes"
+                  : "Issue & Dispatch"}
+              </span>
+            </Button>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer ml-1"
+              title="Close (Esc)"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Feedback message banner */}
+        {statusMessage && (
+          <div
+            className={`px-6 py-2.5 text-xs font-semibold flex items-center gap-2 border-b shrink-0 ${
+              statusMessage.type === "success"
+                ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                : "bg-red-50 text-red-800 border-red-200"
+            }`}
+          >
+            {statusMessage.type === "success" ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            ) : (
+              <X className="w-4 h-4 text-red-600 shrink-0" />
+            )}
+            <span>{statusMessage.text}</span>
+          </div>
+        )}
+
+        {/* Main Studio Body Workspace */}
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+          {viewMode === "SPLIT" && (
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-0 overflow-hidden">
+              {/* Left Column: Form Editor (Scrollable) */}
+              <div className="lg:col-span-6 xl:col-span-6 h-full overflow-y-auto p-4 sm:p-6 bg-slate-50/60 border-r border-slate-200">
+                {renderEditorForm()}
+              </div>
+
+              {/* Right Column: Live Letterhead Sheet Preview (Scrollable) */}
+              <div className="lg:col-span-6 xl:col-span-6 h-full overflow-y-auto p-4 sm:p-6 bg-slate-200/70 flex flex-col items-center">
+                <div className="w-full max-w-[720px] flex items-center justify-between pb-3 text-xs font-bold text-slate-700">
+                  <div className="flex items-center gap-1.5 text-slate-800">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span>Live A4 Letterhead Preview</span>
+                    <span className="text-[10px] font-normal text-slate-500">(Updates live as you type)</span>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={isDownloadingPdf}
+                    onClick={handleDownloadPdf}
+                    className="h-7 text-[11px] font-bold bg-white text-slate-700 hover:bg-slate-50"
+                  >
+                    <Download className="w-3 h-3 mr-1 text-[#0F4C81]" />
+                    PDF
+                  </Button>
+                </div>
+                {renderLetterheadSheet(true)}
+              </div>
+            </div>
+          )}
+
+          {viewMode === "FORM" && (
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/40">
+              <div className="max-w-4xl mx-auto">
+                {renderEditorForm()}
+              </div>
+            </div>
+          )}
+
+          {viewMode === "PREVIEW" && (
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-200/80 flex flex-col items-center">
+              <div className="w-full max-w-[800px] flex items-center justify-between pb-3 text-xs font-bold">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-5 h-5 text-emerald-600" />
-                  <span className="text-xs font-bold text-slate-800">
-                    Official Akash Technolabs Letterhead (Authentic A4 Format)
-                  </span>
+                  <span className="text-slate-800">Official Akash Technolabs Letterhead (Full A4 View)</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* Direct PDF Download without print dialog */}
                   <Button
                     size="sm"
                     disabled={isDownloadingPdf}
@@ -1347,7 +1827,7 @@ export function LetterGenerateModal({
                     {isDownloadingPdf ? (
                       <>
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>Downloading PDF...</span>
+                        <span>Generating...</span>
                       </>
                     ) : (
                       <>
@@ -1359,227 +1839,14 @@ export function LetterGenerateModal({
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => setViewMode("FORM")}
-                    className="text-xs font-bold rounded-xl cursor-pointer"
+                    onClick={() => setViewMode("SPLIT")}
+                    className="text-xs font-bold rounded-xl cursor-pointer bg-white"
                   >
-                    Edit Information
+                    Split View
                   </Button>
                 </div>
               </div>
-
-              {/* The Official Letter Paper Sheet */}
-              <div
-                id="akash-official-offer-letter-sheet"
-                className="relative bg-white mx-auto max-w-[800px] p-8 sm:p-14 shadow-lg border border-slate-200 rounded-sm text-slate-900 select-text overflow-hidden"
-                style={{ minHeight: "1050px" }}
-              >
-                {/* Center Dual-Tone Translucent Watermark matching authentic PDF */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
-                  <img
-                    src={AKASH_WATERMARK_BASE64}
-                    alt="Akash Technolabs Official Watermark"
-                    className="w-[300px] max-w-[85%] object-contain select-none pointer-events-none"
-                    style={{ opacity: 0.12 }}
-                  />
-                </div>
-
-                <div className="relative z-10 flex flex-col justify-between" style={{ minHeight: "960px" }}>
-                  <div>
-                    {/* Header with Official Akash Technolabs Banner matching authentic PDF */}
-                    <div className="pb-3">
-                      <img
-                        src={AKASH_HEADER_BASE64}
-                        alt="Akash Technolabs Official Banner"
-                        className="w-full object-contain select-none"
-                      />
-                    </div>
-
-                    {/* Right-aligned Date matching authentic PDF */}
-                    <div className="text-right text-xs sm:text-sm font-medium text-slate-900 pr-1 pt-1 pb-4">
-                      <span>Date :{letterDate}</span>
-                    </div>
-
-                    {/* Centered Bold Underlined Title */}
-                    <div className="text-center pt-1 pb-6">
-                      <h1 className="text-lg sm:text-xl font-bold tracking-wider text-slate-900 uppercase underline underline-offset-4 decoration-slate-900 decoration-1">
-                        {letterTitle}
-                      </h1>
-                    </div>
-
-                    {/* Dynamic Formatted Body Text */}
-                    <div className="space-y-4 text-xs sm:text-[13px] leading-relaxed text-slate-800 font-normal text-justify">
-                      {description.split(/\n\s*\n/).map((para, pIdx) => {
-                        const trimmed = para.trim();
-                        if (!trimmed) return null;
-
-                        // Filter out redundant elements that are already part of official letterhead
-                        const cleanLine = trimmed.replace(/^\*\*|\*\*$/g, "").replace(/^<b>|<\/b>$/gi, "").trim();
-                        if (/^akash\s*technolabs$/i.test(cleanLine)) return null;
-                        if (cleanLine.toUpperCase() === letterTitle.toUpperCase()) return null;
-                        if (/^date\s*:/i.test(cleanLine)) return null;
-                        if (/^for\s*akash\s*technolabs$/i.test(cleanLine)) return null;
-                        if (/^authorized\s*signatory$/i.test(cleanLine)) return null;
-
-                        if (/^(\*\*)?TO WHOMSOEVER IT MAY CONCERN(\*\*)?$/i.test(trimmed)) {
-                          return (
-                            <p key={pIdx} className="font-bold text-slate-900 tracking-wide text-sm py-1">
-                              TO WHOMSOEVER IT MAY CONCERN
-                            </p>
-                          );
-                        }
-
-                        if (
-                          /^(\*\*)?To,/i.test(trimmed) ||
-                          /^(\*\*)?Subject:/i.test(trimmed) ||
-                          /^(\*\*)?Dear\s/i.test(trimmed)
-                        ) {
-                          const lines = trimmed.split("\n");
-                          return (
-                            <div key={pIdx} className="space-y-1 py-1">
-                              {lines.map((l, lIdx) => {
-                                const isSubj = l.toLowerCase().includes("subject:");
-                                const isTo = l.toLowerCase().includes("to,");
-                                const tokens = tokenizeMarkdown(l, previewKeywords);
-                                return (
-                                  <p
-                                    key={lIdx}
-                                    className={isSubj || isTo ? "font-bold text-slate-900" : "text-slate-800"}
-                                  >
-                                    {tokens.map((tok, tIdx) => (
-                                      <span
-                                        key={tIdx}
-                                        className={tok.bold || isSubj || isTo ? "font-bold text-slate-900" : ""}
-                                      >
-                                        {tok.text}
-                                      </span>
-                                    ))}
-                                  </p>
-                                );
-                              })}
-                            </div>
-                          );
-                        }
-
-                        if (trimmed.includes("• ") || trimmed.includes("- ")) {
-                          const lines = trimmed.split("\n");
-                          return (
-                            <div key={pIdx} className="space-y-1.5">
-                              {lines.map((l, lIdx) => {
-                                const lTrim = l.trim();
-                                if (lTrim.startsWith("• ") || lTrim.startsWith("- ")) {
-                                  const bulletText = lTrim.replace(/^[•\-]\s*/, "");
-                                  const bTokens = tokenizeMarkdown(bulletText, previewKeywords);
-                                  return (
-                                    <div key={lIdx} className="flex items-start gap-2 pl-4 text-slate-800">
-                                      <span className="font-bold text-slate-900">•</span>
-                                      <span>
-                                        {bTokens.map((tok, tIdx) =>
-                                          tok.bold ? (
-                                            <strong key={tIdx} className="font-bold text-slate-900">
-                                              {tok.text}
-                                            </strong>
-                                          ) : tok.italic ? (
-                                            <em key={tIdx} className="italic text-slate-800">
-                                              {tok.text}
-                                            </em>
-                                          ) : (
-                                            <span key={tIdx}>{tok.text}</span>
-                                          )
-                                        )}
-                                      </span>
-                                    </div>
-                                  );
-                                }
-                                const lTokens = tokenizeMarkdown(lTrim, previewKeywords);
-                                return (
-                                  <p key={lIdx}>
-                                    {lTokens.map((tok, tIdx) =>
-                                      tok.bold ? (
-                                        <strong key={tIdx} className="font-bold text-slate-900">
-                                          {tok.text}
-                                        </strong>
-                                      ) : tok.italic ? (
-                                        <em key={tIdx} className="italic text-slate-800">
-                                          {tok.text}
-                                        </em>
-                                      ) : (
-                                        <span key={tIdx}>{tok.text}</span>
-                                      )
-                                    )}
-                                  </p>
-                                );
-                              })}
-                            </div>
-                          );
-                        }
-
-                        const isIntroIndent = trimmed.startsWith("This is to inform");
-                        const tokens = tokenizeMarkdown(trimmed, previewKeywords);
-
-                        return (
-                          <p key={pIdx} className={isIntroIndent ? "indent-6" : ""}>
-                            {tokens.map((tok, tIdx) =>
-                              tok.bold ? (
-                                <strong key={tIdx} className="font-bold text-slate-900">
-                                  {tok.text}
-                                </strong>
-                              ) : tok.italic ? (
-                                <em key={tIdx} className="italic text-slate-800">
-                                  {tok.text}
-                                </em>
-                              ) : (
-                                <span key={tIdx}>{tok.text}</span>
-                              )
-                            )}
-                          </p>
-                        );
-                      })}
-                    </div>
-
-                    {/* Sign-Off Block matching authentic PDF */}
-                    <div className="pt-8 space-y-0.5 text-xs sm:text-sm">
-                      <p className="text-slate-800 font-medium">Sincerely</p>
-
-                      {/* Official CEO Rubber Seal & Signature */}
-                      <div className="py-1">
-                        <img
-                          src={AKASH_STAMP_BASE64}
-                          alt="Akash Padhiyar CEO Signature & Stamp"
-                          className="h-16 w-auto object-contain select-none"
-                        />
-                      </div>
-
-                      <p className="font-bold text-slate-900 text-sm">{signatoryName}</p>
-                      <p className="font-medium text-slate-700 text-xs">{signatoryRole}</p>
-                    </div>
-                  </div>
-
-                  {/* Footer matching PDF with split bar and contact info */}
-                  <div className="pt-8 mt-auto">
-                    <div className="w-full flex h-1 mb-3">
-                      <div className="w-[28%] bg-[#1e3264]" />
-                      <div className="w-[72%] bg-[#d32f2f]" />
-                    </div>
-
-                    <div className="text-center space-y-1 text-[10px] sm:text-[11px] text-slate-600">
-                      <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 font-medium text-slate-700">
-                        <span className="inline-flex items-center gap-1">
-                          <span className="text-[#1e3264]">🌐</span> www.akashtechnolabs.com
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <span className="text-[#d32f2f]">✉</span> info@akashtechnolabs.com
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <span className="text-[#1e3264]">📞</span> +91 99786 21654
-                        </span>
-                      </div>
-                      <p className="text-slate-600 font-medium">
-                        202, Aarya Arcade, Above Passport Seva Kendra, Mithakhali Six Road, Navrangpura, Ahmedabad-09.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {renderLetterheadSheet(false)}
             </div>
           )}
         </div>

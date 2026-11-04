@@ -37,26 +37,6 @@ export interface LetterTemplateDefinition {
 
 export const LETTER_TEMPLATES: LetterTemplateDefinition[] = [
   {
-    key: "AKASH_STANDARD_BOY",
-    label: "Akash Technolabs Appointment Letter (Male / Mr.)",
-    shortName: "Appointment Letter (Mr.)",
-    documentType: "OFFER_LETTER",
-    defaultTitle: "INTERNSHIP OFFER LETTER",
-    headerType: "NONE",
-    icon: "📄",
-    category: "OFFER",
-  },
-  {
-    key: "AKASH_STANDARD_GIRL",
-    label: "Akash Technolabs Appointment Letter (Female / Ms.)",
-    shortName: "Appointment Letter (Ms.)",
-    documentType: "OFFER_LETTER",
-    defaultTitle: "INTERNSHIP OFFER LETTER",
-    headerType: "NONE",
-    icon: "📄",
-    category: "OFFER",
-  },
-  {
     key: "INTERNSHIP_OFFER",
     label: "1. Internship Offer Letter (Professional Format)",
     shortName: "Offer Letter",

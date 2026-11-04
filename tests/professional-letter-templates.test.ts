@@ -10,12 +10,10 @@ import { generateAkashOfferLetterPdf } from "../src/lib/documents/akash-pdf-gene
 import { documentStore } from "../src/lib/documents/document-store";
 
 describe("Professional Letter Templates Catalog & Dynamic Generators", () => {
-  it("should contain all 10 document templates (8 professional + 2 appointment variants)", () => {
-    expect(LETTER_TEMPLATES).toHaveLength(10);
+  it("should contain all 8 professional document templates", () => {
+    expect(LETTER_TEMPLATES).toHaveLength(8);
 
     const keys = LETTER_TEMPLATES.map((t) => t.key);
-    expect(keys).toContain("AKASH_STANDARD_BOY");
-    expect(keys).toContain("AKASH_STANDARD_GIRL");
     expect(keys).toContain("INTERNSHIP_OFFER");
     expect(keys).toContain("JOINING_CONFIRMATION");
     expect(keys).toContain("INTERNSHIP_CONFIRMATION");
