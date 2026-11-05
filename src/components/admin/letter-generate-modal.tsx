@@ -419,15 +419,48 @@ export function LetterGenerateModal({
         setContinueUntilDate(tmplData.continue_until_date || "");
         setLetterDate(raw.issued_date || initialDoc.appliedAt || getTodayFormattedDDMMYYYY());
         setLetterTitle(raw.title || initialDoc.title || "INTERNSHIP OFFER LETTER");
-        setTemplateKey((raw.template_type as LetterTemplateKey) || "INTERNSHIP_OFFER");
+        const detectedTmplKey: LetterTemplateKey =
+          (raw.template_type as LetterTemplateKey) ||
+          (raw.document_type === "COMPLETION_CERTIFICATE"
+            ? "INTERNSHIP_COMPLETION"
+            : raw.document_type === "NOC"
+            ? "NOC_LETTER"
+            : raw.document_type === "RECOMMENDATION_LETTER"
+            ? "RECOMMENDATION_LETTER"
+            : raw.document_type === "JOINING_LETTER"
+            ? "JOINING_CONFIRMATION"
+            : "INTERNSHIP_OFFER");
+        setTemplateKey(detectedTmplKey);
         setUniversityId(tmplData.university || "STANDARD");
         setPurpose(tmplData.purpose || "Academic Project & Practicum Training");
 
-        if (raw.description_content) {
+        const isStub =
+          !raw.description_content ||
+          (!raw.description_content.includes("\n\n") &&
+            (raw.description_content.trim().startsWith("This officially certifies that") ||
+              raw.description_content.length < 220));
+
+        if (raw.description_content && !isStub) {
           setDescription(raw.description_content);
           setIsCustomEdited(true);
         } else {
           setIsCustomEdited(false);
+          const gen = generateLetterContent({
+            templateKey: detectedTmplKey,
+            salutation: sal,
+            studentName: cleanName,
+            internshipPosition: raw.recipient_role || initialDoc.role || `${tmplData.technology || "AI/ML"} Intern`,
+            technology: tmplData.technology || deriveTrackTechnology(raw.recipient_role || initialDoc.role),
+            commencementDate: tmplData.commencement_date || "",
+            continueUntilDate: tmplData.continue_until_date || "",
+            letterDate: raw.issued_date || initialDoc.appliedAt || getTodayFormattedDDMMYYYY(),
+            universityId: tmplData.university || "STANDARD",
+            purpose: tmplData.purpose || "Academic Project & Practicum Training",
+            signatoryName: "Akash Padhiyar",
+            signatoryRole: "CEO",
+          });
+          setDescription(gen.fullText);
+          setLetterTitle(gen.title);
         }
       } else {
         // CREATE MODE: Fresh blank document
@@ -672,12 +705,22 @@ export function LetterGenerateModal({
       let res: Response;
       if (isEditMode) {
         // UPDATE Existing Document
+        const docIdToUpdate =
+          initialDoc.id ||
+          initialDoc.docNumber ||
+          initialDoc.rawDoc?.id ||
+          initialDoc.rawDoc?.document_number;
+
         res = await fetch("/api/admin/documents/update", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            documentId: initialDoc.id || initialDoc.docNumber,
-            updates: docPayload,
+            documentId: docIdToUpdate,
+            updates: {
+              ...docPayload,
+              id: initialDoc.id || initialDoc.rawDoc?.id,
+              documentNumber: initialDoc.docNumber || initialDoc.rawDoc?.document_number,
+            },
           }),
         });
       } else {
@@ -1843,8 +1886,8 @@ export function LetterGenerateModal({
           )}
 
           {viewMode === "FORM" && (
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-slate-50/60">
-              <div className="w-full max-w-7xl mx-auto">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-6 bg-slate-50/60">
+              <div className="w-full max-w-[1750px] mx-auto px-1 sm:px-2">
                 {renderEditorForm(true)}
               </div>
             </div>

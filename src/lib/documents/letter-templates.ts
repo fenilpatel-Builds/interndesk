@@ -249,7 +249,8 @@ export function generateLetterContent(params: GenerateLetterParams): GeneratedLe
   let headerLines: string[] = [];
   let bodyParagraphs: string[] = [];
 
-  switch (tmpl.key) {
+  const effectiveKey = params.templateKey || "AKASH_STANDARD_BOY";
+  switch (effectiveKey) {
     case "AKASH_STANDARD_BOY":
     case "AKASH_STANDARD_GIRL": {
       title = "INTERNSHIP OFFER LETTER";

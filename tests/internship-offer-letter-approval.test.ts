@@ -16,7 +16,7 @@ describe("Internship Offer Letter Custom Track, Date Selection & Admin Approval 
     }
   });
 
-  it("creates a document with custom field, start date, end date in PENDING_APPROVAL status", () => {
+  it("creates a document with custom field, start date, end date in PENDING_APPROVAL status and generates full professional letter format", () => {
     const doc = documentStore.requestOneTimeInternshipLetter({
       studentEmail,
       studentName,
@@ -35,6 +35,13 @@ describe("Internship Offer Letter Custom Track, Date Selection & Admin Approval 
     expect(doc.template_data.commencement_date).toBe("3rd July 2026");
     expect(doc.template_data.continue_until_date).toBe("30th April 2027");
     expect(doc.template_data.technology).toBe("PHP / Laravel Web Development");
+
+    // Strictly verifies the full multi-paragraph corporate letter text is generated
+    expect(doc.description_content).toBeDefined();
+    expect(doc.description_content).toContain("This is to inform that Mr. Akshat Nayak has been selected for an internship");
+    expect(doc.description_content).toContain("commence on 3rd July 2026 and continue until 30th April 2027");
+    expect(doc.description_content).toContain("awarded an Internship Completion Certificate");
+    expect(doc.description_content).toContain("enriching internship experience");
 
     // Strictly prevents premature preview/download by maintaining pending status
     const studentDocs = documentStore.getForStudent(studentEmail);
@@ -118,6 +125,40 @@ describe("Internship Offer Letter Custom Track, Date Selection & Admin Approval 
 
     expect(documentStore.getById(requestedDoc.id)).toBeNull();
     expect(documentStore.getForStudent(studentEmail).length).toBe(0);
+  });
+
+  it("successfully updates or upserts official document without 404 or missing doc errors", () => {
+    const adminEmail = "admin@akashtechnolabs.com";
+    const docNumber = "ID-AKT-2026-INTR99";
+
+    const updated = documentStore.updateDocument(docNumber, adminEmail, {
+      studentName: "Helly Leuva",
+      salutation: "Ms.",
+      technology: "UI/UX Design",
+      internshipPosition: "UI/UX Design Intern",
+      commencementDate: "8th August 2026",
+      continueUntilDate: "5th April 2027",
+      recipientEmail: "hellyleuva.29@gmail.com",
+      title: "INTERNSHIP OFFER LETTER",
+      documentType: "OFFER_LETTER",
+      status: "ISSUED",
+      descriptionContent: "This is to inform that Ms. Helly Leuva has been selected for an internship at Akash Technolabs...",
+    });
+
+    expect(updated).not.toBeNull();
+    expect(updated?.recipient_name).toBe("Ms. Helly Leuva");
+    expect(updated?.recipient_role).toBe("UI/UX Design Intern");
+    expect(updated?.status).toBe("ISSUED");
+    expect(updated?.template_data.technology).toBe("UI/UX Design");
+
+    // Can be retrieved immediately by document number or id
+    const found = documentStore.getById(docNumber);
+    expect(found).not.toBeNull();
+    expect(found?.document_number).toBe(docNumber);
+    expect(found?.recipient_email).toBe("hellyleuva.29@gmail.com");
+
+    // Clean up
+    documentStore.deleteDocumentsForStudent("hellyleuva.29@gmail.com");
   });
 });
 
