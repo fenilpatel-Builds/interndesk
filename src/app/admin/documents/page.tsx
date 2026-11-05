@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   Edit3,
   Trash2,
+  FileUp,
 } from "lucide-react";
 import { DocumentStudioModal } from "@/components/documents/document-studio-modal";
 import { LetterGenerateModal } from "@/components/admin/letter-generate-modal";
@@ -39,6 +40,7 @@ export default function AdminDocumentsPage() {
   const [selectedStudioDoc, setSelectedStudioDoc] = useState<IssuedDocument | null>(null);
   const [isLetterGenerateOpen, setIsLetterGenerateOpen] = useState(false);
   const [selectedDocForEdit, setSelectedDocForEdit] = useState<any | null>(null);
+  const [customDraftTab, setCustomDraftTab] = useState<"PASTE" | "ATTACH" | undefined>(undefined);
 
   // Admin Approval Modal State
   const [selectedPendingDoc, setSelectedPendingDoc] = useState<any | null>(null);
@@ -327,29 +329,30 @@ export default function AdminDocumentsPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2.5">
             <Button
               size="sm"
               onClick={() => {
                 setSelectedDocForEdit(null);
+                setCustomDraftTab(undefined);
                 setIsLetterGenerateOpen(true);
               }}
-              className="bg-[#E52329] hover:bg-[#C41C22] text-white font-bold rounded-xl shadow-md shadow-red-500/20 text-xs flex items-center gap-1.5 transition-transform hover:scale-[1.02] cursor-pointer"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Letter Generate</span>
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setSelectedDocForEdit(null);
-                setIsLetterGenerateOpen(true);
-              }}
-              className="text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer"
+              className="bg-[#0F4C81] hover:bg-[#0C3D68] text-white font-bold rounded-xl shadow-md text-xs flex items-center gap-1.5 transition-transform hover:scale-[1.02] cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Issue New Offer Letter</span>
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                setSelectedDocForEdit(null);
+                setCustomDraftTab("PASTE");
+                setIsLetterGenerateOpen(true);
+              }}
+              className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold rounded-xl shadow-md shadow-indigo-500/20 text-xs flex items-center gap-1.5 transition-transform hover:scale-[1.02] cursor-pointer"
+            >
+              <FileUp className="w-3.5 h-3.5" />
+              <span>Custom Draft &amp; Attach Document</span>
             </Button>
           </div>
         </div>
@@ -608,14 +611,17 @@ export default function AdminDocumentsPage() {
       <LetterGenerateModal
         isOpen={isLetterGenerateOpen}
         initialDoc={selectedDocForEdit}
+        initialCustomTab={customDraftTab}
         onClose={() => {
           setIsLetterGenerateOpen(false);
           setSelectedDocForEdit(null);
+          setCustomDraftTab(undefined);
         }}
         onSuccess={(updatedOrNew) => {
           handleLetterGenerated(updatedOrNew);
           setIsLetterGenerateOpen(false);
           setSelectedDocForEdit(null);
+          setCustomDraftTab(undefined);
           fetchDocs();
         }}
       />
@@ -744,13 +750,6 @@ export default function AdminDocumentsPage() {
           </div>
         </div>
       )}
-
-      {/* Admin Letter Generate Modal */}
-      <LetterGenerateModal
-        isOpen={isLetterGenerateOpen}
-        onClose={() => setIsLetterGenerateOpen(false)}
-        onSuccess={handleLetterGenerated}
-      />
 
       {/* Live Document Studio Modal */}
       {selectedStudioDoc && (

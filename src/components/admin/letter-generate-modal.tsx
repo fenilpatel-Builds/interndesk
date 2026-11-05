@@ -66,11 +66,12 @@ interface StudentOption {
   university?: string;
 }
 
-interface LetterGenerateModalProps {
+export interface LetterGenerateModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: (doc: any) => void;
   initialDoc?: any | null; // Pass existing document to EDIT/UPDATE
+  initialCustomTab?: "PASTE" | "ATTACH";
 }
 
 // Predefined tracks for fast domain selection (AI/ML, Cybersecurity, Python, etc.)
@@ -261,6 +262,7 @@ export function LetterGenerateModal({
   onClose,
   onSuccess,
   initialDoc,
+  initialCustomTab,
 }: LetterGenerateModalProps) {
   const isEditMode = Boolean(initialDoc && initialDoc.id);
 
@@ -313,7 +315,19 @@ export function LetterGenerateModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Content Assistant Mode: "PASTE" or "ATTACH"
-  const [contentAssistantTab, setContentAssistantTab] = useState<"PASTE" | "ATTACH">("PASTE");
+  const [contentAssistantTab, setContentAssistantTab] = useState<"PASTE" | "ATTACH">(initialCustomTab || "PASTE");
+
+  useEffect(() => {
+    if (initialCustomTab && isOpen) {
+      setContentAssistantTab(initialCustomTab);
+      setTimeout(() => {
+        const el = document.getElementById("custom-content-assistant-card");
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 150);
+    }
+  }, [initialCustomTab, isOpen]);
 
   // View mode: Fullscreen Split Studio (Side-by-Side), Editor Form only, or Fullscreen Official A4 Preview
   const [viewMode, setViewMode] = useState<"SPLIT" | "FORM" | "PREVIEW">("SPLIT");
@@ -971,9 +985,9 @@ export function LetterGenerateModal({
     </div>
   );
 
-  // Render the interactive drafting form (used in Split Studio and Form-only mode)
-  const renderEditorForm = () => (
-    <form id="letter-editor-form" onSubmit={handleSubmit} className="space-y-6">
+  // Left Column Controls: Templates, Universities, Students, Tracks
+  const renderLeftControls = () => (
+    <div className="space-y-5">
       {/* Card 1: Document Template & Category Selection */}
               <div className="bg-white rounded-2xl border border-slate-200/90 p-5 space-y-3 shadow-2xs">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
@@ -1137,8 +1151,14 @@ export function LetterGenerateModal({
                 </div>
               </div>
 
-              {/* Card 5: Predefined Dynamic Letter Fields */}
-              <div className="bg-white rounded-2xl border border-slate-200/90 p-5 space-y-4">
+    </div>
+  );
+
+  // Right Column Controls: Variables, Custom Content Source (Paste/Attach), WYSIWYG & Dispatch
+  const renderRightControls = () => (
+    <div className="space-y-5">
+      {/* Card 5: Predefined Dynamic Letter Fields */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-5 space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-[#E52329]" />
@@ -1319,7 +1339,7 @@ export function LetterGenerateModal({
                 </div>
 
                 {/* DUAL DOCUMENT SOURCE: BOTH OPTIONS PROMINENTLY AVAILABLE */}
-                <div className="p-4 rounded-2xl border border-blue-200/90 bg-blue-50/50 space-y-3.5 shadow-2xs">
+                <div id="custom-content-assistant-card" className="p-4 sm:p-5 rounded-2xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50/60 via-white to-blue-50/40 space-y-3.5 shadow-xs transition-all">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-200/70 pb-3">
                     <div>
                       <div className="flex items-center gap-2">
@@ -1611,6 +1631,26 @@ export function LetterGenerateModal({
                   </Button>
                 </div>
               </div>
+    </div>
+  );
+
+  const renderEditorForm = (isWideTwoColumn: boolean = false) => (
+    <form id="letter-editor-form" onSubmit={handleSubmit} className="w-full">
+      {isWideTwoColumn ? (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div className="lg:col-span-6">
+            {renderLeftControls()}
+          </div>
+          <div className="lg:col-span-6">
+            {renderRightControls()}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-5">
+          {renderLeftControls()}
+          {renderRightControls()}
+        </div>
+      )}
     </form>
   );
 
@@ -1774,7 +1814,7 @@ export function LetterGenerateModal({
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-0 overflow-hidden">
               {/* Left Column: Form Editor (Scrollable) */}
               <div className="lg:col-span-6 xl:col-span-6 h-full overflow-y-auto p-4 sm:p-6 bg-slate-50/60 border-r border-slate-200">
-                {renderEditorForm()}
+                {renderEditorForm(false)}
               </div>
 
               {/* Right Column: Live Letterhead Sheet Preview (Scrollable) */}
@@ -1803,9 +1843,9 @@ export function LetterGenerateModal({
           )}
 
           {viewMode === "FORM" && (
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/40">
-              <div className="max-w-4xl mx-auto">
-                {renderEditorForm()}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-slate-50/60">
+              <div className="w-full max-w-7xl mx-auto">
+                {renderEditorForm(true)}
               </div>
             </div>
           )}
