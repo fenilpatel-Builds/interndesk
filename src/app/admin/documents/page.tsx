@@ -58,7 +58,10 @@ export default function AdminDocumentsPage() {
           const mapped = data.documents.map((d: any) => ({
             id: d.id,
             student: d.recipient_name,
-            type: d.document_type === "OFFER_LETTER" ? "OFFER_LETTER" : "INTERNSHIP_CERTIFICATE",
+            type:
+              d.document_type === "COMPLETION_CERTIFICATE"
+                ? "INTERNSHIP_CERTIFICATE"
+                : "OFFER_LETTER",
             title: d.title,
             docNumber: d.document_number,
             status: d.status === "PENDING_APPROVAL" ? "PENDING_APPROVAL" : "AVAILABLE",
@@ -637,7 +640,7 @@ export default function AdminDocumentsPage() {
                 </div>
                 <div>
                   <h3 className="text-base font-black text-slate-900 tracking-tight">
-                    Verify &amp; Approve Internship Letter
+                    Verify &amp; Approve {selectedPendingDoc.title || "Internship Document"}
                   </h3>
                   <p className="text-xs text-slate-500">
                     Akash Technolabs Administration Sign-Off

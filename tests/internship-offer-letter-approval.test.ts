@@ -2,15 +2,18 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { documentStore } from "../src/lib/documents/document-store";
 
 describe("Internship Offer Letter Custom Track, Date Selection & Admin Approval Workflow", () => {
-  const studentEmail = `student_${Date.now()}_approval@akashtechnolabs.com`;
+  let studentEmail = "";
   const studentName = "Akshat Nayak";
 
   beforeEach(() => {
+    studentEmail = `student_${Date.now()}_${Math.random().toString(36).slice(2, 6)}@akashtechnolabs.com`;
     documentStore.deleteDocumentsForStudent(studentEmail);
   });
 
   afterEach(() => {
-    documentStore.deleteDocumentsForStudent(studentEmail);
+    if (studentEmail) {
+      documentStore.deleteDocumentsForStudent(studentEmail);
+    }
   });
 
   it("creates a document with custom field, start date, end date in PENDING_APPROVAL status", () => {

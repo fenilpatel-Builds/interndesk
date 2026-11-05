@@ -76,148 +76,36 @@ function ensureDataDirectory() {
   }
 }
 
-const INITIAL_DOCS: OfficialOfferLetter[] = [
-  {
-    id: "doc-akt-offer-fenil-huntarmy",
-    organization_id: "org-akash-01",
-    organization_name: "Akash Technolabs",
-    member_id: "usr-1793251075106-352",
-    recipient_email: "huntarmy001@gmail.com",
-    document_number: "ID-AKT-2026-OF01",
-    document_type: "OFFER_LETTER",
-    title: "INTERNSHIP OFFER LETTER",
-    recipient_name: "Mr. Fenil Patel",
-    recipient_role: "AI/ML Intern",
-    issued_date: "30-10-2026",
-    status: "ISSUED",
-    approval_status: "APPROVED",
-    approved_by: "Akash Padhiyar",
-    approved_at: "2026-10-30T09:00:00Z",
-    verification_code: "VRF-AKT-0701-OFR",
-    template_type: "INTERNSHIP OFFER LETTER (Boy)",
-    template_data: {
-      salutation: "Mr.",
-      student_name: "Fenil Patel",
-      organization_name: "Akash Technolabs",
-      organization_type: "CORPORATE",
-      organization_logo: "/images/akash-technolabs-header-logo.png",
-      organization_address: "202, Aarya Arcade, Above Passport Seva Kendra, Mithakhali Six Road, Navrangpura, Ahmedabad-09.",
-      organization_website: "www.akashtechnolabs.com",
-      contact_email: "info@akashtechnolabs.com",
-      contact_phone: "+91 99786 21654",
-      signatory_name: "Akash Padhiyar",
-      signatory_title: "CEO",
-      program_or_track: "AI/ML technology",
-      commencement_date: "3rd August 2026",
-      continue_until_date: "30th April 2027",
-      technology: "AI/ML",
-      brand_color: "#dc2626",
-      secondary_color: "#1e3a8a",
-      is_akash_template: true,
-      validity: "Active / Verified",
-    },
-    created_at: "2026-10-30T09:00:00Z",
-  },
-  {
-    id: "doc-akt-offer-fenil-corp",
-    organization_id: "org-akash-01",
-    organization_name: "Akash Technolabs",
-    member_id: "usr-student-fenil",
-    recipient_email: "fenil.patel@akashtechnolabs.com",
-    document_number: "ID-AKT-2026-OF02",
-    document_type: "OFFER_LETTER",
-    title: "INTERNSHIP OFFER LETTER",
-    recipient_name: "Mr. Fenil Patel",
-    recipient_role: "AI/ML Intern",
-    issued_date: "01-07-2026",
-    status: "ISSUED",
-    approval_status: "APPROVED",
-    approved_by: "Akash Padhiyar",
-    approved_at: "2026-07-01T09:00:00Z",
-    verification_code: "VRF-AKT-0702-OFR",
-    template_type: "INTERNSHIP OFFER LETTER (Boy)",
-    template_data: {
-      salutation: "Mr.",
-      student_name: "Fenil Patel",
-      organization_name: "Akash Technolabs",
-      organization_type: "CORPORATE",
-      organization_logo: "/images/akash-technolabs-header-logo.png",
-      organization_address: "202, Aarya Arcade, Above Passport Seva Kendra, Mithakhali Six Road, Navrangpura, Ahmedabad-09.",
-      organization_website: "www.akashtechnolabs.com",
-      contact_email: "info@akashtechnolabs.com",
-      contact_phone: "+91 99786 21654",
-      signatory_name: "Akash Padhiyar",
-      signatory_title: "CEO",
-      program_or_track: "AI/ML technology",
-      commencement_date: "3rd July 2026",
-      continue_until_date: "30th April 2027",
-      technology: "AI/ML",
-      brand_color: "#dc2626",
-      secondary_color: "#1e3a8a",
-      is_akash_template: true,
-      validity: "Active / Verified",
-    },
-    created_at: "2026-07-01T09:00:00Z",
-  },
-  {
-    id: "doc-akt-cert-fenil",
-    organization_id: "org-akash-01",
-    organization_name: "Akash Technolabs",
-    member_id: "usr-1793251075106-352",
-    recipient_email: "huntarmy001@gmail.com",
-    document_number: "ID-AKT-2026-CERT01",
-    document_type: "COMPLETION_CERTIFICATE",
-    title: "Certificate of Internship Excellence",
-    recipient_name: "Fenil Patel",
-    recipient_role: "AI/ML Intern",
-    issued_date: "15-10-2026",
-    status: "ISSUED",
-    approval_status: "APPROVED",
-    approved_by: "Akash Padhiyar",
-    approved_at: "2026-10-15T12:00:00Z",
-    verification_code: "VRF-AKT-8918-EXC",
-    template_data: {
-      salutation: "Mr.",
-      student_name: "Fenil Patel",
-      organization_name: "Akash Technolabs",
-      organization_type: "CORPORATE",
-      organization_logo: "/images/akash-technolabs-header-logo.png",
-      organization_address: "202, Aarya Arcade, Above Passport Seva Kendra, Mithakhali Six Road, Navrangpura, Ahmedabad-09.",
-      organization_website: "www.akashtechnolabs.com",
-      contact_email: "info@akashtechnolabs.com",
-      contact_phone: "+91 99786 21654",
-      signatory_name: "Akash Padhiyar",
-      signatory_title: "CEO",
-      program_or_track: "AI & Full Stack Cloud Practicum",
-      commencement_date: "1st October 2026",
-      continue_until_date: "31st October 2026",
-      technology: "AI/ML",
-      brand_color: "#dc2626",
-      secondary_color: "#1e3a8a",
-      is_akash_template: true,
-      validity: "Verified Permanent Credential",
-    },
-    created_at: "2026-10-15T12:00:00Z",
-  },
-];
+const INITIAL_DOCS: OfficialOfferLetter[] = [];
+
+let memoryCache: OfficialOfferLetter[] | null = null;
 
 function loadFromDisk(): OfficialOfferLetter[] {
   try {
     ensureDataDirectory();
     if (!fs.existsSync(DOCS_FILE)) {
+      if (memoryCache && memoryCache.length > 0) return memoryCache;
       fs.writeFileSync(DOCS_FILE, JSON.stringify(INITIAL_DOCS, null, 2), "utf-8");
+      memoryCache = [...INITIAL_DOCS];
       return INITIAL_DOCS;
     }
     const content = fs.readFileSync(DOCS_FILE, "utf-8");
+    if (!content || !content.trim()) {
+      return memoryCache || INITIAL_DOCS;
+    }
     const parsed = JSON.parse(content);
-    return Array.isArray(parsed) ? parsed : INITIAL_DOCS;
-  } catch (err) {
-    console.warn("[DocumentStore] Load error:", err);
-    return INITIAL_DOCS;
+    if (Array.isArray(parsed)) {
+      memoryCache = parsed;
+      return parsed;
+    }
+    return memoryCache || INITIAL_DOCS;
+  } catch {
+    return memoryCache || INITIAL_DOCS;
   }
 }
 
 function saveToDisk(docs: OfficialOfferLetter[]) {
+  memoryCache = [...docs];
   try {
     ensureDataDirectory();
     fs.writeFileSync(DOCS_FILE, JSON.stringify(docs, null, 2), "utf-8");
@@ -288,6 +176,9 @@ export class DocumentStore {
     }
     if (updates?.continueUntilDate) {
       doc.template_data.continue_until_date = updates.continueUntilDate;
+    }
+    if (doc.template_data) {
+      doc.template_data.validity = "Active / Verified Credential";
     }
 
     this.docs[idx] = doc;
@@ -499,21 +390,43 @@ export class DocumentStore {
     return doc;
   }
 
-  public hasStudentRequestedInternshipLetter(email?: string): boolean {
+  public hasStudentRequestedInternshipLetter(email?: string, type?: string): boolean {
     if (!email) return false;
     this.docs = loadFromDisk();
     const cleanEmail = email.toLowerCase().trim();
+    if (!type) {
+      return this.docs.some(
+        (d) =>
+          (d.document_type === "INTERNSHIP_LETTER" || d.document_type === "OFFER_LETTER") &&
+          d.recipient_email?.toLowerCase().trim() === cleanEmail
+      );
+    }
+    const cleanType = type.toLowerCase().trim();
     return this.docs.some(
       (d) =>
-        (d.document_type === "INTERNSHIP_LETTER" || d.document_type === "OFFER_LETTER") &&
-        d.recipient_email?.toLowerCase().trim() === cleanEmail
+        d.recipient_email?.toLowerCase().trim() === cleanEmail &&
+        (d.document_type?.toLowerCase() === cleanType ||
+          (cleanType === "offer_letter" && d.document_type === "INTERNSHIP_LETTER") ||
+          (d.title && d.title.toLowerCase().includes(cleanType)))
     );
   }
 
-  public getInternshipLetterForStudent(email?: string): OfficialOfferLetter | null {
+  public getInternshipLetterForStudent(email?: string, type?: string): OfficialOfferLetter | null {
     if (!email) return null;
     this.docs = loadFromDisk();
     const cleanEmail = email.toLowerCase().trim();
+    if (type) {
+      const cleanType = type.toLowerCase().trim();
+      return (
+        this.docs.find(
+          (d) =>
+            d.recipient_email?.toLowerCase().trim() === cleanEmail &&
+            (d.document_type?.toLowerCase() === cleanType ||
+              (cleanType === "offer_letter" && d.document_type === "INTERNSHIP_LETTER") ||
+              (d.title && d.title.toLowerCase().includes(cleanType)))
+        ) || null
+      );
+    }
     return (
       this.docs.find(
         (d) =>
@@ -532,56 +445,69 @@ export class DocumentStore {
     commencementDate?: string;
     continueUntilDate?: string;
     immediateApproval?: boolean;
-    documentType?: "OFFER_LETTER" | "NOC" | "RECOMMENDATION_LETTER" | string;
+    documentType?: "OFFER_LETTER" | "COMPLETION_CERTIFICATE" | "NOC" | "RECOMMENDATION_LETTER" | "JOINING_LETTER" | string;
     title?: string;
   }): OfficialOfferLetter {
     this.docs = loadFromDisk();
     const cleanEmail = params.studentEmail.toLowerCase().trim();
+    const reqType = (params.documentType || "INTERNSHIP_LETTER").toUpperCase();
 
-    // Strict constraint: ONE-TIME REQUEST PER DOCUMENT TYPE
-    const reqType = params.documentType || "OFFER_LETTER";
+    // Strict constraint: ONE-TIME REQUEST PER SPECIFIC DOCUMENT TYPE
     const existing = this.docs.find(
       (d) =>
-        (d.recipient_email?.toLowerCase().trim() === cleanEmail) &&
-        (d.document_type === "INTERNSHIP_LETTER" || d.document_type === "OFFER_LETTER") &&
-        (d.title?.toLowerCase().includes(reqType.toLowerCase()) || reqType === "OFFER_LETTER")
+        d.recipient_email?.toLowerCase().trim() === cleanEmail &&
+        (d.document_type === reqType ||
+          ((reqType === "OFFER_LETTER" || reqType === "INTERNSHIP_LETTER") &&
+            (d.document_type === "OFFER_LETTER" || d.document_type === "INTERNSHIP_LETTER")) ||
+          (d.title && d.title.toLowerCase().includes(reqType.toLowerCase())))
     );
 
     if (existing) {
       throw new Error(
-        "Single-Issuance Policy: You have already submitted a request for your official document. Each student is permitted only one issuance per letter type."
+        `Single-Issuance Policy: You have already submitted a request for this credential (${reqType}). Each student is permitted only one issuance per document type.`
       );
     }
 
-    const docCount = this.docs.filter((d) => d.document_type === "INTERNSHIP_LETTER" || d.document_type === "OFFER_LETTER").length + 1;
-    const documentNumber = `ID-AKT-2026-INTR${docCount.toString().padStart(2, "0")}`;
-    const verificationCode = `VRF-AKT-${Date.now().toString().slice(-4)}-INT`;
-    const cleanTech = params.technology?.trim() || "AI & Full Stack Enterprise Systems";
+    const docCount = this.docs.length + 1;
+    const documentNumber = `ID-AKT-2026-${reqType.slice(0, 4)}${docCount.toString().padStart(2, "0")}`;
+    const verificationCode = `VRF-AKT-${Date.now().toString().slice(-4)}-${reqType.slice(0, 3)}`;
+    const cleanTech = params.technology?.trim() || "AI & Machine Learning Engineering";
     const cleanSalutation = params.salutation || "Mr.";
-    const commencementDate = params.commencementDate || "3rd July 2026";
-    const continueUntilDate = params.continueUntilDate || "30th April 2027";
+    const commencementDate = params.commencementDate || "";
+    const continueUntilDate = params.continueUntilDate || "";
 
     const isApproved = params.immediateApproval === true;
 
     let docTitle = params.title || "OFFICIAL INTERNSHIP OFFER LETTER";
     let descContent = `This officially certifies that ${cleanSalutation} ${params.studentName} has been selected for internship training in ${cleanTech} at Akash Technolabs from ${commencementDate} to ${continueUntilDate}.`;
+    let templateType = `INTERNSHIP OFFER LETTER (${cleanSalutation === "Ms." ? "Girl" : "Boy"})`;
 
-    if (reqType === "NOC") {
-      docTitle = "NO OBJECTION CERTIFICATE (NOC)";
+    if (reqType === "COMPLETION_CERTIFICATE") {
+      docTitle = params.title || "Certificate of Internship Excellence";
+      descContent = `This is to certify that ${cleanSalutation} ${params.studentName} has successfully completed all milestones of the practical internship practicum in ${cleanTech} at Akash Technolabs from ${commencementDate} to ${continueUntilDate}.`;
+      templateType = "Certificate of Internship Excellence";
+    } else if (reqType === "NOC") {
+      docTitle = params.title || "NO OBJECTION CERTIFICATE (NOC)";
       descContent = `This is to certify that Akash Technolabs has no objection to ${cleanSalutation} ${params.studentName} undertaking the practical internship program in ${cleanTech} from ${commencementDate} to ${continueUntilDate}.`;
+      templateType = "NO OBJECTION CERTIFICATE";
     } else if (reqType === "RECOMMENDATION_LETTER") {
-      docTitle = "LETTER OF RECOMMENDATION (LOR)";
+      docTitle = params.title || "LETTER OF RECOMMENDATION (LOR)";
       descContent = `It is our pleasure to recommend ${cleanSalutation} ${params.studentName} for future academic and professional endeavors based on their internship practicum in ${cleanTech} from ${commencementDate} to ${continueUntilDate}.`;
+      templateType = "RECOMMENDATION LETTER";
+    } else if (reqType === "JOINING_LETTER") {
+      docTitle = params.title || "INTERNSHIP JOINING CONFIRMATION LETTER";
+      descContent = `This letter confirms that ${cleanSalutation} ${params.studentName} has officially joined Akash Technolabs as a ${cleanTech} Intern with effect from ${commencementDate}.`;
+      templateType = "INTERNSHIP JOINING CONFIRMATION LETTER";
     }
 
     const newDoc: OfficialOfferLetter = {
-      id: `doc-akt-intern-${Date.now()}`,
+      id: `doc-akt-${reqType.toLowerCase()}-${Date.now()}`,
       organization_id: "org-akash-01",
       organization_name: "Akash Technolabs",
       member_id: cleanEmail,
       recipient_email: cleanEmail,
       document_number: documentNumber,
-      document_type: (params.documentType === "NOC" || params.documentType === "RECOMMENDATION_LETTER") ? "OFFER_LETTER" : "INTERNSHIP_LETTER",
+      document_type: params.documentType ? params.documentType : "INTERNSHIP_LETTER",
       title: docTitle,
       recipient_name: `${cleanSalutation} ${params.studentName.replace(/^(Mr\.|Ms\.)\s*/i, "").trim()}`,
       recipient_role: `${cleanTech} Intern`,
@@ -597,7 +523,7 @@ export class DocumentStore {
       approved_by: isApproved ? "Akash Padhiyar" : "",
       approved_at: isApproved ? new Date().toISOString() : "",
       verification_code: verificationCode,
-      template_type: reqType === "RECOMMENDATION_LETTER" ? "RECOMMENDATION LETTER" : `INTERNSHIP OFFER LETTER (${cleanSalutation === "Ms." ? "Girl" : "Boy"})`,
+      template_type: templateType,
       description_content: descContent,
       template_data: {
         salutation: cleanSalutation,
@@ -620,6 +546,7 @@ export class DocumentStore {
         secondary_color: "#1e3a8a",
         is_akash_template: true,
         validity: isApproved ? "Active / Verified Credential" : "Pending Verification & Release",
+        purpose: params.purpose,
       },
       created_at: new Date().toISOString(),
     };

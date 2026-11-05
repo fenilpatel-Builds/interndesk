@@ -15,13 +15,14 @@ export async function GET(req: NextRequest) {
     const session = safeParseSession(token);
     const searchParams = req.nextUrl.searchParams;
     const email = searchParams.get("email") || session?.email;
+    const type = searchParams.get("type") || undefined;
 
     if (!email) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
-    const hasRequested = documentStore.hasStudentRequestedInternshipLetter(email);
-    const document = documentStore.getInternshipLetterForStudent(email);
+    const hasRequested = documentStore.hasStudentRequestedInternshipLetter(email, type);
+    const document = documentStore.getInternshipLetterForStudent(email, type);
     const isApproved = document
       ? document.status === "ISSUED" || document.approval_status === "APPROVED"
       : false;
@@ -66,12 +67,12 @@ export async function POST(req: NextRequest) {
     const documentType = body.documentType || "OFFER_LETTER";
     const title = body.title;
 
-    // Check if student has already requested this document type
-    if (documentStore.hasStudentRequestedInternshipLetter(email)) {
-      const existingDoc = documentStore.getInternshipLetterForStudent(email);
+    // Check if student has already requested this specific document type
+    if (documentStore.hasStudentRequestedInternshipLetter(email, documentType)) {
+      const existingDoc = documentStore.getInternshipLetterForStudent(email, documentType);
       return NextResponse.json({
         success: false,
-        error: "Single-Issuance Policy: You have already submitted a request. Each student is allowed one official letter request.",
+        error: `Single-Issuance Policy: You have already submitted a request for this credential (${documentType}). Each student is allowed one request per document type.`,
         document: existingDoc,
       }, { status: 409 });
     }
@@ -91,7 +92,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Official Internship Offer Letter request submitted. Awaiting verification and sign-off by Akash Technolabs Admin.",
+      message: `${document.title} request submitted. Awaiting verification and sign-off by Akash Technolabs Admin.`,
       document,
     });
   } catch (err: unknown) {

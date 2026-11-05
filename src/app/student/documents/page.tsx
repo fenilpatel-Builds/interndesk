@@ -81,8 +81,10 @@ export default function StudentDocumentsPage() {
   const [isRequesting, setIsRequesting] = useState(false);
   const [requestMessage, setRequestMessage] = useState<string | null>(null);
 
-  // Form states for Student Document Request (Offer Letter / NOC / Recommendation)
-  const [requestDocType, setRequestDocType] = useState<"OFFER_LETTER" | "NOC" | "RECOMMENDATION_LETTER">("OFFER_LETTER");
+  // Form states for Student Document Request (Offer Letter / Certificate / NOC / Recommendation / Joining)
+  const [requestDocType, setRequestDocType] = useState<
+    "OFFER_LETTER" | "COMPLETION_CERTIFICATE" | "NOC" | "RECOMMENDATION_LETTER" | "JOINING_LETTER"
+  >("OFFER_LETTER");
   const [selectedTrack, setSelectedTrack] = useState("AI & Machine Learning Engineering");
   const [customTrack, setCustomTrack] = useState("");
   const [startDate, setStartDate] = useState(""); // Empty by default: user must choose
@@ -180,6 +182,9 @@ export default function StudentDocumentsPage() {
   const issuedCertificate = docsList.find(
     (d) => d.document_type === "COMPLETION_CERTIFICATE" && (d.status === "ISSUED" || d.approval_status === "APPROVED")
   );
+  const pendingCertificate = docsList.find(
+    (d) => d.document_type === "COMPLETION_CERTIFICATE" && d.status === "PENDING_APPROVAL"
+  );
   const certificateDoc = issuedCertificate || null;
 
   // LinkedIn Add-to-Profile URL for the certificate
@@ -210,8 +215,10 @@ export default function StudentDocumentsPage() {
       const formattedEnd = formatDateOrdinal(endDate) || endDate;
 
       let docTitle = "OFFICIAL INTERNSHIP OFFER LETTER";
-      if (requestDocType === "NOC") docTitle = "NO OBJECTION CERTIFICATE (NOC)";
+      if (requestDocType === "COMPLETION_CERTIFICATE") docTitle = "Certificate of Internship Excellence";
+      else if (requestDocType === "NOC") docTitle = "NO OBJECTION CERTIFICATE (NOC)";
       else if (requestDocType === "RECOMMENDATION_LETTER") docTitle = "LETTER OF RECOMMENDATION (LOR)";
+      else if (requestDocType === "JOINING_LETTER") docTitle = "INTERNSHIP JOINING CONFIRMATION LETTER";
 
       const res = await fetch("/api/student/documents/internship-letter", {
         method: "POST",
@@ -459,6 +466,30 @@ export default function StudentDocumentsPage() {
                     <Download className="w-3.5 h-3.5" />
                     <span>Download Letter (PDF)</span>
                   </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setRequestDocType("COMPLETION_CERTIFICATE");
+                      setShowRequestDialog(true);
+                    }}
+                    variant="outline"
+                    className="border-amber-400/40 text-amber-300 hover:bg-amber-400/10 font-bold text-xs rounded-xl h-9 px-3 cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Award className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Request Certificate</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setRequestDocType("NOC");
+                      setShowRequestDialog(true);
+                    }}
+                    variant="outline"
+                    className="border-white/30 text-white hover:bg-white/10 font-bold text-xs rounded-xl h-9 px-3 cursor-pointer flex items-center gap-1.5"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Request NOC</span>
+                  </Button>
                   <div className="px-3 py-1.5 rounded-xl bg-white/10 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                     <span>Verified ✓</span>
@@ -476,6 +507,18 @@ export default function StudentDocumentsPage() {
                   >
                     <FileText className="w-3.5 h-3.5" />
                     <span>Request Offer Letter</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setRequestDocType("COMPLETION_CERTIFICATE");
+                      setShowRequestDialog(true);
+                    }}
+                    variant="outline"
+                    className="border-amber-400/40 text-amber-300 hover:bg-amber-400/10 font-bold text-xs rounded-xl h-9 px-3.5 cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Award className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Request Certificate</span>
                   </Button>
                   <Button
                     size="sm"
@@ -634,6 +677,10 @@ export default function StudentDocumentsPage() {
                 <span className="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
                   <ShieldCheck className="w-3.5 h-3.5" /> Seal Intact &amp; Verified
                 </span>
+              ) : pendingCertificate ? (
+                <span className="text-[11px] text-amber-600 font-bold flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5" /> Pending Admin Approval
+                </span>
               ) : (
                 <span className="text-[11px] text-amber-600 font-bold flex items-center gap-1">
                   <Lock className="w-3.5 h-3.5" /> Milestone In Progress
@@ -767,21 +814,33 @@ export default function StudentDocumentsPage() {
                 </div>
               </Card>
             ) : (
-              /* Milestone In Progress Card - Rendered for newly registered students */
+              /* Milestone In Progress Card - Rendered when no approved certificate exists */
               <Card className="border border-slate-200/90 shadow-sm p-6 sm:p-7 text-center bg-white relative overflow-hidden rounded-2xl space-y-4">
-                <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto shadow-xs">
-                  <Lock className="w-7 h-7" />
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto shadow-xs ${
+                  pendingCertificate
+                    ? "bg-amber-100 border border-amber-300 text-amber-700"
+                    : "bg-amber-50 border border-amber-200 text-amber-600"
+                }`}>
+                  {pendingCertificate ? <Clock className="w-7 h-7 text-amber-700" /> : <Lock className="w-7 h-7" />}
                 </div>
 
                 <div>
-                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200">
-                    Not Issued Yet • Milestone In Progress
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                    pendingCertificate
+                      ? "bg-amber-100 text-amber-900 border-amber-300"
+                      : "bg-slate-100 text-slate-700 border-slate-200"
+                  }`}>
+                    {pendingCertificate
+                      ? "⏳ Request Submitted • Pending Admin Approval"
+                      : "Not Issued Yet • Milestone In Progress"}
                   </span>
                   <h4 className="text-base font-serif font-black text-slate-900 tracking-wide mt-2">
                     Certificate of Internship Excellence
                   </h4>
                   <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
-                    Official completion certificates are awarded upon verified evaluation of your practical activities and supervisor feedback.
+                    {pendingCertificate
+                      ? "Your certificate request has been submitted to Akash Technolabs administration. Once verified and approved by CEO Akash Padhiyar, your official certificate will unlock here with live verification."
+                      : "Official completion certificates are awarded upon verified evaluation of your practical activities and supervisor feedback."}
                   </p>
                 </div>
 
@@ -794,13 +853,21 @@ export default function StudentDocumentsPage() {
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                     <span>Candidate Identity &amp; Portal Enrollment Verified</span>
                   </div>
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <Clock className="w-4 h-4 text-amber-500 shrink-0" />
-                    <span>Practicum Activities &amp; Project Submissions</span>
+                  <div className={`flex items-center gap-2 ${pendingCertificate ? "text-emerald-700 font-semibold" : "text-slate-600"}`}>
+                    {pendingCertificate ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    ) : (
+                      <Clock className="w-4 h-4 text-amber-500 shrink-0" />
+                    )}
+                    <span>Practicum Activities &amp; Document Request Submitted</span>
                   </div>
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <Clock className="w-4 h-4 text-slate-400 shrink-0" />
-                    <span>Faculty Evaluation &amp; Performance Review</span>
+                  <div className={`flex items-center gap-2 ${pendingCertificate ? "text-amber-800 font-bold" : "text-slate-600"}`}>
+                    <Clock className={`w-4 h-4 ${pendingCertificate ? "text-amber-600" : "text-slate-400"} shrink-0`} />
+                    <span>
+                      {pendingCertificate
+                        ? "Administrative Sign-Off by CEO Akash Padhiyar (In Review)"
+                        : "Faculty Evaluation & Performance Review"}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2 text-slate-600">
                     <ShieldCheck className="w-4 h-4 text-slate-400 shrink-0" />
@@ -809,10 +876,23 @@ export default function StudentDocumentsPage() {
                 </div>
 
                 <div className="pt-2">
-                  <div className="w-full py-3 px-4 rounded-xl bg-slate-100 text-slate-400 text-xs font-bold border border-slate-200 flex items-center justify-center gap-2 cursor-not-allowed select-none">
-                    <Lock className="w-4 h-4" />
-                    <span>Certificate Locked (Available Upon Milestone Completion)</span>
-                  </div>
+                  {pendingCertificate ? (
+                    <div className="w-full py-3 px-4 rounded-xl bg-amber-50 text-amber-900 text-xs font-bold border border-amber-300 flex items-center justify-center gap-2 select-none shadow-xs">
+                      <Clock className="w-4 h-4 text-amber-600" />
+                      <span>Certificate Request Pending Admin Approval &amp; Release</span>
+                    </div>
+                  ) : (
+                    <Button
+                      onClick={() => {
+                        setRequestDocType("COMPLETION_CERTIFICATE");
+                        setShowRequestDialog(true);
+                      }}
+                      className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-900 font-bold text-xs flex items-center justify-center gap-2 shadow-xs cursor-pointer transition-transform hover:scale-[1.01]"
+                    >
+                      <Award className="w-4 h-4 text-slate-900" />
+                      <span>Request Completion Certificate for Admin Approval</span>
+                    </Button>
+                  )}
                 </div>
               </Card>
             )}
@@ -974,15 +1054,27 @@ export default function StudentDocumentsPage() {
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 my-8">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-red-50 text-[#E52329] border border-red-100 flex items-center justify-center shrink-0">
-                  <FileText className="w-5 h-5" />
+                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 border ${
+                  requestDocType === "COMPLETION_CERTIFICATE"
+                    ? "bg-amber-50 text-amber-600 border-amber-200"
+                    : "bg-red-50 text-[#E52329] border-red-100"
+                }`}>
+                  {requestDocType === "COMPLETION_CERTIFICATE" ? (
+                    <Award className="w-5 h-5" />
+                  ) : (
+                    <FileText className="w-5 h-5" />
+                  )}
                 </div>
                 <div>
                   <h3 className="text-base font-black text-slate-900 tracking-tight">
-                    {requestDocType === "NOC"
+                    {requestDocType === "COMPLETION_CERTIFICATE"
+                      ? "Request Internship Completion Certificate"
+                      : requestDocType === "NOC"
                       ? "Request College NOC Letter"
                       : requestDocType === "RECOMMENDATION_LETTER"
                       ? "Request Letter of Recommendation (LOR)"
+                      : requestDocType === "JOINING_LETTER"
+                      ? "Request Internship Joining Confirmation Letter"
                       : "Request Official Internship Offer Letter"}
                   </h3>
                   <p className="text-xs text-slate-500">
@@ -995,14 +1087,14 @@ export default function StudentDocumentsPage() {
                   setShowRequestDialog(false);
                   setRequestMessage(null);
                 }}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <p className="text-xs text-slate-600 leading-relaxed">
-              Select your required document type, technical track, and commencement dates below. Your request will be routed directly to Akash Technolabs administration for verification.
+              Select your required document type, technical track, and commencement dates below. Your request will be routed directly to Akash Technolabs administration with <span className="font-bold text-amber-700">Pending Approval</span> status until verified and released by CEO Akash Padhiyar.
             </p>
 
             {requestMessage && (
@@ -1017,11 +1109,13 @@ export default function StudentDocumentsPage() {
                 <label className="text-[11px] font-bold text-slate-700 block mb-1">
                   Document Type *
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {[
                     { id: "OFFER_LETTER", label: "Offer Letter" },
+                    { id: "COMPLETION_CERTIFICATE", label: "Completion Certificate" },
                     { id: "NOC", label: "College NOC" },
                     { id: "RECOMMENDATION_LETTER", label: "Recommendation" },
+                    { id: "JOINING_LETTER", label: "Joining Letter" },
                   ].map((dt) => (
                     <button
                       key={dt.id}
@@ -1029,7 +1123,9 @@ export default function StudentDocumentsPage() {
                       onClick={() => setRequestDocType(dt.id as any)}
                       className={`py-2 px-1 text-xs font-bold rounded-xl border transition-all cursor-pointer text-center ${
                         requestDocType === dt.id
-                          ? "bg-[#E52329] text-white border-red-600 shadow-xs"
+                          ? dt.id === "COMPLETION_CERTIFICATE"
+                            ? "bg-amber-600 text-white border-amber-700 shadow-xs"
+                            : "bg-[#E52329] text-white border-red-600 shadow-xs"
                           : "bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100"
                       }`}
                     >
