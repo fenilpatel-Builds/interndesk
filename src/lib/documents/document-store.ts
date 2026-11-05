@@ -34,6 +34,7 @@ export interface OfficialOfferLetter {
   verification_code: string;
   template_type?: "INTERNSHIP OFFER LETTER (Boy)" | "INTERNSHIP OFFER LETTER (Girl)" | "RECOMMENDATION LETTER" | string;
   description_content?: string;
+  attached_file?: { name: string; size?: number; type?: string };
   template_data: {
     salutation: "Mr." | "Ms.";
     student_name: string;
@@ -56,6 +57,7 @@ export interface OfficialOfferLetter {
     validity: string;
     university?: string;
     purpose?: string;
+    attached_file?: { name: string; size?: number; type?: string };
   };
   created_at: string;
   updated_at?: string;
@@ -261,6 +263,7 @@ export class DocumentStore {
       purpose?: string;
       status?: "ISSUED" | "ACCEPTED" | "PENDING_APPROVAL";
       documentNumber?: string;
+      attachedFile?: { name: string; size?: number; type?: string };
     }
   ): OfficialOfferLetter | null {
     // Admin authorization guard
@@ -332,6 +335,7 @@ export class DocumentStore {
         verification_code: `VRF-AKT-${Date.now().toString().slice(-4)}`,
         template_type: payload.templateType || "INTERNSHIP_OFFER",
         description_content: payload.descriptionContent || "",
+        attached_file: payload.attachedFile,
         template_data: {
           salutation: cleanSal,
           student_name: cleanName,
@@ -354,6 +358,7 @@ export class DocumentStore {
           is_akash_template: true,
           validity: "Active / Verified Credential",
           purpose: payload.purpose || "Academic Project & Practicum Training",
+          attached_file: payload.attachedFile,
         },
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -411,6 +416,14 @@ export class DocumentStore {
       doc.template_data.purpose = payload.purpose;
     }
 
+    const attached = payload.attachedFile !== undefined ? payload.attachedFile : (payload as any).attached_file;
+    if (attached !== undefined) {
+      doc.attached_file = attached;
+      if (doc.template_data) {
+        doc.template_data.attached_file = attached;
+      }
+    }
+
     doc.updated_at = new Date().toISOString();
     this.docs[idx] = doc;
     saveToDisk(this.docs);
@@ -446,6 +459,7 @@ export class DocumentStore {
       descriptionContent?: string;
       university?: string;
       purpose?: string;
+      attachedFile?: { name: string; size?: number; type?: string };
     }
   ): OfficialOfferLetter {
     if (!isUserAdmin(adminEmail)) {
@@ -479,6 +493,7 @@ export class DocumentStore {
       verification_code: verificationCode,
       template_type: payload.templateType || "INTERNSHIP OFFER LETTER (Boy)",
       description_content: payload.descriptionContent,
+      attached_file: payload.attachedFile,
       template_data: {
         salutation: payload.salutation,
         student_name: payload.studentName.trim(),
@@ -502,6 +517,7 @@ export class DocumentStore {
         validity: "Active / Verified",
         university: payload.university,
         purpose: payload.purpose,
+        attached_file: payload.attachedFile,
       },
       created_at: new Date().toISOString(),
     };

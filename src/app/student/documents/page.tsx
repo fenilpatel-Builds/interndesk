@@ -288,6 +288,7 @@ export default function StudentDocumentsPage() {
         customDescription: (doc as any).description_content,
         isCustomEdited: Boolean((doc as any).description_content),
         templateType: (doc as any).template_type,
+        attachedFile: (doc as any).attached_file || (doc as any).template_data?.attached_file,
       });
     } else {
       setSelectedStudioDoc(doc);

@@ -53,6 +53,7 @@ import {
 } from "@/lib/documents/letter-templates";
 import {
   AKASH_HEADER_BASE64,
+  AKASH_FOOTER_BASE64,
   AKASH_WATERMARK_BASE64,
   AKASH_STAMP_BASE64,
 } from "@/lib/documents/akash-letterhead-assets";
@@ -462,8 +463,21 @@ export function LetterGenerateModal({
           setDescription(gen.fullText);
           setLetterTitle(gen.title);
         }
+
+        const att = raw.attached_file || tmplData.attached_file;
+        if (att) {
+          setAttachedFile({
+            name: att.name,
+            size: att.size || 0,
+            type: att.type || "application/octet-stream",
+            uploadedAt: att.uploadedAt || new Date().toISOString(),
+          });
+        } else {
+          setAttachedFile(null);
+        }
       } else {
         // CREATE MODE: Fresh blank document
+        setAttachedFile(null);
         setIsCustomEdited(false);
         setLetterDate(getTodayFormattedDDMMYYYY());
         setSalutation("Mr.");
@@ -776,6 +790,7 @@ export function LetterGenerateModal({
         purpose,
         signatoryName,
         signatoryRole,
+        attachedFile: attachedFile ? { name: attachedFile.name, size: attachedFile.size } : undefined,
       });
     } catch (err) {
       console.error("PDF download failed:", err);
@@ -1000,29 +1015,13 @@ export function LetterGenerateModal({
           </div>
         </div>
 
-        {/* Footer matching PDF with split bar and contact info */}
+        {/* Official Footer Banner matching authentic PDF */}
         <div className="pt-8 mt-auto">
-          <div className="w-full flex h-1 mb-3">
-            <div className="w-[28%] bg-[#1e3264]" />
-            <div className="w-[72%] bg-[#d32f2f]" />
-          </div>
-
-          <div className="text-center space-y-1 text-[10px] sm:text-[11px] text-slate-600">
-            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 font-medium text-slate-700">
-              <span className="inline-flex items-center gap-1">
-                <span className="text-[#1e3264]">🌐</span> www.akashtechnolabs.com
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <span className="text-[#d32f2f]">✉</span> info@akashtechnolabs.com
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <span className="text-[#1e3264]">📞</span> +91 99786 21654
-              </span>
-            </div>
-            <p className="text-slate-600 font-medium">
-              202, Aarya Arcade, Above Passport Seva Kendra, Mithakhali Six Road, Navrangpura, Ahmedabad-09.
-            </p>
-          </div>
+          <img
+            src={AKASH_FOOTER_BASE64}
+            alt="Akash Technolabs Official Footer"
+            className="w-full object-contain select-none"
+          />
         </div>
       </div>
     </div>

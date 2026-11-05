@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
       descriptionContent,
       university,
       purpose,
+      attachedFile,
     } = body;
 
     if (!studentName || !internshipPosition || !letterDate) {
@@ -78,6 +79,7 @@ export async function POST(req: NextRequest) {
       descriptionContent,
       university,
       purpose,
+      attachedFile,
     });
 
     return NextResponse.json({

@@ -233,37 +233,38 @@ export default function AdminDocumentsPage() {
       },
       created_at: `${doc.appliedAt}T09:00:00Z`,
     };
+    (studioDoc as any).description_content = rawDocData?.description_content;
+    (studioDoc as any).template_type = rawDocData?.template_type;
+    (studioDoc as any).attached_file = rawDocData?.attached_file || rawDocData?.template_data?.attached_file;
 
     setSelectedStudioDoc(studioDoc);
   };
 
   const handleDirectDownloadDoc = async (doc: any) => {
-    if (doc.type === "OFFER_LETTER") {
-      const isFemale = isFemaleCandidate(doc.student, doc.rawDoc?.template_data?.salutation);
-      const cleanTech = deriveTrackTechnology(
-        doc.role,
-        doc.rawDoc?.template_data?.technology ||
-          (doc.rawDoc?.template_data?.program_or_track &&
-          !doc.rawDoc?.template_data?.program_or_track.includes("Enterprise Practicum")
-            ? doc.rawDoc?.template_data?.program_or_track
-            : "")
-      );
-      await downloadAkashOfferLetterPdf({
-        salutation: isFemale ? "Ms." : "Mr.",
-        studentName: doc.student,
-        internshipPosition: doc.role,
-        technology: cleanTech,
-        commencementDate: doc.rawDoc?.template_data?.commencement_date || "3rd July 2026",
-        continueUntilDate: doc.rawDoc?.template_data?.continue_until_date || "30th April 2027",
-        letterDate: doc.appliedAt,
-        title: doc.title,
-        customDescription: doc.rawDoc?.description_content,
-        isCustomEdited: !!doc.rawDoc?.description_content,
-        templateType: doc.rawDoc?.template_type,
-      });
-    } else {
-      handlePreviewDoc(doc);
-    }
+    const raw = doc.rawDoc || doc;
+    const isFemale = isFemaleCandidate(doc.student || raw.recipient_name, raw?.template_data?.salutation);
+    const cleanTech = deriveTrackTechnology(
+      doc.role || raw.recipient_role,
+      raw?.template_data?.technology ||
+        (raw?.template_data?.program_or_track &&
+        !raw?.template_data?.program_or_track.includes("Enterprise Practicum")
+          ? raw?.template_data?.program_or_track
+          : "")
+    );
+    await downloadAkashOfferLetterPdf({
+      salutation: isFemale ? "Ms." : "Mr.",
+      studentName: doc.student || raw.recipient_name,
+      internshipPosition: doc.role || raw.recipient_role || `${cleanTech} Intern`,
+      technology: cleanTech,
+      commencementDate: raw?.template_data?.commencement_date || "3rd July 2026",
+      continueUntilDate: raw?.template_data?.continue_until_date || "30th April 2027",
+      letterDate: doc.appliedAt || raw.issued_date,
+      title: doc.title || raw.title,
+      customDescription: raw?.description_content,
+      isCustomEdited: !!raw?.description_content,
+      templateType: raw?.template_type,
+      attachedFile: raw?.attached_file || raw?.template_data?.attached_file,
+    });
   };
 
   const handleLetterGenerated = (newDoc: any) => {

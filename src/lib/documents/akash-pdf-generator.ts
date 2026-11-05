@@ -28,6 +28,7 @@ export interface OfferLetterData {
   purpose?: string;
   signatoryName?: string;
   signatoryRole?: string;
+  attachedFile?: { name: string; size?: number; type?: string };
 }
 
 export function isFemaleCandidate(name?: string, salutation?: string): boolean {
@@ -368,6 +369,18 @@ export async function generateAkashOfferLetterPdf(data: OfferLetterData): Promis
     currentY -= paraGap;
   }
 
+  // Draw Official Attachment note if file attached
+  if (data.attachedFile?.name) {
+    page.drawText(`[Official Attachment / Reference: ${data.attachedFile.name}]`, {
+      x: leftX,
+      y: currentY - 4,
+      font: fontBold,
+      size: fontSize - 1.5,
+      color: rgb(0.06, 0.3, 0.51),
+    });
+    currentY -= 16;
+  }
+
   // Calculate clean, collision-free position for Signatory Block
   // Ensure it never overlaps body text AND never overlaps footer (footer top is at y: 47)
   const signOffY = Math.max(Math.min(currentY - 10, 345), 160);
@@ -390,7 +403,7 @@ export async function generateAkashOfferLetterPdf(data: OfferLetterData): Promis
   page.drawText(data.signatoryName || "Akash Padhiyar", {
     x: leftX,
     y: signOffY - 84,
-    font: fontRegular,
+    font: fontBold,
     size: fontSize,
     color: rgb(0, 0, 0),
   });

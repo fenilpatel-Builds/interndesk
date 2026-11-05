@@ -25,6 +25,7 @@ import {
   PenTool,
   Edit3,
   Loader2,
+  Paperclip,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { IssuedDocument, TemplateTheme } from "@/types/multitenant";
@@ -295,7 +296,17 @@ export function DocumentStudioModal({
 
   if (!isOpen || !doc) return null;
 
-  const isOfferLetter = doc.document_type === "OFFER_LETTER";
+  const isOfferLetter =
+    doc.document_type === "OFFER_LETTER" ||
+    doc.document_type === "INTERNSHIP_LETTER" ||
+    doc.document_type === "JOINING_LETTER" ||
+    doc.document_type === "CONFIRMATION_LETTER" ||
+    doc.document_type === "COMPLETION_LETTER" ||
+    doc.document_type === "NOC" ||
+    doc.document_type === "EXPERIENCE_LETTER" ||
+    doc.document_type === "RELIEVING_LETTER" ||
+    doc.document_type === "RECOMMENDATION_LETTER" ||
+    Boolean((doc as any).description_content);
 
   const handleConfirmAcceptance = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -371,6 +382,7 @@ export function DocumentStudioModal({
           customDescription: (doc as any).description_content,
           isCustomEdited: !!(doc as any).description_content,
           templateType: (doc as any).template_type,
+          attachedFile: (doc as any).attached_file || (doc as any).template_data?.attached_file,
         });
       } else {
         const rawName = doc.recipient_name || "Official";
@@ -1257,6 +1269,29 @@ export function DocumentStudioModal({
                   {/* Formatted Letter Body */}
                   {(() => {
                     const descContent = (doc as any).description_content;
+                    const isFemaleDoc = isFemaleCandidate(doc.recipient_name, (doc.template_data as any)?.salutation);
+                    const sal = (doc.template_data as any)?.salutation || (isFemaleDoc ? "Ms." : "Mr.");
+                    const rawName = (doc.recipient_name || "").replace(/^(Mr\.|Ms\.)\s*/i, "").trim();
+                    const tech = deriveTrackTechnology(
+                      doc.recipient_role,
+                      (doc.template_data as any)?.technology || doc.template_data?.program_or_track
+                    );
+                    const startDate = (doc.template_data as any)?.commencement_date || "3rd July 2026";
+                    const endDate = (doc.template_data as any)?.continue_until_date || "30th April 2027";
+                    const pos = doc.recipient_role || `${tech} Intern`;
+
+                    const previewKeywords = [
+                      `${sal} ${rawName}`.trim(),
+                      rawName,
+                      "Akash Technolabs",
+                      pos,
+                      tech,
+                      startDate,
+                      endDate,
+                      "Internship Completion Certificate",
+                      "TO WHOMSOEVER IT MAY CONCERN",
+                    ].filter(Boolean);
+
                     if (descContent && typeof descContent === "string" && descContent.trim().length > 0) {
                       const paras = descContent.split(/\n\s*\n/);
                       return (
@@ -1291,7 +1326,7 @@ export function DocumentStudioModal({
                                   {lines.map((l: string, lIdx: number) => {
                                     const isSubj = l.toLowerCase().includes("subject:");
                                     const isTo = l.toLowerCase().includes("to,");
-                                    const tokens = tokenizeMarkdown(l);
+                                    const tokens = tokenizeMarkdown(l, previewKeywords);
                                     return (
                                       <p
                                         key={lIdx}
@@ -1319,7 +1354,7 @@ export function DocumentStudioModal({
                                     const lTrim = l.trim();
                                     if (lTrim.startsWith("• ") || lTrim.startsWith("- ")) {
                                       const bulletText = lTrim.replace(/^[•\-]\s*/, "");
-                                      const bTokens = tokenizeMarkdown(bulletText);
+                                      const bTokens = tokenizeMarkdown(bulletText, previewKeywords);
                                       return (
                                         <div key={lIdx} className="flex items-start gap-2 pl-4 text-slate-800">
                                           <span className="font-bold text-slate-900">•</span>
@@ -1341,7 +1376,7 @@ export function DocumentStudioModal({
                                         </div>
                                       );
                                     }
-                                    const lTokens = tokenizeMarkdown(lTrim);
+                                    const lTokens = tokenizeMarkdown(lTrim, previewKeywords);
                                     return (
                                       <p key={lIdx}>
                                         {lTokens.map((tok, tIdx) =>
@@ -1363,9 +1398,10 @@ export function DocumentStudioModal({
                                 </div>
                               );
                             }
-                            const tokens = tokenizeMarkdown(trimmed);
+                            const isIntroIndent = trimmed.startsWith("This is to inform");
+                            const tokens = tokenizeMarkdown(trimmed, previewKeywords);
                             return (
-                              <p key={idx}>
+                              <p key={idx} className={isIntroIndent ? "indent-6" : ""}>
                                 {tokens.map((tok, tIdx) =>
                                   tok.bold ? (
                                     <strong key={tIdx} className="font-bold text-slate-900">
@@ -1386,7 +1422,6 @@ export function DocumentStudioModal({
                       );
                     }
 
-                    const isFemaleDoc = isFemaleCandidate(doc.recipient_name, doc.template_data?.salutation);
                     const pHeShe = isFemaleDoc ? "she" : "he";
                     const pHisHer = isFemaleDoc ? "her" : "his";
                     const pCapHisHer = isFemaleDoc ? "Her" : "His";
@@ -1398,7 +1433,6 @@ export function DocumentStudioModal({
                       (doc.template_data as any)?.technology || doc.template_data?.program_or_track
                     );
 
-                    const rawName = doc.recipient_name.replace(/^(Mr\.|Ms\.)\s*/i, "").trim();
                     const salutationPrefix = isFemaleDoc ? "Ms." : "Mr.";
                     const displayRecipientName =
                       doc.recipient_name.startsWith("Mr.") || doc.recipient_name.startsWith("Ms.")
@@ -1432,6 +1466,27 @@ export function DocumentStudioModal({
                     );
                   })()}
 
+                  {/* Official Attachment Badge if file attached */}
+                  {Boolean((doc as any).attached_file || (doc as any).template_data?.attached_file) && (
+                    <div className="mt-5 p-2.5 rounded-xl border border-dashed border-blue-300 bg-blue-50/60 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2 text-slate-800">
+                        <Paperclip className="w-4 h-4 text-blue-600" />
+                        <span className="font-semibold">Official Attachment:</span>
+                        <span className="font-mono text-blue-700">
+                          {((doc as any).attached_file || (doc as any).template_data?.attached_file)?.name}
+                        </span>
+                        {((doc as any).attached_file || (doc as any).template_data?.attached_file)?.size ? (
+                          <span className="text-slate-500 text-[11px]">
+                            ({(((doc as any).attached_file || (doc as any).template_data?.attached_file).size / 1024).toFixed(1)} KB)
+                          </span>
+                        ) : null}
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                        Verified Attached
+                      </span>
+                    </div>
+                  )}
+
                   {/* Signatory Section matching authentic PDF */}
                   <div className="pt-6 space-y-0.5 text-xs sm:text-sm">
                     <p className="text-slate-800 font-medium">Sincerely</p>
@@ -1450,29 +1505,13 @@ export function DocumentStudioModal({
                   </div>
                 </div>
 
-                {/* Footer matching PDF with split bar and 2-line info */}
-                <div className="relative z-10 pt-8 mt-6">
-                  <div className="w-full flex h-1 mb-3">
-                    <div className="w-[28%] bg-[#1e3264]" />
-                    <div className="w-[72%] bg-[#d32f2f]" />
-                  </div>
-
-                  <div className="text-center space-y-1 text-[10px] sm:text-[11px] text-slate-600">
-                    <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 font-medium text-slate-700">
-                      <span className="inline-flex items-center gap-1">
-                        <span className="text-[#1e3264]">🌐</span> www.akashtechnolabs.com
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <span className="text-[#d32f2f]">✉</span> info@akashtechnolabs.com
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <span className="text-[#1e3264]">📞</span> +91 99786 21654
-                      </span>
-                    </div>
-                    <p className="text-slate-600 font-medium">
-                      202, Aarya Arcade, Above Passport Seva Kendra, Mithakhali Six Road, Navrangpura, Ahmedabad-09.
-                    </p>
-                  </div>
+                {/* Official Footer Banner matching authentic PDF */}
+                <div className="relative z-10 pt-8 mt-auto">
+                  <img
+                    src={AKASH_FOOTER_BASE64}
+                    alt="Akash Technolabs Official Footer"
+                    className="w-full object-contain select-none"
+                  />
                 </div>
               </div>
             ) : (
