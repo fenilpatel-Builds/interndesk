@@ -49,6 +49,17 @@ export default function LoginPage() {
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
+    try {
+      const savedEmail = localStorage.getItem("interndesk_student_email");
+      if (savedEmail && savedEmail.trim()) {
+        setEmail(savedEmail.trim());
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
     if (resendCooldown <= 0) return;
     const timer = setInterval(() => setResendCooldown((p) => p - 1), 1000);
     return () => clearInterval(timer);
@@ -60,6 +71,16 @@ export default function LoginPage() {
     setErrorMessage(null);
 
     try {
+      if (rememberMe) {
+        try {
+          if (email.trim()) localStorage.setItem("interndesk_student_email", email.trim());
+        } catch {}
+      } else {
+        try {
+          localStorage.removeItem("interndesk_student_email");
+        } catch {}
+      }
+
       const result = await loginWithPassword(email.trim(), password);
       if (result.success) {
         if (result.requiresOtp) {

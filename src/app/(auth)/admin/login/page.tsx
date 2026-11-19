@@ -29,7 +29,7 @@ import { isUserAdmin } from "@/lib/auth/admin-whitelist";
 export default function AdminLoginPage() {
   const router = useRouter();
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState("fenil8160@gmail.com");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [authMode, setAuthMode] = useState<"PASSWORD" | "OTP">("PASSWORD");
@@ -46,15 +46,28 @@ export default function AdminLoginPage() {
 
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Guarantee clean fields on load (prevents browser autofill leakage of previous credentials/OTPs)
+  // Restore saved email from localStorage on mount (never wipe on refresh)
   useEffect(() => {
-    setEmail("");
-    setPassword("");
-    setOtpDigits(["", "", "", "", "", ""]);
-    setOtpSent(false);
-    setErrorMessage(null);
-    setSuccessMessage(null);
+    try {
+      const savedEmail = localStorage.getItem("admin_login_email");
+      if (savedEmail && savedEmail.trim()) {
+        setEmail(savedEmail.trim());
+      }
+    } catch {
+      // localStorage may be restricted in some environments
+    }
   }, []);
+
+  const handleEmailChange = (val: string) => {
+    setEmail(val);
+    try {
+      if (val.trim()) {
+        localStorage.setItem("admin_login_email", val.trim());
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -77,9 +90,15 @@ export default function AdminLoginPage() {
     setErrorMessage(null);
 
     const cleanEmail = email.trim().toLowerCase();
+    try {
+      if (cleanEmail) {
+        localStorage.setItem("admin_login_email", cleanEmail);
+      }
+    } catch {}
+
     if (!isUserAdmin(cleanEmail)) {
       setErrorMessage(
-        "Access Denied: This administrative portal is restricted exclusively to authorized administrators. Please use the student portal for intern logins."
+        "Access Denied: This administrative portal is restricted exclusively to authorized administrators (fenil8160@gmail.com). Please use the student portal for intern logins."
       );
       setLoading(false);
       return;
@@ -116,9 +135,15 @@ export default function AdminLoginPage() {
 
   const handleRequestOtp = async () => {
     const cleanEmail = email.trim().toLowerCase();
+    try {
+      if (cleanEmail) {
+        localStorage.setItem("admin_login_email", cleanEmail);
+      }
+    } catch {}
+
     if (!isUserAdmin(cleanEmail)) {
       setErrorMessage(
-        "Access Denied: Verification codes are issued exclusively to verified administrators."
+        "Access Denied: OTP codes can only be requested for verified administrators (fenil8160@gmail.com)."
       );
       return;
     }
@@ -261,7 +286,7 @@ export default function AdminLoginPage() {
                 <span className="text-xs font-bold text-slate-800 leading-tight">
                   Whitelisted Access
                 </span>
-                <span className="text-[10px] text-slate-400 mt-0.5">Executive Staff Only</span>
+                <span className="text-[10px] text-slate-400 mt-0.5">fenil8160@gmail.com</span>
               </div>
 
               <div className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs flex flex-col items-center text-center">
@@ -374,10 +399,10 @@ export default function AdminLoginPage() {
                       <input
                         type="email"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => handleEmailChange(e.target.value)}
                         required
-                        autoComplete="off"
-                        placeholder="admin@akashtechnolabs.com"
+                        autoComplete="email"
+                        placeholder="fenil8160@gmail.com"
                         className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-red-500 text-slate-900 bg-white placeholder-slate-400 font-medium"
                       />
                       <Mail className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -442,10 +467,10 @@ export default function AdminLoginPage() {
                       <input
                         type="email"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => handleEmailChange(e.target.value)}
                         required
-                        autoComplete="off"
-                        placeholder="admin@akashtechnolabs.com"
+                        autoComplete="email"
+                        placeholder="fenil8160@gmail.com"
                         className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white placeholder-slate-400 font-medium"
                       />
                       <Mail className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
