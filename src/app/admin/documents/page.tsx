@@ -31,7 +31,18 @@ import {
 } from "@/lib/documents/akash-pdf-generator";
 
 export default function AdminDocumentsPage() {
-  const [documents, setDocuments] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<any[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("admin_documents_cache");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
+    return [];
+  });
 
   const [filterType, setFilterType] = useState<
     "ALL" | "PENDING" | "OFFER_LETTER" | "INTERNSHIP_CERTIFICATE"
@@ -75,10 +86,29 @@ export default function AdminDocumentsPage() {
             role: d.recipient_role || "Intern",
             rawDoc: d,
           }));
-          setDocuments(mapped);
+
+          setDocuments((prev) => {
+            const serverIds = new Set(mapped.map((m: any) => m.id));
+            const serverNums = new Set(mapped.map((m: any) => m.docNumber));
+            const unsynced = prev.filter(
+              (p) => !serverIds.has(p.id) && !serverNums.has(p.docNumber)
+            );
+            const combined = [...unsynced, ...mapped];
+            try {
+              localStorage.setItem("admin_documents_cache", JSON.stringify(combined));
+            } catch {}
+            return combined;
+          });
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        try {
+          const cached = localStorage.getItem("admin_documents_cache");
+          if (cached) {
+            setDocuments(JSON.parse(cached));
+          }
+        } catch {}
+      });
   };
 
   useEffect(() => {
@@ -114,8 +144,8 @@ export default function AdminDocumentsPage() {
       });
       const data = await res.json();
       if (data.success && data.document) {
-        setDocuments((prev) =>
-          prev.map((d) =>
+        setDocuments((prev) => {
+          const updated = prev.map((d) =>
             d.id === selectedPendingDoc.id
               ? {
                   ...d,
@@ -125,8 +155,12 @@ export default function AdminDocumentsPage() {
                   rawDoc: data.document,
                 }
               : d
-          )
-        );
+          );
+          try {
+            localStorage.setItem("admin_documents_cache", JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
         setSelectedPendingDoc(null);
       } else {
         setApprovalError(data.error || "Failed to approve document.");
@@ -147,7 +181,13 @@ export default function AdminDocumentsPage() {
         body: JSON.stringify({ documentId: id }),
       });
       if (res.ok) {
-        setDocuments((prev) => prev.filter((d) => d.id !== id));
+        setDocuments((prev) => {
+          const updated = prev.filter((d) => d.id !== id);
+          try {
+            localStorage.setItem("admin_documents_cache", JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
       } else {
         alert("Could not reject document request.");
       }
@@ -173,7 +213,13 @@ export default function AdminDocumentsPage() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setDocuments((prev) => prev.filter((d) => d.id !== id));
+        setDocuments((prev) => {
+          const updated = prev.filter((d) => d.id !== id);
+          try {
+            localStorage.setItem("admin_documents_cache", JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
       } else {
         alert(data.error || "Failed to delete document.");
       }
@@ -272,16 +318,31 @@ export default function AdminDocumentsPage() {
       const formatted = {
         id: newDoc.id,
         student: newDoc.recipient_name,
-        type: "OFFER_LETTER" as const,
+        type:
+          newDoc.document_type === "COMPLETION_CERTIFICATE"
+            ? ("INTERNSHIP_CERTIFICATE" as const)
+            : ("OFFER_LETTER" as const),
         title: newDoc.title,
         docNumber: newDoc.document_number,
-        status: "AVAILABLE",
-        eligibility: "Generated via Akash Admin Dispatch ✓",
+        status: newDoc.status === "PENDING_APPROVAL" ? "PENDING_APPROVAL" : "AVAILABLE",
+        eligibility:
+          newDoc.status === "PENDING_APPROVAL"
+            ? "Awaiting Admin Verification & Approval"
+            : "Generated via Akash Admin Dispatch ✓",
         appliedAt: newDoc.issued_date,
         role: newDoc.recipient_role,
         rawDoc: newDoc,
       };
-      setDocuments((prev) => [formatted, ...prev.filter((d) => d.id !== formatted.id)]);
+      setDocuments((prev) => {
+        const updated = [
+          formatted,
+          ...prev.filter((d) => d.id !== formatted.id && d.docNumber !== formatted.docNumber),
+        ];
+        try {
+          localStorage.setItem("admin_documents_cache", JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
       handlePreviewDoc(formatted);
     }
   };

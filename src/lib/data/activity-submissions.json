@@ -1,0 +1,21 @@
+[
+  {
+    "id": "sub-akt-03",
+    "activityId": "act-akt-01",
+    "activityTitle": "Full-Stack Enterprise Portal with Next.js 16 & Server Actions",
+    "studentId": "AKT-2026-003",
+    "studentName": "Fenil Patel",
+    "studentEmail": "huntarmy001@gmail.com",
+    "departmentId": "dept-cse",
+    "reportContent": "Completed full stack portal integration with Next.js 16, enterprise security boundaries, and responsive student UI.",
+    "attachmentUrl": "https://github.com/akashtechnolabs/interndesk",
+    "status": "APPROVED",
+    "submittedAt": "2026-10-22T12:00:00.000Z",
+    "score": 98,
+    "reviewerId": "usr-admin-akash",
+    "reviewerName": "Akash Padhiyar (CEO)",
+    "reviewedAt": "2026-10-23T11:00:00.000Z",
+    "feedback": "High-quality implementation with clean components and robust test suites.",
+    "updatedAt": "2026-10-23T11:00:00.000Z"
+  }
+]

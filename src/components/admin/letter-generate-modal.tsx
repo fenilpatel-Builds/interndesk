@@ -452,8 +452,8 @@ export function LetterGenerateModal({
             studentName: cleanName,
             internshipPosition: raw.recipient_role || initialDoc.role || `${tmplData.technology || "AI/ML"} Intern`,
             technology: tmplData.technology || deriveTrackTechnology(raw.recipient_role || initialDoc.role),
-            commencementDate: tmplData.commencement_date || "",
-            continueUntilDate: tmplData.continue_until_date || "",
+            commencementDate: tmplData.commencement_date || "3rd July 2026",
+            continueUntilDate: tmplData.continue_until_date || "30th April 2027",
             letterDate: raw.issued_date || initialDoc.appliedAt || getTodayFormattedDDMMYYYY(),
             universityId: tmplData.university || "STANDARD",
             purpose: tmplData.purpose || "Academic Project & Practicum Training",
@@ -755,6 +755,58 @@ export function LetterGenerateModal({
         type: "success",
         text: `Official Document (${letterTitle}) successfully ${isEditMode ? "updated" : "issued"} for ${salutation} ${studentName}! Synchronized to database.`,
       });
+
+      if (data.document) {
+        try {
+          const cachedAdmin = localStorage.getItem("admin_documents_cache");
+          if (cachedAdmin) {
+            const list = JSON.parse(cachedAdmin);
+            const formatted = {
+              id: data.document.id,
+              student: data.document.recipient_name,
+              type:
+                data.document.document_type === "COMPLETION_CERTIFICATE"
+                  ? "INTERNSHIP_CERTIFICATE"
+                  : "OFFER_LETTER",
+              title: data.document.title,
+              docNumber: data.document.document_number,
+              status:
+                data.document.status === "PENDING_APPROVAL"
+                  ? "PENDING_APPROVAL"
+                  : "AVAILABLE",
+              eligibility:
+                data.document.status === "PENDING_APPROVAL"
+                  ? "Awaiting Admin Verification & Approval"
+                  : "Generated via Akash Admin Dispatch ✓",
+              appliedAt: data.document.issued_date,
+              role: data.document.recipient_role,
+              rawDoc: data.document,
+            };
+            const updatedList = [
+              formatted,
+              ...list.filter(
+                (d: any) =>
+                  d.id !== formatted.id && d.docNumber !== formatted.docNumber
+              ),
+            ];
+            localStorage.setItem("admin_documents_cache", JSON.stringify(updatedList));
+          }
+
+          const cachedStudent = localStorage.getItem("student_documents_cache");
+          if (cachedStudent) {
+            const sList = JSON.parse(cachedStudent);
+            const updatedSList = [
+              data.document,
+              ...sList.filter(
+                (d: any) =>
+                  d.id !== data.document.id &&
+                  d.document_number !== data.document.document_number
+              ),
+            ];
+            localStorage.setItem("student_documents_cache", JSON.stringify(updatedSList));
+          }
+        } catch {}
+      }
 
       if (onSuccess) {
         onSuccess(data.document);

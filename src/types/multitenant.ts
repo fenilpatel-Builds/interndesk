@@ -439,6 +439,8 @@ export interface IssuedDocument {
     commencement_date?: string;
     continue_until_date?: string;
     technology?: string;
+    university?: string;
+    attached_file?: { name: string; size?: number; type?: string };
     program_or_track: string;
     grade_or_evaluation?: string;
     validity?: string;

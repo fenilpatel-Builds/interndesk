@@ -43,7 +43,6 @@ export const LETTER_TEMPLATES: LetterTemplateDefinition[] = [
     documentType: "OFFER_LETTER",
     defaultTitle: "INTERNSHIP OFFER LETTER",
     headerType: "TO_PERSON",
-    subjectTemplate: "Offer of Internship – {position}",
     icon: "💼",
     category: "OFFER",
   },
@@ -253,7 +252,7 @@ export function generateLetterContent(params: GenerateLetterParams): GeneratedLe
   switch (effectiveKey) {
     case "AKASH_STANDARD_BOY":
     case "AKASH_STANDARD_GIRL": {
-      title = "INTERNSHIP OFFER LETTER";
+      title = "OFFICIAL INTERNSHIP OFFER LETTER";
       headerType = "NONE";
       bodyParagraphs = [
         `This is to inform that ${displayName} has been selected for an internship at Akash Technolabs as a ${pos}${uniContext}. ${pCapHisHer} internship will commence on ${start} and continue until ${end}.`,

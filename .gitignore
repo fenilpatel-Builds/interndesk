@@ -41,8 +41,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# local ephemeral caches
-src/lib/data/*.json
+# local ephemeral test caches and temporary active OTPs
+src/lib/data/*.test.json
+src/lib/data/active-otps.json
 
 # git worktrees
 .worktrees/

@@ -1,0 +1,99 @@
+[
+  {
+    "id": "tsk-akt-276458",
+    "title": "Study",
+    "description": "",
+    "priority": "MEDIUM",
+    "status": "IN_PROGRESS",
+    "dueAt": "2026-11-27",
+    "technology": "AI & Full Stack",
+    "assignedToEmail": "huntarmy001@gmail.com",
+    "assignedToName": "Fenil Patel",
+    "isGroupTask": false,
+    "groupMembers": [
+      "huntarmy001@gmail.com"
+    ],
+    "progress": 0,
+    "createdBy": "Fenil Patel (Admin)",
+    "createdAt": "2026-11-03T11:44:36.458Z",
+    "updatedAt": "2026-11-03T11:45:31.326Z",
+    "completionNotes": ""
+  },
+  {
+    "id": "tsk-akt-248288",
+    "title": "AI/ML",
+    "description": "",
+    "priority": "LOW",
+    "status": "PENDING",
+    "dueAt": "2026-12-03",
+    "technology": "AI & Full Stack",
+    "assignedToEmail": "huntarmy001@gmail.com",
+    "assignedToName": "Fenil Patel",
+    "isGroupTask": false,
+    "groupMembers": [
+      "huntarmy001@gmail.com"
+    ],
+    "progress": 0,
+    "createdBy": "Fenil Patel (Admin)",
+    "createdAt": "2026-11-03T11:10:48.288Z",
+    "updatedAt": "2026-11-03T11:10:48.288Z"
+  },
+  {
+    "id": "tsk-akt-01",
+    "title": "Implement Supabase Auth with Row Level Security",
+    "description": "Write zero-trust PostgreSQL policies ensuring students can query only their own profile and records.",
+    "priority": "HIGH",
+    "status": "COMPLETED",
+    "dueAt": "2026-11-10",
+    "technology": "PostgreSQL & RLS",
+    "assignedToEmail": "huntarmy001@gmail.com",
+    "assignedToName": "Fenil Patel",
+    "isGroupTask": false,
+    "progress": 100,
+    "completionNotes": "Completed RLS migrations with policy helper functions.",
+    "createdBy": "Akash Padhiyar (CEO)",
+    "createdAt": "2026-10-28T09:00:00.000Z",
+    "updatedAt": "2026-10-30T14:00:00.000Z"
+  },
+  {
+    "id": "tsk-akt-02",
+    "title": "Build Responsive Multi-Step Registration Flow",
+    "description": "Capture personal, academic, and internship specialization preferences with client & server Zod validation.",
+    "priority": "HIGH",
+    "status": "IN_PROGRESS",
+    "dueAt": "2026-11-15",
+    "technology": "Next.js & Zod",
+    "assignedToEmail": "huntarmy001@gmail.com",
+    "assignedToName": "Fenil Patel",
+    "isGroupTask": false,
+    "progress": 75,
+    "completionNotes": "Created 4-step registration flow with email OTP verification.",
+    "createdBy": "Akash Padhiyar (CEO)",
+    "createdAt": "2026-10-29T10:00:00.000Z",
+    "updatedAt": "2026-11-01T11:00:00.000Z"
+  },
+  {
+    "id": "tsk-akt-04",
+    "title": "Full-Stack Enterprise Practicum Capstone — Group Project",
+    "description": "Collaborative project to architect a microservices-based activity system with live attendance clocking, encrypted tokens, and public cryptographic credentials.",
+    "priority": "URGENT",
+    "status": "IN_PROGRESS",
+    "dueAt": "2026-11-25",
+    "technology": "Next.js 16, TypeScript & Postgres",
+    "assignedToEmail": "huntarmy001@gmail.com",
+    "assignedToName": "Fenil Patel",
+    "isGroupTask": true,
+    "groupId": "grp-akt-fullstack",
+    "groupName": "Akash AI & Full-Stack Capstone Team",
+    "groupMembers": [
+      "huntarmy001@gmail.com",
+      "fenil.patel@akashtechnolabs.com",
+      "priya.sharma@akashtechnolabs.com"
+    ],
+    "progress": 60,
+    "completionNotes": "Initial modules and document generation completed. Currently completing group coordination.",
+    "createdBy": "Akash Padhiyar (CEO)",
+    "createdAt": "2026-10-25T10:00:00.000Z",
+    "updatedAt": "2026-11-02T16:00:00.000Z"
+  }
+]
