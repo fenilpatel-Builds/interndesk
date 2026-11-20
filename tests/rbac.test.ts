@@ -59,9 +59,12 @@ describe("Role-Based Access Control (RBAC) Permission Matrix", () => {
     expect(account?.name).toBe("Akash Padhiyar");
     expect(account?.organizationId).toBe("org-akash-01");
 
-    const authenticated = credentialsStore.authenticate("akash.padhiyar@gmail.com", "password123");
+    const authenticated = credentialsStore.authenticate("akash.padhiyar@gmail.com", "akash.padhiyar@AT26");
     expect(authenticated).not.toBeNull();
     expect(authenticated?.email).toBe("akash.padhiyar@gmail.com");
+
+    const failedAuth = credentialsStore.authenticate("akash.padhiyar@gmail.com", "wrongpassword");
+    expect(failedAuth).toBeNull();
 
     // 3. Multitenant Membership Verification
     const members = multiTenantStore.getMemberships("org-akash-01");

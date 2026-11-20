@@ -369,10 +369,16 @@ export async function loginWithPassword(email: string, password: string): Promis
         });
 
         if (isAdmin) {
+          // Enforce 2-Factor OTP verification for Administrator access every time!
+          const otpCode = otpStore.generate(cleanEmail);
+          const emailRes = await sendOtpEmail(cleanEmail, otpCode);
           return {
             success: true,
-            message: `Authenticated as Administrator ${formattedName}. Launching Akash Technolabs Admin Dashboard...`,
-            redirectTo: "/admin/dashboard",
+            requiresOtp: true,
+            forwardedTo: emailRes.forwardedTo,
+            message: emailRes.forwardedTo
+              ? `Admin Credentials Verified! Two-factor OTP dispatched to ${emailRes.forwardedTo} (Resend Sandbox). Please enter code to access Admin Console.`
+              : `Admin Credentials Verified! Two-factor OTP dispatched to ${cleanEmail}. Please enter the 6-digit security code to access Admin Console.`,
             role: "ORG_ADMIN",
           };
         }
