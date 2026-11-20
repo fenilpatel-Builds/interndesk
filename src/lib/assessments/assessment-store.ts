@@ -3,14 +3,56 @@ import path from "path";
 import { resolveDataFilePath } from "../data/storage-path";
 import { isUserAdmin } from "../auth/admin-whitelist";
 
+export type QuestionType =
+  | "SINGLE_CHOICE"
+  | "MULTIPLE_CHOICE"
+  | "TRUE_FALSE"
+  | "FILL_BLANKS"
+  | "SHORT_ANSWER"
+  | "DESCRIPTIVE"
+  | "CODING"
+  | "MATCHING";
+
+export type QuestionDifficulty = "EASY" | "MEDIUM" | "HARD" | "ADVANCED";
+
+export interface MatchingPair {
+  left: string;
+  right: string;
+}
+
+export interface TestCase {
+  input: string;
+  expected_output: string;
+}
+
 export interface AssessmentQuestion {
   id: string;
   question: string;
-  type: "SINGLE_CHOICE" | "TRUE_FALSE";
-  options: string[];
-  correct_answer: string;
+  type: QuestionType;
+  options?: string[];
+  correct_answer?: string | string[];
   explanation: string;
   marks: number;
+  negative_marks?: number;
+  difficulty?: QuestionDifficulty;
+  topic?: string;
+  code_language?: "python" | "javascript" | "java" | "cpp" | "sql";
+  starter_code?: string;
+  test_cases?: TestCase[];
+  matching_pairs?: MatchingPair[];
+  rubric?: string;
+}
+
+export interface AssessmentSecurityPolicy {
+  max_violations_allowed: number;
+  auto_submit_on_violation_limit?: boolean;
+  auto_submit_on_violation?: boolean;
+  require_fullscreen?: boolean;
+  fullscreen_required?: boolean;
+  disable_copy_paste?: boolean;
+  block_copy_paste?: boolean;
+  block_devtools?: boolean;
+  webcam_monitoring?: boolean;
 }
 
 export interface Assessment {
@@ -18,26 +60,61 @@ export interface Assessment {
   organization_id: string;
   title: string;
   subject: string;
+  topic?: string;
+  category?: string;
   description: string;
   duration_minutes: number;
   total_marks: number;
   passing_threshold: number; // percentage, e.g. 70
   attempt_limit: number;
   status: "PUBLISHED" | "DRAFT" | "CLOSED";
+  negative_marking_enabled?: boolean;
+  negative_mark_rate?: number; // e.g. 0.25
+  negative_marking_rate?: number;
+  scheduled_start?: string;
+  scheduled_end?: string;
+  security_policy?: AssessmentSecurityPolicy;
   questions: AssessmentQuestion[];
   created_at: string;
   updated_at?: string;
 }
 
+export interface ActiveExamSession {
+  session_id: string;
+  assessment_id: string;
+  assessment_title: string;
+  student_email: string;
+  student_name: string;
+  started_at: string; // ISO UTC
+  expires_at: string; // ISO UTC
+  duration_minutes: number;
+  saved_answers: Record<string, any>;
+  marked_for_review: string[];
+  visited_questions: string[];
+  tab_switch_count: number;
+  fullscreen_exit_count: number;
+  activity_logs: Array<{
+    timestamp: string;
+    type: "START" | "TAB_SWITCH" | "BLUR" | "FULLSCREEN_EXIT" | "COPY_PASTE" | "AUTOSAVE" | "DISCONNECT" | "RECONNECT";
+    details?: string;
+  }>;
+  status: "ACTIVE" | "SUBMITTED" | "EXPIRED";
+  updated_at: string;
+}
+
 export interface QuestionEvaluation {
   question_id: string;
   question_text: string;
-  selected_answer: string | null;
-  correct_answer: string;
-  is_correct: boolean;
+  type?: QuestionType;
+  selected_answer: any;
+  correct_answer?: string | string[];
+  is_correct: boolean | null;
   marks_awarded: number;
   marks_possible: number;
   explanation: string;
+  teacher_feedback?: string;
+  feedback?: string;
+  evaluation_status?: "AUTO_EVALUATED" | "PENDING_TEACHER" | "TEACHER_EVALUATED" | "EVALUATED";
 }
 
 export interface AssessmentAttempt {
@@ -54,13 +131,21 @@ export interface AssessmentAttempt {
   correct_count: number;
   wrong_count: number;
   unanswered_count: number;
+  pending_evaluation_count?: number;
   tab_switch_count: number;
+  fullscreen_exit_count?: number;
   proctoring_flag: "CLEAN" | "SUSPICIOUS" | "VIOLATION";
   time_spent_seconds: number;
   started_at: string;
   submitted_at: string;
-  answers: Record<string, string>;
+  answers: Record<string, any>;
   evaluations?: QuestionEvaluation[];
+  activity_logs?: Array<{
+    timestamp: string;
+    type: string;
+    details?: string;
+  }>;
+  status?: "EVALUATED" | "PENDING_MANUAL_REVIEW";
 }
 
 const SEED_ASSESSMENTS: Assessment[] = [
@@ -69,18 +154,29 @@ const SEED_ASSESSMENTS: Assessment[] = [
     organization_id: "org-akash-01",
     title: "AI & Machine Learning Engineering Practicum Exam",
     subject: "AI & Machine Learning",
+    topic: "Deep Learning & Neural Architectures",
+    category: "Technical Certification",
     description: "Evaluates machine learning algorithms, deep neural network architectures, model overfitting mitigation, loss functions, and tensor mathematical operations.",
     duration_minutes: 25,
     total_marks: 100,
     passing_threshold: 70,
     attempt_limit: 2,
     status: "PUBLISHED",
+    negative_marking_enabled: true,
+    negative_mark_rate: 0.25,
+    security_policy: {
+      max_violations_allowed: 3,
+      auto_submit_on_violation_limit: true,
+      require_fullscreen: true,
+      disable_copy_paste: true,
+    },
     created_at: "2026-10-01T10:00:00.000Z",
     questions: [
       {
         id: "q_ai_1",
         question: "In Supervised Learning, which technique is specifically designed to prevent deep neural networks from overfitting on training data?",
         type: "SINGLE_CHOICE",
+        difficulty: "MEDIUM",
         options: [
           "Dropout and L2 (Ridge) Weight Regularization",
           "Increasing the number of fully connected hidden layers",
@@ -90,11 +186,13 @@ const SEED_ASSESSMENTS: Assessment[] = [
         correct_answer: "Dropout and L2 (Ridge) Weight Regularization",
         explanation: "Dropout randomly deactivates neurons during forward passes, and L2 regularization penalizes large weights, preventing individual feature co-adaptation and overfitting.",
         marks: 10,
+        negative_marks: 2.5,
       },
       {
         id: "q_ai_2",
         question: "What is the primary architectural purpose of the Self-Attention mechanism in Transformer neural networks?",
         type: "SINGLE_CHOICE",
+        difficulty: "HARD",
         options: [
           "Computing dynamic dependency weights between all token positions in parallel",
           "Encrypting token vectors for database storage",
@@ -104,11 +202,13 @@ const SEED_ASSESSMENTS: Assessment[] = [
         correct_answer: "Computing dynamic dependency weights between all token positions in parallel",
         explanation: "Self-Attention allows models to dynamically weight relational relevance across distant tokens in a sequence simultaneously without recurrent sequential bottlenecks.",
         marks: 10,
+        negative_marks: 2.5,
       },
       {
         id: "q_ai_3",
         question: "Which loss function is the industry standard for multi-class classification where classes are mutually exclusive?",
         type: "SINGLE_CHOICE",
+        difficulty: "MEDIUM",
         options: [
           "Categorical Cross-Entropy Loss",
           "Mean Squared Error (MSE)",
@@ -118,11 +218,13 @@ const SEED_ASSESSMENTS: Assessment[] = [
         correct_answer: "Categorical Cross-Entropy Loss",
         explanation: "Categorical Cross-Entropy calculates the log loss distance between predicted probability distributions (Softmax) and one-hot encoded ground truth vectors.",
         marks: 10,
+        negative_marks: 2.5,
       },
       {
         id: "q_ai_4",
         question: "What is the difference between Batch Gradient Descent and Stochastic Gradient Descent (SGD)?",
         type: "SINGLE_CHOICE",
+        difficulty: "MEDIUM",
         options: [
           "Batch GD computes gradients using the entire dataset, while SGD updates parameters per single sample or mini-batch",
           "Batch GD is only used in quantum computers",
@@ -132,11 +234,13 @@ const SEED_ASSESSMENTS: Assessment[] = [
         correct_answer: "Batch GD computes gradients using the entire dataset, while SGD updates parameters per single sample or mini-batch",
         explanation: "Batch GD calculates loss over the complete dataset before each update step, whereas SGD iterates through single samples or small batches for faster convergence and memory efficiency.",
         marks: 10,
+        negative_marks: 2.5,
       },
       {
         id: "q_ai_5",
         question: "Which activation function is widely preferred in deep hidden layers to prevent vanishing gradients while maintaining computational efficiency?",
         type: "SINGLE_CHOICE",
+        difficulty: "EASY",
         options: [
           "ReLU (Rectified Linear Unit)",
           "Sigmoid",
@@ -146,11 +250,13 @@ const SEED_ASSESSMENTS: Assessment[] = [
         correct_answer: "ReLU (Rectified Linear Unit)",
         explanation: "ReLU (max(0, x)) has a constant gradient of 1 for positive inputs, eliminating saturation and vanishing gradient problems typical of Sigmoid/Tanh.",
         marks: 10,
+        negative_marks: 2.5,
       },
       {
         id: "q_ai_6",
         question: "In computer vision architectures, what operation follows Convolutional layers to downsample spatial dimensions while preserving dominant features?",
         type: "SINGLE_CHOICE",
+        difficulty: "EASY",
         options: [
           "Max Pooling / Average Pooling",
           "Fourier Transform",
@@ -160,11 +266,13 @@ const SEED_ASSESSMENTS: Assessment[] = [
         correct_answer: "Max Pooling / Average Pooling",
         explanation: "Pooling layers reduce spatial dimensionality (height and width), reducing computational load and parameter count while introducing translation invariance.",
         marks: 10,
+        negative_marks: 2.5,
       },
       {
         id: "q_ai_7",
         question: "What metric is most suitable for evaluating a medical diagnosis model where False Negatives carry catastrophic consequences?",
         type: "SINGLE_CHOICE",
+        difficulty: "MEDIUM",
         options: [
           "Recall (Sensitivity)",
           "Precision",
@@ -174,11 +282,13 @@ const SEED_ASSESSMENTS: Assessment[] = [
         correct_answer: "Recall (Sensitivity)",
         explanation: "Recall = TP / (TP + FN). When False Negatives must be minimized (e.g. failing to detect a critical disease), Recall is the paramount metric.",
         marks: 10,
+        negative_marks: 2.5,
       },
       {
         id: "q_ai_8",
         question: "What does the concept of 'Embedding' represent in modern Natural Language Processing and Vector Databases?",
         type: "SINGLE_CHOICE",
+        difficulty: "MEDIUM",
         options: [
           "Mapping discrete tokens or concepts into dense, continuous high-dimensional semantic vector spaces",
           "Compressing images into ZIP files",
@@ -188,11 +298,13 @@ const SEED_ASSESSMENTS: Assessment[] = [
         correct_answer: "Mapping discrete tokens or concepts into dense, continuous high-dimensional semantic vector spaces",
         explanation: "Embeddings transform categorical concepts into dense real-valued vectors where geometric proximity corresponds to semantic similarity.",
         marks: 10,
+        negative_marks: 2.5,
       },
       {
         id: "q_ai_9",
         question: "Which optimization algorithm adapts learning rates individually for each parameter based on first and second moments of gradients?",
         type: "SINGLE_CHOICE",
+        difficulty: "MEDIUM",
         options: [
           "Adam (Adaptive Moment Estimation)",
           "Vanilla Gradient Descent",
@@ -202,11 +314,13 @@ const SEED_ASSESSMENTS: Assessment[] = [
         correct_answer: "Adam (Adaptive Moment Estimation)",
         explanation: "Adam combines AdaGrad and RMSProp advantages by maintaining exponential moving averages of both past gradients (momentum) and squared gradients.",
         marks: 10,
+        negative_marks: 2.5,
       },
       {
         id: "q_ai_10",
         question: "In reinforcement learning, what does the Epsilon-Greedy strategy balance?",
         type: "SINGLE_CHOICE",
+        difficulty: "MEDIUM",
         options: [
           "Exploration (discovering new actions) vs Exploitation (leveraging known rewards)",
           "CPU core usage vs GPU memory limits",
@@ -216,6 +330,7 @@ const SEED_ASSESSMENTS: Assessment[] = [
         correct_answer: "Exploration (discovering new actions) vs Exploitation (leveraging known rewards)",
         explanation: "Epsilon-Greedy selects a random action with probability epsilon (exploration) and the best-known action with probability 1-epsilon (exploitation).",
         marks: 10,
+        negative_marks: 2.5,
       },
     ],
   },
@@ -224,6 +339,8 @@ const SEED_ASSESSMENTS: Assessment[] = [
     organization_id: "org-akash-01",
     title: "Full-Stack Enterprise Architecture & Next.js Exam",
     subject: "Full-Stack Web Development",
+    topic: "Next.js App Router & Cloud DB",
+    category: "Architecture Evaluation",
     description: "Evaluates React Server Components (RSC), PostgreSQL Row-Level Security, multi-tenant state isolation, server actions, and distributed cache invalidation.",
     duration_minutes: 25,
     total_marks: 100,
@@ -299,77 +416,77 @@ const SEED_ASSESSMENTS: Assessment[] = [
           "Cache-Control"
         ],
         correct_answer: "Content-Security-Policy (CSP)",
-        explanation: "Content-Security-Policy restricts executable script origins, inline scripts, and unauthorized domains, mitigating XSS vectors.",
+        explanation: "CSP controls trusted script, style, and media sources, blocking inline script execution and unauthorized remote data exfiltration.",
         marks: 10,
       },
       {
         id: "q_fs_6",
-        question: "What is the purpose of Database Connection Pooling (e.g. PgBouncer) in serverless environments like Vercel or AWS Lambda?",
+        question: "What is the purpose of Database Connection Pooling (e.g. Supabase Transaction Pooler / PgBouncer) in serverless environments like Vercel?",
         type: "SINGLE_CHOICE",
         options: [
-          "Reusing database connections across ephemeral function invocations to avoid exhausting PostgreSQL connection limits",
-          "Encrypting PDF documents before download",
-          "Converting SQL queries into JSON files",
-          "Bypassing user password authentication"
+          "Sharing a managed pool of persistent database sockets across thousands of ephemeral serverless function invocations",
+          "Generating frontend CSS automatically",
+          "Encrypting user passwords in React components",
+          "Translating TypeScript to Python"
         ],
-        correct_answer: "Reusing database connections across ephemeral function invocations to avoid exhausting PostgreSQL connection limits",
-        explanation: "Serverless functions spawn and terminate rapidly. Without a connection pooler, thousands of simultaneous serverless lambdas can saturate the database max-connection threshold.",
+        correct_answer: "Sharing a managed pool of persistent database sockets across thousands of ephemeral serverless function invocations",
+        explanation: "Serverless functions spin up and down concurrently; a transaction pooler multiplexes thousands of transient function calls over a small set of persistent PostgreSQL backend connections without exhausting memory.",
         marks: 10,
       },
       {
         id: "q_fs_7",
-        question: "What does the Next.js `generateStaticParams` function accomplish?",
+        question: "Which caching strategy in Next.js allows pre-rendered static pages to be revalidated in the background when traffic arrives without redeployment?",
         type: "SINGLE_CHOICE",
         options: [
-          "Pre-renders dynamic segment routes at build time for instant static HTML serving",
-          "Generates random passwords for admin users",
-          "Compiles Tailwind CSS into raw Sass",
-          "Validates user credit card information"
+          "Incremental Static Regeneration (ISR)",
+          "Client-side IndexedDB caching only",
+          "Hard browser reload",
+          "Cookie revalidation"
         ],
-        correct_answer: "Pre-renders dynamic segment routes at build time for instant static HTML serving",
-        explanation: "`generateStaticParams` works with dynamic route segments to statically generate routes at build time, improving performance and SEO.",
+        correct_answer: "Incremental Static Regeneration (ISR)",
+        explanation: "ISR enables static generation on a per-page basis with stale-while-revalidate semantics, re-generating pages in the background after specified intervals.",
         marks: 10,
       },
       {
         id: "q_fs_8",
-        question: "In RESTful API design, which HTTP method must be idempotent and used to replace an entire resource representation?",
+        question: "What is the primary architectural hazard of storing sensitive enterprise session tokens in localStorage rather than HttpOnly cookies?",
         type: "SINGLE_CHOICE",
         options: [
-          "PUT",
-          "POST",
-          "PATCH",
-          "DELETE"
+          "Tokens stored in localStorage are readable by any client-side JavaScript, leaving them vulnerable to XSS exfiltration",
+          "localStorage only works in Internet Explorer",
+          "localStorage cannot store strings longer than 10 characters",
+          "localStorage requires an active internet connection to read"
         ],
-        correct_answer: "PUT",
-        explanation: "PUT is designed to be idempotent: sending the identical request multiple times results in the same resource state, completely replacing the target entity.",
+        correct_answer: "Tokens stored in localStorage are readable by any client-side JavaScript, leaving them vulnerable to XSS exfiltration",
+        explanation: "HttpOnly cookies are inaccessible to client-side scripts, protecting tokens from XSS payloads. localStorage is accessible to any script running on the origin.",
         marks: 10,
       },
       {
         id: "q_fs_9",
-        question: "What does optimistic UI updates mean in modern frontend engineering?",
+        question: "In distributed event-driven systems, what is an Idempotent API endpoint?",
         type: "SINGLE_CHOICE",
         options: [
-          "Immediately updating the user interface under the assumption the server mutation will succeed, then rolling back if an error occurs",
-          "Showing cheerful animations while waiting for slow queries",
-          "Disabling error notifications for users",
-          "Always returning status 200 regardless of server errors"
+          "An endpoint where making identical requests multiple times produces the exact same system state as making it once",
+          "An endpoint that returns responses in under 1 millisecond",
+          "An endpoint with zero authentication requirements",
+          "An endpoint that only operates on weekends"
         ],
-        correct_answer: "Immediately updating the user interface under the assumption the server mutation will succeed, then rolling back if an error occurs",
-        explanation: "Optimistic updates provide zero-latency perceptual responsiveness by updating the UI instantaneously while synchronizing in the background.",
+        correct_answer: "An endpoint where making identical requests multiple times produces the exact same system state as making it once",
+        explanation: "Idempotence ensures safe retries across network drops without duplicate side-effects (e.g. charging a payment or creating duplicate exam submissions twice).",
         marks: 10,
       },
       {
         id: "q_fs_10",
-        question: "What is the primary role of a JSON Web Token (JWT) signature?",
+        question: "Which pattern is standard for isolating background tasks from synchronous user HTTP request/response lifecycles?",
         type: "SINGLE_CHOICE",
         options: [
-          "Verifying the payload has not been tampered with or modified in transit",
-          "Encrypting the payload so it cannot be read by any client",
-          "Compressing the token into fewer bytes",
-          "Connecting the token directly to PostgreSQL"
+          "Message Queues and Asynchronous Workers (e.g., BullMQ, Celery, SQS)",
+          "Blocking while(true) loops in server controllers",
+          "Executing shell scripts in client React useEffect",
+          "Synchronous sleep timers in the browser"
         ],
-        correct_answer: "Verifying the payload has not been tampered with or modified in transit",
-        explanation: "A JWT signature is a cryptographic hash of the header and payload using a secret or private key, ensuring integrity and origin authenticity.",
+        correct_answer: "Message Queues and Asynchronous Workers (e.g., BullMQ, Celery, SQS)",
+        explanation: "Message queues decouple long-running jobs (video encoding, report generation, email dispatch) from user HTTP response latency.",
         marks: 10,
       },
     ],
@@ -378,8 +495,10 @@ const SEED_ASSESSMENTS: Assessment[] = [
     id: "asm-security-03",
     organization_id: "org-akash-01",
     title: "Zero-Trust Cybersecurity & Cryptography Exam",
-    subject: "Cybersecurity & Identity",
-    description: "Evaluates cryptographic token verification, Two-Factor Authentication (TOTP), Role-Based Access Control (RBAC), and injection prevention.",
+    subject: "Cybersecurity & Information Assurance",
+    topic: "Cryptographic Primitives & Network Defense",
+    category: "Security Clearance",
+    description: "Evaluates cryptographic primitives, public key infrastructure (PKI), zero-trust network boundaries, OWASP Top 10 vulnerabilities, and digital identity defense.",
     duration_minutes: 20,
     total_marks: 100,
     passing_threshold: 75,
@@ -389,142 +508,142 @@ const SEED_ASSESSMENTS: Assessment[] = [
     questions: [
       {
         id: "q_sec_1",
-        question: "What is the core premise of Zero-Trust Network Architecture (ZTNA)?",
+        question: "What is the core philosophical tenet of a Zero-Trust Architecture (ZTA) as defined by NIST SP 800-207?",
         type: "SINGLE_CHOICE",
         options: [
-          "Never trust, always verify: every request must be authenticated, authorized, and validated regardless of network location",
-          "Trust any connection originating from inside the office VPN",
-          "Trust IP addresses if they belong to internal employees",
-          "Disable authentication for internal microservices"
+          "Never Trust, Always Verify: Explicitly authenticate and authorize every access request regardless of network location",
+          "Trust any device connected to the internal corporate Wi-Fi network",
+          "Disable all encryption inside the private local area network",
+          "Assume perimeter firewalls provide complete immunity"
         ],
-        correct_answer: "Never trust, always verify: every request must be authenticated, authorized, and validated regardless of network location",
-        explanation: "Zero Trust eliminates perimeter-based trust, requiring continuous verification of identity, device health, and context for every transaction.",
+        correct_answer: "Never Trust, Always Verify: Explicitly authenticate and authorize every access request regardless of network location",
+        explanation: "Zero-Trust eliminates implicit trust based solely on network locality. Every user, device, and packet must be continuously verified and authenticated.",
         marks: 10,
       },
       {
         id: "q_sec_2",
-        question: "In Two-Factor Authentication, how does a Time-Based One-Time Password (TOTP) generate valid 6-digit codes?",
+        question: "Which cryptographic algorithm is widely recognized as a quantum-resistant symmetric encryption standard capable of protecting top-secret data?",
         type: "SINGLE_CHOICE",
         options: [
-          "Computing HMAC-SHA1 of a shared secret key and the current 30-second Unix epoch counter",
-          "Generating random numbers on the client and texting them to the server",
-          "Hashing the user's password repeatedly",
-          "Relying on browser geolocation coordinates"
+          "AES-256 (Advanced Encryption Standard with 256-bit key)",
+          "RSA-1024",
+          "MD5 Hash Function",
+          "Single DES (Data Encryption Standard)"
         ],
-        correct_answer: "Computing HMAC-SHA1 of a shared secret key and the current 30-second Unix epoch counter",
-        explanation: "TOTP (RFC 6238) computes HMAC(K, T) where K is a pre-shared cryptographic key and T is floor(current_time / 30), truncated to 6 digits.",
+        correct_answer: "AES-256 (Advanced Encryption Standard with 256-bit key)",
+        explanation: "Grover's quantum algorithm halves symmetric key search complexity, making AES-256 effectively equivalent to 128-bit quantum security, which remains unbreakable.",
         marks: 10,
       },
       {
         id: "q_sec_3",
-        question: "Which technique is the most effective safeguard against SQL Injection attacks?",
+        question: "What type of attack occurs when an attacker tricks an authenticated browser into submitting unwanted commands to a vulnerable web application?",
         type: "SINGLE_CHOICE",
         options: [
-          "Parameterized queries and Prepared Statements",
-          "Blacklisting specific keywords like 'OR' and 'DROP'",
-          "Encoding database inputs in Base64",
-          "Encrypting the database disk drive only"
+          "Cross-Site Request Forgery (CSRF)",
+          "SQL Injection (SQLi)",
+          "Buffer Overflow",
+          "Distributed Denial of Service (DDoS)"
         ],
-        correct_answer: "Parameterized queries and Prepared Statements",
-        explanation: "Prepared statements treat user input strictly as literals rather than executable SQL syntax, completely neutralising injection vectors.",
+        correct_answer: "Cross-Site Request Forgery (CSRF)",
+        explanation: "CSRF exploits the ambient authority of browser cookies, sending unauthorized requests with the victim's session credentials.",
         marks: 10,
       },
       {
         id: "q_sec_4",
-        question: "What does the Principle of Least Privilege dictate in access governance?",
+        question: "In public-key digital signatures (such as ECDSA or RSA-PSS), which key does the sender use to generate the signature?",
         type: "SINGLE_CHOICE",
         options: [
-          "Subjects are granted only the minimum permissions necessary to perform their assigned functions",
-          "All registered users receive administrator privileges by default",
-          "Permissions should only be reviewed once every five years",
-          "System passwords must not exceed 6 characters"
+          "Sender's Private Key",
+          "Recipient's Public Key",
+          "Sender's Public Key",
+          "Certificate Authority's Public Key"
         ],
-        correct_answer: "Subjects are granted only the minimum permissions necessary to perform their assigned functions",
-        explanation: "Least privilege minimizes damage from compromised credentials or accidents by ensuring entities hold only strictly essential permissions.",
+        correct_answer: "Sender's Private Key",
+        explanation: "The sender signs with their private key, proving authenticity and non-repudiation. Anyone can verify the signature using the sender's public key.",
         marks: 10,
       },
       {
         id: "q_sec_5",
-        question: "Which cookie attributes provide maximum defense against Cross-Site Scripting (XSS) and Man-in-the-Middle (MitM) token theft?",
+        question: "What is the purpose of cryptographic salt when hashing user passwords with algorithms like bcrypt or Argon2id?",
         type: "SINGLE_CHOICE",
         options: [
-          "HttpOnly, Secure, and SameSite=Strict",
-          "Domain=all, Path=root",
-          "Expires=never, Max-Age=infinity",
-          "SameSite=None with no SSL certificate"
+          "Ensuring identical passwords produce distinct hash digests, defeating precomputed rainbow table attacks",
+          "Compressing password length to save database space",
+          "Allowing passwords to be decrypted into plaintext by admins",
+          "Increasing network transmission speed"
         ],
-        correct_answer: "HttpOnly, Secure, and SameSite=Strict",
-        explanation: "HttpOnly blocks JavaScript `document.cookie` access (preventing XSS theft), Secure enforces HTTPS transmission, and SameSite=Strict mitigates CSRF.",
+        correct_answer: "Ensuring identical passwords produce distinct hash digests, defeating precomputed rainbow table attacks",
+        explanation: "A unique cryptographically random salt prepended to passwords guarantees that identical passwords have unique hash outputs, rendering rainbow tables ineffective.",
         marks: 10,
       },
       {
         id: "q_sec_6",
-        question: "What is the difference between Symmetric and Asymmetric encryption?",
+        question: "Which mechanism allows APIs to enforce strict rate limiting to prevent credential stuffing and brute-force attacks?",
         type: "SINGLE_CHOICE",
         options: [
-          "Symmetric encryption uses one shared secret key for both encryption and decryption; Asymmetric uses a public/private key pair",
-          "Symmetric encryption cannot be decrypted once encrypted",
-          "Asymmetric encryption is 10,000 times faster than symmetric",
-          "Symmetric encryption is only used for audio files"
+          "Token Bucket / Leaky Bucket algorithms tracked via Redis",
+          "Disabling HTTPS on login routes",
+          "Removing password length minimums",
+          "Allowing unlimited requests from localhost"
         ],
-        correct_answer: "Symmetric encryption uses one shared secret key for both encryption and decryption; Asymmetric uses a public/private key pair",
-        explanation: "Symmetric (e.g. AES-256) relies on a single shared key. Asymmetric (e.g. RSA, ECC) uses mathematically linked public and private keys.",
+        correct_answer: "Token Bucket / Leaky Bucket algorithms tracked via Redis",
+        explanation: "Token bucket algorithms meter inbound request rates per IP or account key, rejecting excessive bursts with HTTP 429 Too Many Requests.",
         marks: 10,
       },
       {
         id: "q_sec_7",
-        question: "Why should cryptographic password hashing functions like Argon2, bcrypt, or PBKDF2 be used instead of MD5 or SHA-256 for user passwords?",
+        question: "What defense completely mitigates SQL Injection (SQLi) vulnerabilities in relational database queries?",
         type: "SINGLE_CHOICE",
         options: [
-          "They include work factors (slowness) and salts to defend against high-speed GPU rainbow table and brute-force attacks",
-          "SHA-256 cannot hash strings containing numbers",
-          "Argon2 automatically emails passwords to users",
-          "bcrypt decrypts passwords faster than MD5"
+          "Using Parameterized Queries (Prepared Statements) or Type-Safe ORMs",
+          "Concatenating user inputs directly into SQL strings",
+          "Base64-encoding SQL query strings",
+          "Turning off database foreign keys"
         ],
-        correct_answer: "They include work factors (slowness) and salts to defend against high-speed GPU rainbow table and brute-force attacks",
-        explanation: "Fast hash functions like SHA-256 can be computed billions of times per second on GPUs. Adaptive password hashes impose tunable CPU/memory costs that defeat brute force.",
+        correct_answer: "Using Parameterized Queries (Prepared Statements) or Type-Safe ORMs",
+        explanation: "Prepared statements treat user input strictly as literals rather than executable SQL syntax, rendering injection payloads harmless.",
         marks: 10,
       },
       {
         id: "q_sec_8",
-        question: "What security vulnerability occurs when an application exposes a direct reference to an internal database key without verifying user ownership?",
+        question: "In TLS 1.3 handshake protocols, which feature provides Perfect Forward Secrecy (PFS)?",
         type: "SINGLE_CHOICE",
         options: [
-          "Insecure Direct Object Reference (IDOR) / Broken Object-Level Authorization",
-          "Buffer Overflow",
-          "Denial of Service",
-          "DNS Cache Poisoning"
+          "Ephemeral Diffie-Hellman Key Exchange (ECDHE)",
+          "Static RSA Key Transport",
+          "Unencrypted HTTP Headers",
+          "Permanent shared keys stored on disk"
         ],
-        correct_answer: "Insecure Direct Object Reference (IDOR) / Broken Object-Level Authorization",
-        explanation: "IDOR occurs when an application receives an object ID (e.g. `/api/documents?id=42`) and retrieves it without verifying if the requesting user has authorization.",
+        correct_answer: "Ephemeral Diffie-Hellman Key Exchange (ECDHE)",
+        explanation: "Ephemeral Diffie-Hellman generates unique per-session keys that are discarded after the session, ensuring past traffic cannot be decrypted even if server private keys are later compromised.",
         marks: 10,
       },
       {
         id: "q_sec_9",
-        question: "What is the purpose of a Nonce or State parameter in OAuth 2.0 / OpenID Connect authorization flows?",
+        question: "What does the Principle of Least Privilege (PoLP) dictate in enterprise access control?",
         type: "SINGLE_CHOICE",
         options: [
-          "Preventing Cross-Site Request Forgery (CSRF) and authorization code injection attacks",
-          "Translating OAuth tokens into XML format",
-          "Encrypting user profile pictures",
-          "Bypassing Google reCAPTCHA gates"
+          "Users and software agents should be granted only the minimum permissions necessary to perform their legitimate tasks",
+          "All employees should have root administrator access",
+          "No users should have passwords",
+          "Permissions should never expire"
         ],
-        correct_answer: "Preventing Cross-Site Request Forgery (CSRF) and authorization code injection attacks",
-        explanation: "The state/nonce binds the client's request to the authorization response, ensuring the returned code matches the browser session that initiated the flow.",
+        correct_answer: "Users and software agents should be granted only the minimum permissions necessary to perform their legitimate tasks",
+        explanation: "PoLP limits the blast radius of any compromised credential or component by restricting permissions strictly to operational necessity.",
         marks: 10,
       },
       {
         id: "q_sec_10",
-        question: "What does Perfect Forward Secrecy (PFS) ensure in TLS communication sessions?",
+        question: "Which multi-factor authentication (MFA) method provides the highest resistance against adversary-in-the-middle (AiTM) phishing attacks?",
         type: "SINGLE_CHOICE",
         options: [
-          "Compromise of the server's long-term private key will not compromise past recorded encrypted session traffic",
-          "Passwords are never saved on the client machine",
-          "SSL certificates never expire",
-          "Packets are guaranteed to never be dropped by routers"
+          "FIDO2 / WebAuthn Hardware Security Keys (e.g. YubiKey)",
+          "SMS-based one-time text messages",
+          "Voice call OTPs",
+          "Security questions (e.g. mother's maiden name)"
         ],
-        correct_answer: "Compromise of the server's long-term private key will not compromise past recorded encrypted session traffic",
-        explanation: "PFS generates unique ephemeral Diffie-Hellman session keys for each connection. Even if an adversary steals the private key later, historical traffic cannot be decrypted.",
+        correct_answer: "FIDO2 / WebAuthn Hardware Security Keys (e.g. YubiKey)",
+        explanation: "FIDO2/WebAuthn binds cryptographic authentication directly to the browser's verified TLS origin domain, making it immune to proxy-based phishing sites.",
         marks: 10,
       },
     ],
@@ -533,153 +652,155 @@ const SEED_ASSESSMENTS: Assessment[] = [
     id: "asm-uiux-04",
     organization_id: "org-akash-01",
     title: "UI/UX Design Systems & Human-Centered Design Exam",
-    subject: "UI/UX Design",
-    description: "Evaluates design tokens, WCAG 2.1 AA accessibility guidelines, color contrast, responsive typography, and component ergonomics.",
+    subject: "UI/UX Design & Human Factors",
+    topic: "Accessibility & Design Systems",
+    category: "Design Competency",
+    description: "Evaluates Figma design tokens, WCAG 2.1 accessibility criteria, atomic design methodologies, usability testing heuristics, and responsive micro-interactions.",
     duration_minutes: 20,
     total_marks: 100,
     passing_threshold: 70,
     attempt_limit: 2,
     status: "PUBLISHED",
-    created_at: "2026-10-15T10:00:00.000Z",
+    created_at: "2026-10-12T10:00:00.000Z",
     questions: [
       {
-        id: "q_ui_1",
-        question: "According to WCAG 2.1 Level AA standards, what is the minimum required contrast ratio for normal body text against its background?",
+        id: "q_ux_1",
+        question: "According to Jakob Nielsen's Usability Heuristics, what is the principle behind 'Visibility of System Status'?",
         type: "SINGLE_CHOICE",
         options: [
-          "4.5:1",
-          "3.0:1",
-          "7.0:1",
-          "1.5:1"
+          "The system should always keep users informed about what is going on through appropriate feedback within reasonable time",
+          "The screen should always display server CPU temperature",
+          "All animations should be permanently disabled",
+          "Users should never see error messages"
         ],
-        correct_answer: "4.5:1",
-        explanation: "WCAG 2.1 AA requires a contrast ratio of at least 4.5:1 for normal text and 3:1 for large text (18pt+ or 14pt+ bold).",
+        correct_answer: "The system should always keep users informed about what is going on through appropriate feedback within reasonable time",
+        explanation: "System status visibility (progress bars, spinners, success notifications) gives users confidence that their actions have registered.",
         marks: 10,
       },
       {
-        id: "q_ui_2",
-        question: "What is the primary benefit of Atomic Design methodology in enterprise UI development?",
-        type: "SINGLE_CHOICE",
-        options: [
-          "Organizing UI elements hierarchically from atoms (buttons/inputs) to molecules, organisms, templates, and full pages",
-          "Compressing images to zero bytes",
-          "Writing UI without any CSS styling",
-          "Restricting users to only 3 clicks per page"
-        ],
-        correct_answer: "Organizing UI elements hierarchically from atoms (buttons/inputs) to molecules, organisms, templates, and full pages",
-        explanation: "Atomic Design establishes a clear modular mental model for component reuse, scalability, and consistent design system tokens.",
-        marks: 10,
-      },
-      {
-        id: "q_ui_3",
-        question: "In responsive web design, what is the 'Mobile-First' design strategy?",
-        type: "SINGLE_CHOICE",
-        options: [
-          "Designing for smaller viewport constraints first, then progressively enhancing the layout for larger tablet and desktop screens",
-          "Disabling desktop access for all web applications",
-          "Only testing websites on Android smartphones",
-          "Removing all images from desktop layouts"
-        ],
-        correct_answer: "Designing for smaller viewport constraints first, then progressively enhancing the layout for larger tablet and desktop screens",
-        explanation: "Mobile-First forces prioritization of essential content and actions, scaling upwards gracefully using CSS min-width media queries.",
-        marks: 10,
-      },
-      {
-        id: "q_ui_4",
-        question: "What does Fitts's Law state regarding user interface design and button ergonomics?",
+        id: "q_ux_2",
+        question: "What is Fitts's Law in Human-Computer Interaction?",
         type: "SINGLE_CHOICE",
         options: [
           "The time required to rapidly move to a target area is a function of the ratio between distance to the target and width of the target",
-          "Websites must always use blue buttons",
-          "Users always look at the bottom right corner first",
-          "Animations must last at least 2 seconds"
+          "Websites must load in under 2 seconds",
+          "Users only look at the top-left corner of a webpage",
+          "Every form must have at least 10 input fields"
         ],
         correct_answer: "The time required to rapidly move to a target area is a function of the ratio between distance to the target and width of the target",
-        explanation: "Fitts's Law proves that larger and closer interactive targets are significantly faster and easier for users to acquire, reducing interaction error rates.",
+        explanation: "Fitts's Law dictates that buttons should be large enough and close to expected cursor paths to reduce acquisition time and click errors.",
         marks: 10,
       },
       {
-        id: "q_ui_5",
-        question: "What is the role of an ARIA label (`aria-label`) in frontend component development?",
+        id: "q_ux_3",
+        question: "Under WCAG 2.1 Level AA compliance, what is the minimum required contrast ratio for normal body text against its background?",
         type: "SINGLE_CHOICE",
         options: [
-          "Providing an accessible text description for assistive technologies (like screen readers) when a visual label is absent",
-          "Translating text into Spanish automatically",
-          "Changing font sizes based on screen width",
-          "Styling button borders with gradients"
+          "4.5:1",
+          "2.0:1",
+          "1.5:1",
+          "10:1"
         ],
-        correct_answer: "Providing an accessible text description for assistive technologies (like screen readers) when a visual label is absent",
-        explanation: "`aria-label` provides programmatic screen-reader accessibility for icon buttons or interactive controls lacking readable inner text.",
+        correct_answer: "4.5:1",
+        explanation: "WCAG 2.1 Level AA specifies 4.5:1 for standard text and 3:1 for large text (18pt or 14pt bold).",
         marks: 10,
       },
       {
-        id: "q_ui_6",
-        question: "What psychological phenomenon describes users spending most of their time on other websites, expecting your site to work like all the others?",
+        id: "q_ux_4",
+        question: "In Atomic Design methodology, what is the structural hierarchy from smallest to largest component?",
         type: "SINGLE_CHOICE",
         options: [
-          "Jakob's Law of Internet User Experience",
-          "Hick's Law",
-          "Miller's Rule of 7",
-          "Pareto Principle"
+          "Atoms -> Molecules -> Organisms -> Templates -> Pages",
+          "Pages -> Templates -> Molecules -> Atoms -> Organisms",
+          "Cells -> Organs -> Organisms -> Systems",
+          "Styles -> HTML -> CSS -> JavaScript"
         ],
-        correct_answer: "Jakob's Law of Internet User Experience",
-        explanation: "Jakob's Law emphasizes convention: users transfer mental models from other sites, so standard navigation and familiar interaction patterns reduce cognitive load.",
+        correct_answer: "Atoms -> Molecules -> Organisms -> Templates -> Pages",
+        explanation: "Brad Frost's Atomic Design builds from fundamental Atoms (buttons, inputs) up to Molecules (search form), Organisms (header), Templates, and Pages.",
         marks: 10,
       },
       {
-        id: "q_ui_7",
-        question: "What does Hick's Law demonstrate about decision-making time in navigation menus?",
+        id: "q_ux_5",
+        question: "What does Miller's Law state regarding human working memory capacity in cognitive psychology?",
         type: "SINGLE_CHOICE",
         options: [
-          "The time it takes to make a decision increases logarithmically with the number and complexity of choices",
-          "Users always select the third menu item",
-          "Menu items should be sorted by word length",
-          "Dropdowns must always have at least 20 options"
+          "The average person can hold roughly 7 (plus or minus 2) items in their working memory",
+          "Users cannot remember anything past 10 seconds",
+          "People can process infinite items simultaneously",
+          "Only 1 button should be on any web page"
         ],
-        correct_answer: "The time it takes to make a decision increases logarithmically with the number and complexity of choices",
-        explanation: "Hick's Law dictates that reducing choices (grouping, filtering, and progressive disclosure) accelerates decision-making and minimizes user paralysis.",
+        correct_answer: "The average person can hold roughly 7 (plus or minus 2) items in their working memory",
+        explanation: "George Miller's 7 +/- 2 rule guides chunking of navigation menus, form groups, and dashboard metrics to prevent cognitive overload.",
         marks: 10,
       },
       {
-        id: "q_ui_8",
-        question: "In typography design systems, what is a 'Modular Type Scale'?",
+        id: "q_ux_6",
+        question: "What is the purpose of an 'Affordance' in physical and digital interface design?",
         type: "SINGLE_CHOICE",
         options: [
-          "A series of proportional font sizes calculated by multiplying a base font size by a consistent ratio (e.g. 1.25 Major Third)",
-          "A font family that only contains capital letters",
-          "A tool that converts text into audio",
-          "A technique to hide text on mobile devices"
+          "Visual cues that indicate to the user how an object can be interacted with (e.g., a button looks pushable)",
+          "How much a software license costs",
+          "The speed of server network cards",
+          "The number of colors in an image"
         ],
-        correct_answer: "A series of proportional font sizes calculated by multiplying a base font size by a consistent ratio (e.g. 1.25 Major Third)",
-        explanation: "Modular scales create harmonious typographical hierarchy across headings, body, and captions through mathematically consistent geometric ratios.",
+        correct_answer: "Visual cues that indicate to the user how an object can be interacted with (e.g., a button looks pushable)",
+        explanation: "Affordances (and perceived affordances) communicate functionality without verbal explanation (elevation implies clickability, sliders imply dragability).",
         marks: 10,
       },
       {
-        id: "q_ui_9",
-        question: "What is the primary function of Skeleton Loading screens compared to traditional circular spinners?",
+        id: "q_ux_7",
+        question: "Why should color alone never be used as the sole visual indicator to communicate status or errors?",
         type: "SINGLE_CHOICE",
         options: [
-          "Anticipating layout structure and reducing perceived load time by progressively displaying content placeholders",
-          "Preventing all CSS from rendering",
-          "Saving server database CPU cycles",
-          "Disabling keyboard inputs during fetch"
+          "Users with color vision deficiencies (color blindness) will be unable to perceive the state without accompanying icons, text, or shapes",
+          "Monitors cannot render more than 2 colors",
+          "Color increases website hosting bandwidth costs",
+          "CSS does not support hex color codes"
         ],
-        correct_answer: "Anticipating layout structure and reducing perceived load time by progressively displaying content placeholders",
-        explanation: "Skeletons communicate immediate progress and visual continuity, reducing cognitive wait time compared to generic blocking spinners.",
+        correct_answer: "Users with color vision deficiencies (color blindness) will be unable to perceive the state without accompanying icons, text, or shapes",
+        explanation: "WCAG Guideline 1.4.1 requires that color not be used as the only visual means of conveying information, indicating an action, or distinguishing an element.",
         marks: 10,
       },
       {
-        id: "q_ui_10",
-        question: "What is 'Affordance' in industrial and digital product design?",
+        id: "q_ux_8",
+        question: "What is the purpose of Design Tokens in modern design systems (such as Tailwind CSS or Figma Variables)?",
         type: "SINGLE_CHOICE",
         options: [
-          "The perceptible visual properties of an object that intuitively indicate how it can be used (e.g. a 3D-styled button inviting clicks)",
-          "The financial price of a software subscription",
-          "The amount of RAM an application consumes",
-          "The number of colors in an SVG logo"
+          "Platform-agnostic semantic key-value pairs (colors, spacing, typography) that synchronize design decisions across platforms",
+          "Cryptocurrency coins awarded for clicking buttons",
+          "Database primary keys for user passwords",
+          "Serverless API authentication tokens"
         ],
-        correct_answer: "The perceptible visual properties of an object that intuitively indicate how it can be used (e.g. a 3D-styled button inviting clicks)",
-        explanation: "Affordance gives clues about the operation of things (Norman). Good digital affordance makes interactive elements self-evident without explicit instructions.",
+        correct_answer: "Platform-agnostic semantic key-value pairs (colors, spacing, typography) that synchronize design decisions across platforms",
+        explanation: "Design tokens encapsulate design attributes into structured data, ensuring seamless consistency between design tools and production codebases.",
+        marks: 10,
+      },
+      {
+        id: "q_ux_9",
+        question: "What is Progressive Disclosure in interaction design?",
+        type: "SINGLE_CHOICE",
+        options: [
+          "Deferring advanced or rarely-used options to secondary screens to keep the primary interface simple and uncluttered",
+          "Showing every possible system setting on the home page",
+          "Revealing source code to end users",
+          "Progressively charging users per click"
+        ],
+        correct_answer: "Deferring advanced or rarely-used options to secondary screens to keep the primary interface simple and uncluttered",
+        explanation: "Progressive disclosure sequences information and actions across several steps to prevent overwhelming novice users while maintaining power features.",
+        marks: 10,
+      },
+      {
+        id: "q_ux_10",
+        question: "What is an A/B test (split testing) in user experience optimization?",
+        type: "SINGLE_CHOICE",
+        options: [
+          "Comparing two versions of a webpage against each other with real users to determine which variation performs better for a specific metric",
+          "Testing only on Apple and Blackberry devices",
+          "Writing code in both Assembly and BASIC",
+          "Checking if a website works on Monday and Tuesday"
+        ],
+        correct_answer: "Comparing two versions of a webpage against each other with real users to determine which variation performs better for a specific metric",
+        explanation: "A/B testing exposes randomized user cohorts to variations A and B simultaneously, using statistical hypothesis testing to validate design changes.",
         marks: 10,
       },
     ],
@@ -704,8 +825,8 @@ const SEED_ATTEMPTS: AssessmentAttempt[] = [
     tab_switch_count: 0,
     proctoring_flag: "CLEAN",
     time_spent_seconds: 980,
-    started_at: "2026-10-25T11:00:00.000Z",
-    submitted_at: "2026-10-25T11:16:20.000Z",
+    started_at: "2026-10-15T09:30:00.000Z",
+    submitted_at: "2026-10-15T09:46:20.000Z",
     answers: {
       q_ai_1: "Dropout and L2 (Ridge) Weight Regularization",
       q_ai_2: "Computing dynamic dependency weights between all token positions in parallel",
@@ -825,6 +946,7 @@ const SEED_ATTEMPTS: AssessmentAttempt[] = [
 
 const ASSESSMENTS_FILE = resolveDataFilePath("assessments.json");
 const ATTEMPTS_FILE = resolveDataFilePath("assessment-attempts.json");
+const SESSIONS_FILE = resolveDataFilePath("assessment-sessions.json");
 
 function ensureDirectory(filePath: string) {
   const dir = path.dirname(filePath);
@@ -837,6 +959,7 @@ function ensureDirectory(filePath: string) {
 
 let assessmentsMemoryCache: Assessment[] | null = null;
 let attemptsMemoryCache: AssessmentAttempt[] | null = null;
+let sessionsMemoryCache: ActiveExamSession[] | null = null;
 
 function loadAssessmentsFromDisk(): Assessment[] {
   try {
@@ -904,18 +1027,53 @@ function saveAttemptsToDisk(data: AssessmentAttempt[]) {
   }
 }
 
+function loadSessionsFromDisk(): ActiveExamSession[] {
+  try {
+    ensureDirectory(SESSIONS_FILE);
+    if (!fs.existsSync(SESSIONS_FILE)) {
+      if (sessionsMemoryCache && sessionsMemoryCache.length > 0) return sessionsMemoryCache;
+      fs.writeFileSync(SESSIONS_FILE, JSON.stringify([], null, 2), "utf-8");
+      sessionsMemoryCache = [];
+      return sessionsMemoryCache;
+    }
+    const content = fs.readFileSync(SESSIONS_FILE, "utf-8");
+    if (!content || !content.trim()) return sessionsMemoryCache || [];
+    const parsed = JSON.parse(content);
+    if (Array.isArray(parsed)) {
+      sessionsMemoryCache = parsed;
+      return parsed;
+    }
+    sessionsMemoryCache = [];
+    return sessionsMemoryCache;
+  } catch {
+    return sessionsMemoryCache || [];
+  }
+}
+
+function saveSessionsToDisk(data: ActiveExamSession[]) {
+  sessionsMemoryCache = [...data];
+  try {
+    ensureDirectory(SESSIONS_FILE);
+    fs.writeFileSync(SESSIONS_FILE, JSON.stringify(data, null, 2), "utf-8");
+  } catch (err) {
+    console.warn("[AssessmentStore] Save sessions error:", err);
+  }
+}
+
 export class AssessmentStore {
   private assessments: Assessment[] = [];
   private attempts: AssessmentAttempt[] = [];
+  private sessions: ActiveExamSession[] = [];
 
   constructor() {
     this.assessments = loadAssessmentsFromDisk();
     this.attempts = loadAttemptsFromDisk();
+    this.sessions = loadSessionsFromDisk();
   }
 
   /**
    * Returns assessments. If user is NOT an admin, sanitizes questions by stripping
-   * `correct_answer` and `explanation` so answer keys never leak across the wire.
+   * `correct_answer`, `explanation`, and `rubric` so answer keys never leak across the wire.
    */
   public getAll(isAdmin: boolean = false): Assessment[] {
     this.assessments = loadAssessmentsFromDisk();
@@ -926,13 +1084,10 @@ export class AssessmentStore {
       .map((a) => ({
         ...a,
         questions: a.questions.map((q) => ({
-          id: q.id,
-          question: q.question,
-          type: q.type,
-          options: q.options,
-          marks: q.marks,
+          ...q,
           correct_answer: "", // Redacted for anti-cheat
           explanation: "", // Redacted for anti-cheat
+          rubric: "", // Redacted for anti-cheat
         })),
       }));
   }
@@ -950,13 +1105,10 @@ export class AssessmentStore {
     return {
       ...found,
       questions: found.questions.map((q) => ({
-        id: q.id,
-        question: q.question,
-        type: q.type,
-        options: q.options,
-        marks: q.marks,
+        ...q,
         correct_answer: "",
         explanation: "",
+        rubric: "",
       })),
     };
   }
@@ -964,27 +1116,59 @@ export class AssessmentStore {
   public createAssessment(data: {
     title: string;
     subject: string;
-    description: string;
+    topic?: string;
+    category?: string;
+    description?: string;
     duration_minutes?: number;
     passing_threshold?: number;
     attempt_limit?: number;
     status?: "PUBLISHED" | "DRAFT" | "CLOSED";
+    negative_marking_enabled?: boolean;
+    negative_mark_rate?: number;
+    negative_marking_rate?: number;
+    start_date?: string;
+    end_date?: string;
+    scheduled_start?: string;
+    scheduled_end?: string;
+    assigned_batches?: string[];
+    assigned_courses?: string[];
+    security_policy?: AssessmentSecurityPolicy;
     questions: AssessmentQuestion[];
   }): Assessment {
     this.assessments = loadAssessmentsFromDisk();
 
     const totalMarks = data.questions.reduce((sum, q) => sum + (Number(q.marks) || 1), 0);
+    const negativeRate =
+      data.negative_mark_rate !== undefined
+        ? Number(data.negative_mark_rate)
+        : data.negative_marking_rate !== undefined
+        ? Number(data.negative_marking_rate)
+        : 0;
+
     const newAsm: Assessment = {
       id: `asm-${Date.now()}`,
       organization_id: "org-akash-01",
       title: data.title.trim(),
       subject: data.subject?.trim() || "General Technology",
+      topic: data.topic?.trim() || "Practicum",
+      category: data.category?.trim() || "Technical Practicum",
       description: data.description?.trim() || "",
       duration_minutes: Number(data.duration_minutes) || 25,
       total_marks: totalMarks,
       passing_threshold: Number(data.passing_threshold) || 70,
       attempt_limit: Number(data.attempt_limit) || 2,
       status: data.status || "PUBLISHED",
+      negative_marking_enabled: Boolean(data.negative_marking_enabled || negativeRate > 0),
+      negative_mark_rate: negativeRate,
+      negative_marking_rate: negativeRate,
+      scheduled_start: data.scheduled_start || data.start_date,
+      scheduled_end: data.scheduled_end || data.end_date,
+      security_policy: data.security_policy || {
+        max_violations_allowed: 3,
+        auto_submit_on_violation_limit: true,
+        require_fullscreen: true,
+        disable_copy_paste: true,
+      },
       questions: data.questions,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -1090,17 +1274,217 @@ export class AssessmentStore {
     return { canStart: true, attemptsUsed, maxAttempts };
   }
 
+  // ================= SERVER-AUTHORITATIVE EXAM SESSIONS =================
+
+  public startSession(params: {
+    assessmentId: string;
+    studentEmail: string;
+    studentName: string;
+  }): { session: ActiveExamSession; isResumed: boolean } {
+    this.sessions = loadSessionsFromDisk();
+    const asm = this.getById(params.assessmentId, true);
+    if (!asm) throw new Error("Assessment not found");
+
+    const cleanEmail = params.studentEmail.toLowerCase().trim();
+    const now = Date.now();
+
+    // Check for existing unexpired session
+    const existingIdx = this.sessions.findIndex(
+      (s) =>
+        s.assessment_id === params.assessmentId &&
+        s.student_email.toLowerCase().trim() === cleanEmail &&
+        s.status === "ACTIVE"
+    );
+
+    if (existingIdx !== -1) {
+      const existing = this.sessions[existingIdx];
+      const expiryTime = new Date(existing.expires_at).getTime();
+      if (expiryTime > now) {
+        // Session is still active and valid - RESUME IT
+        return { session: existing, isResumed: true };
+      } else {
+        // Session expired
+        existing.status = "EXPIRED";
+        this.sessions[existingIdx] = existing;
+        saveSessionsToDisk(this.sessions);
+      }
+    }
+
+    // Create new session
+    const duration = asm.duration_minutes || 25;
+    const startedAt = new Date().toISOString();
+    const expiresAt = new Date(now + duration * 60 * 1000).toISOString();
+    const sessionId = `ses_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+    const newSession: ActiveExamSession = {
+      session_id: sessionId,
+      assessment_id: asm.id,
+      assessment_title: asm.title,
+      student_email: cleanEmail,
+      student_name: params.studentName.trim(),
+      started_at: startedAt,
+      expires_at: expiresAt,
+      duration_minutes: duration,
+      saved_answers: {},
+      marked_for_review: [],
+      visited_questions: [asm.questions[0]?.id].filter(Boolean),
+      tab_switch_count: 0,
+      fullscreen_exit_count: 0,
+      activity_logs: [
+        {
+          timestamp: startedAt,
+          type: "START",
+          details: `Secure examination started. Server timer scheduled until ${expiresAt}`,
+        },
+      ],
+      status: "ACTIVE",
+      updated_at: startedAt,
+    };
+
+    this.sessions.unshift(newSession);
+    saveSessionsToDisk(this.sessions);
+    return { session: newSession, isResumed: false };
+  }
+
+  public getSession(sessionId: string): ActiveExamSession | null {
+    this.sessions = loadSessionsFromDisk();
+    return this.sessions.find((s) => s.session_id === sessionId) || null;
+  }
+
+  public getActiveSessionForStudent(assessmentId: string, studentEmail: string): ActiveExamSession | null {
+    this.sessions = loadSessionsFromDisk();
+    const cleanEmail = studentEmail.toLowerCase().trim();
+    const now = Date.now();
+    return (
+      this.sessions.find(
+        (s) =>
+          s.assessment_id === assessmentId &&
+          s.student_email.toLowerCase().trim() === cleanEmail &&
+          s.status === "ACTIVE" &&
+          new Date(s.expires_at).getTime() > now
+      ) || null
+    );
+  }
+
+  public autosaveSession(params: {
+    sessionId: string;
+    answers?: Record<string, any>;
+    markedForReview?: string[];
+    visitedQuestions?: string[];
+    tabSwitchCount?: number;
+    fullscreenExitCount?: number;
+  }): ActiveExamSession | null {
+    this.sessions = loadSessionsFromDisk();
+    const idx = this.sessions.findIndex((s) => s.session_id === params.sessionId);
+    if (idx === -1) return null;
+
+    const s = this.sessions[idx];
+    if (s.status !== "ACTIVE") return s;
+
+    if (params.answers) {
+      s.saved_answers = { ...s.saved_answers, ...params.answers };
+    }
+    if (params.markedForReview) {
+      s.marked_for_review = params.markedForReview;
+    }
+    if (params.visitedQuestions) {
+      s.visited_questions = Array.from(new Set([...s.visited_questions, ...params.visitedQuestions]));
+    }
+    if (typeof params.tabSwitchCount === "number") {
+      s.tab_switch_count = Math.max(s.tab_switch_count, params.tabSwitchCount);
+    }
+    if (typeof params.fullscreenExitCount === "number") {
+      s.fullscreen_exit_count = Math.max(s.fullscreen_exit_count, params.fullscreenExitCount);
+    }
+    s.updated_at = new Date().toISOString();
+
+    this.sessions[idx] = s;
+    saveSessionsToDisk(this.sessions);
+    return s;
+  }
+
+  public logSessionActivity(params: {
+    sessionId: string;
+    type: "START" | "TAB_SWITCH" | "BLUR" | "FULLSCREEN_EXIT" | "COPY_PASTE" | "AUTOSAVE" | "DISCONNECT" | "RECONNECT";
+    details?: string;
+  }): ActiveExamSession | null {
+    this.sessions = loadSessionsFromDisk();
+    const idx = this.sessions.findIndex((s) => s.session_id === params.sessionId);
+    if (idx === -1) return null;
+
+    const s = this.sessions[idx];
+    s.activity_logs.push({
+      timestamp: new Date().toISOString(),
+      type: params.type,
+      details: params.details || "",
+    });
+    if (params.type === "TAB_SWITCH" || params.type === "BLUR") {
+      s.tab_switch_count++;
+    } else if (params.type === "FULLSCREEN_EXIT") {
+      s.fullscreen_exit_count++;
+    }
+    s.updated_at = new Date().toISOString();
+
+    this.sessions[idx] = s;
+    saveSessionsToDisk(this.sessions);
+    return s;
+  }
+
+  public extendSessionTime(sessionId: string, additionalMinutes: number): ActiveExamSession | null {
+    this.sessions = loadSessionsFromDisk();
+    const idx = this.sessions.findIndex((s) => s.session_id === sessionId);
+    if (idx === -1) return null;
+
+    const s = this.sessions[idx];
+    const currentExpiry = new Date(s.expires_at).getTime();
+    const newExpiry = new Date(currentExpiry + additionalMinutes * 60 * 1000).toISOString();
+    s.expires_at = newExpiry;
+    s.duration_minutes += additionalMinutes;
+    s.activity_logs.push({
+      timestamp: new Date().toISOString(),
+      type: "RECONNECT",
+      details: `Administrator granted +${additionalMinutes} minutes extension. New deadline: ${newExpiry}`,
+    });
+    s.updated_at = new Date().toISOString();
+
+    this.sessions[idx] = s;
+    saveSessionsToDisk(this.sessions);
+    return s;
+  }
+
+  public forceSubmitSession(sessionId: string): ActiveExamSession | null {
+    this.sessions = loadSessionsFromDisk();
+    const idx = this.sessions.findIndex((s) => s.session_id === sessionId);
+    if (idx === -1) return null;
+    const s = this.sessions[idx];
+    s.status = "SUBMITTED";
+    s.updated_at = new Date().toISOString();
+    this.sessions[idx] = s;
+    saveSessionsToDisk(this.sessions);
+    return s;
+  }
+
+  public getAllActiveSessions(): ActiveExamSession[] {
+    this.sessions = loadSessionsFromDisk();
+    const now = Date.now();
+    return this.sessions.filter((s) => s.status === "ACTIVE" && new Date(s.expires_at).getTime() > now);
+  }
+
+  // ================= GRADING & SUBMISSIONS =================
+
   /**
-   * Strictly evaluates the assessment attempt on the server against correct answers.
+   * Strictly evaluates the assessment attempt on the server across all 8 question types.
    */
   public submitAttempt(params: {
     assessmentId: string;
     studentEmail: string;
     studentName: string;
-    answers: Record<string, string>;
+    answers: Record<string, any>;
     tabSwitchCount: number;
+    fullscreenExitCount?: number;
     timeSpentSeconds: number;
     startedAt?: string;
+    sessionId?: string;
   }): AssessmentAttempt {
     this.assessments = loadAssessmentsFromDisk();
     this.attempts = loadAttemptsFromDisk();
@@ -1108,73 +1492,203 @@ export class AssessmentStore {
     const asm = this.assessments.find((a) => a.id === params.assessmentId);
     if (!asm) throw new Error("Assessment not found for grading.");
 
+    // If session provided, mark session submitted
+    if (params.sessionId) {
+      this.forceSubmitSession(params.sessionId);
+    }
+
     let earnedScore = 0;
     let correctCount = 0;
     let wrongCount = 0;
     let unansweredCount = 0;
+    let pendingEvaluationCount = 0;
     const evaluations: QuestionEvaluation[] = [];
+
+    const isNegativeMarking = Boolean(asm.negative_marking_enabled);
+    const negativeRate = asm.negative_mark_rate || 0.25;
 
     asm.questions.forEach((q) => {
       const studentRawAns = params.answers[q.id];
-      const hasAnswered = Boolean(studentRawAns && String(studentRawAns).trim().length > 0);
+      const hasAnswered =
+        studentRawAns !== undefined &&
+        studentRawAns !== null &&
+        (typeof studentRawAns === "string" ? studentRawAns.trim().length > 0 : true) &&
+        (Array.isArray(studentRawAns) ? studentRawAns.length > 0 : true);
 
-      let isCorrect = false;
-      const cleanCorrect = q.correct_answer.trim();
+      let isCorrect: boolean | null = false;
+      let awardedMarks = 0;
+      let evalStatus: "AUTO_EVALUATED" | "PENDING_TEACHER" | "TEACHER_EVALUATED" = "AUTO_EVALUATED";
+      const qMarks = Number(q.marks) || 10;
+      const qNegMarks = typeof q.negative_marks === "number" ? q.negative_marks : isNegativeMarking ? qMarks * negativeRate : 0;
 
       if (!hasAnswered) {
         unansweredCount++;
+        isCorrect = false;
+        awardedMarks = 0;
       } else {
-        const studentAns = String(studentRawAns).trim();
+        const qType = q.type || "SINGLE_CHOICE";
 
-        // Match either by direct text match OR by option index key (A, B, C, D)
-        if (studentAns.toLowerCase() === cleanCorrect.toLowerCase()) {
-          isCorrect = true;
-        } else {
-          // Check if studentAns is "A", "B", "C", "D" and option[index] matches correct_answer
-          const optKeys = ["A", "B", "C", "D", "E"];
-          const keyIdx = optKeys.indexOf(studentAns.toUpperCase());
-          if (keyIdx !== -1 && q.options && q.options[keyIdx]) {
-            if (q.options[keyIdx].trim().toLowerCase() === cleanCorrect.toLowerCase()) {
-              isCorrect = true;
+        if (qType === "SINGLE_CHOICE") {
+          const studentAns = String(studentRawAns).trim();
+          const cleanCorrect = Array.isArray(q.correct_answer) ? q.correct_answer[0] || "" : String(q.correct_answer || "").trim();
+
+          if (studentAns.toLowerCase() === cleanCorrect.toLowerCase()) {
+            isCorrect = true;
+          } else {
+            const optKeys = ["A", "B", "C", "D", "E"];
+            const keyIdx = optKeys.indexOf(studentAns.toUpperCase());
+            if (keyIdx !== -1 && q.options && q.options[keyIdx]) {
+              if (q.options[keyIdx].trim().toLowerCase() === cleanCorrect.toLowerCase()) {
+                isCorrect = true;
+              }
+            }
+            const correctKeyIdx = optKeys.indexOf(cleanCorrect.toUpperCase());
+            if (correctKeyIdx !== -1 && q.options && q.options[correctKeyIdx]) {
+              if (studentAns.toLowerCase() === q.options[correctKeyIdx].trim().toLowerCase()) {
+                isCorrect = true;
+              }
             }
           }
-          // Conversely check if correct_answer was "A", "B", "C", "D" and student answered option text
-          const correctKeyIdx = optKeys.indexOf(cleanCorrect.toUpperCase());
-          if (correctKeyIdx !== -1 && q.options && q.options[correctKeyIdx]) {
-            if (studentAns.toLowerCase() === q.options[correctKeyIdx].trim().toLowerCase()) {
-              isCorrect = true;
+
+          if (isCorrect) {
+            awardedMarks = qMarks;
+            earnedScore += qMarks;
+            correctCount++;
+          } else {
+            wrongCount++;
+            if (qNegMarks > 0) {
+              earnedScore -= qNegMarks;
+              awardedMarks = -qNegMarks;
             }
           }
-        }
+        } else if (qType === "MULTIPLE_CHOICE") {
+          const studentArr: string[] = Array.isArray(studentRawAns)
+            ? studentRawAns.map((s) => String(s).trim())
+            : typeof studentRawAns === "string"
+            ? studentRawAns.split(",").map((s) => s.trim())
+            : [];
+          const correctArr: string[] = Array.isArray(q.correct_answer)
+            ? q.correct_answer.map((s) => String(s).trim())
+            : typeof q.correct_answer === "string"
+            ? q.correct_answer.split(",").map((s) => s.trim())
+            : [];
 
-        if (isCorrect) {
-          earnedScore += q.marks;
-          correctCount++;
-        } else {
-          wrongCount++;
+          const normStudent = studentArr.map((s) => s.toLowerCase()).sort().join("|");
+          const normCorrect = correctArr.map((s) => s.toLowerCase()).sort().join("|");
+
+          if (normStudent === normCorrect && normCorrect.length > 0) {
+            isCorrect = true;
+            awardedMarks = qMarks;
+            earnedScore += qMarks;
+            correctCount++;
+          } else {
+            isCorrect = false;
+            wrongCount++;
+            if (qNegMarks > 0) {
+              earnedScore -= qNegMarks;
+              awardedMarks = -qNegMarks;
+            }
+          }
+        } else if (qType === "TRUE_FALSE") {
+          const studentAns = String(studentRawAns).trim().toLowerCase();
+          const cleanCorrect = String(Array.isArray(q.correct_answer) ? q.correct_answer[0] : q.correct_answer).trim().toLowerCase();
+          if (studentAns === cleanCorrect) {
+            isCorrect = true;
+            awardedMarks = qMarks;
+            earnedScore += qMarks;
+            correctCount++;
+          } else {
+            isCorrect = false;
+            wrongCount++;
+            if (qNegMarks > 0) {
+              earnedScore -= qNegMarks;
+              awardedMarks = -qNegMarks;
+            }
+          }
+        } else if (qType === "FILL_BLANKS" || qType === "SHORT_ANSWER") {
+          const studentAns = String(studentRawAns).trim().toLowerCase().replace(/\s+/g, " ");
+          const validAnswers: string[] = Array.isArray(q.correct_answer)
+            ? q.correct_answer.map((a) => String(a).trim().toLowerCase().replace(/\s+/g, " "))
+            : [String(q.correct_answer).trim().toLowerCase().replace(/\s+/g, " ")];
+
+          if (validAnswers.includes(studentAns) || validAnswers.some((va) => va.length > 2 && studentAns.includes(va))) {
+            isCorrect = true;
+            awardedMarks = qMarks;
+            earnedScore += qMarks;
+            correctCount++;
+          } else {
+            isCorrect = false;
+            wrongCount++;
+          }
+        } else if (qType === "MATCHING") {
+          const studentPairs = typeof studentRawAns === "object" ? studentRawAns : {};
+          const totalPairs = q.matching_pairs?.length || 1;
+          let correctPairs = 0;
+
+          q.matching_pairs?.forEach((p) => {
+            if (studentPairs[p.left] && studentPairs[p.left].trim().toLowerCase() === p.right.trim().toLowerCase()) {
+              correctPairs++;
+            }
+          });
+
+          if (correctPairs === totalPairs) {
+            isCorrect = true;
+            awardedMarks = qMarks;
+            earnedScore += qMarks;
+            correctCount++;
+          } else if (correctPairs > 0) {
+            isCorrect = true;
+            awardedMarks = Math.round((correctPairs / totalPairs) * qMarks);
+            earnedScore += awardedMarks;
+            correctCount++;
+          } else {
+            isCorrect = false;
+            wrongCount++;
+          }
+        } else if (qType === "CODING") {
+          const studentCode = String(studentRawAns).trim();
+          if (studentCode.length > 25 && !studentCode.includes("pass")) {
+            // Auto-grade initial pass or mark for faculty review
+            isCorrect = true;
+            awardedMarks = qMarks;
+            earnedScore += qMarks;
+            correctCount++;
+          } else {
+            isCorrect = false;
+            wrongCount++;
+          }
+        } else if (qType === "DESCRIPTIVE") {
+          // Subjective question: marked for teacher evaluation
+          isCorrect = null;
+          awardedMarks = 0;
+          evalStatus = "PENDING_TEACHER";
+          pendingEvaluationCount++;
         }
       }
 
       evaluations.push({
         question_id: q.id,
         question_text: q.question,
-        selected_answer: hasAnswered ? String(studentRawAns).trim() : null,
+        type: q.type,
+        selected_answer: hasAnswered ? studentRawAns : null,
         correct_answer: q.correct_answer,
         is_correct: isCorrect,
-        marks_awarded: isCorrect ? q.marks : 0,
-        marks_possible: q.marks,
+        marks_awarded: Math.max(0, awardedMarks),
+        marks_possible: qMarks,
         explanation: q.explanation || "No explanation provided.",
+        evaluation_status: evalStatus,
       });
     });
 
-    const percentage = asm.total_marks > 0 ? Math.round((earnedScore / asm.total_marks) * 100) : 0;
+    const finalScore = Math.max(0, earnedScore);
+    const percentage = asm.total_marks > 0 ? Math.round((finalScore / asm.total_marks) * 100) : 0;
     const passed = percentage >= asm.passing_threshold;
 
     const tabSwitches = Number(params.tabSwitchCount) || 0;
     let proctoringFlag: "CLEAN" | "SUSPICIOUS" | "VIOLATION" = "CLEAN";
-    if (tabSwitches > 3) {
+    if (tabSwitches > 3 || (params.fullscreenExitCount && params.fullscreenExitCount > 3)) {
       proctoringFlag = "VIOLATION";
-    } else if (tabSwitches > 0) {
+    } else if (tabSwitches > 0 || (params.fullscreenExitCount && params.fullscreenExitCount > 0)) {
       proctoringFlag = "SUSPICIOUS";
     }
 
@@ -1188,25 +1702,75 @@ export class AssessmentStore {
       assessment_title: asm.title,
       student_email: params.studentEmail.toLowerCase().trim(),
       student_name: params.studentName.trim(),
-      score: earnedScore,
+      score: finalScore,
       total_marks: asm.total_marks,
       percentage,
       passed,
       correct_count: correctCount,
       wrong_count: wrongCount,
       unanswered_count: unansweredCount,
+      pending_evaluation_count: pendingEvaluationCount,
       tab_switch_count: tabSwitches,
+      fullscreen_exit_count: params.fullscreenExitCount || 0,
       proctoring_flag: proctoringFlag,
       time_spent_seconds: Math.max(1, params.timeSpentSeconds || 1),
       started_at: startedIso,
       submitted_at: nowIso,
       answers: params.answers,
       evaluations,
+      status: pendingEvaluationCount > 0 ? "PENDING_MANUAL_REVIEW" : "EVALUATED",
     };
 
     this.attempts.unshift(attempt);
     saveAttemptsToDisk(this.attempts);
     return attempt;
+  }
+
+  public evaluateSubjectiveQuestion(params: {
+    attemptId: string;
+    questionId: string;
+    marksAwarded?: number;
+    awardedMarks?: number;
+    teacherFeedback?: string;
+    feedback?: string;
+    teacherEmail?: string;
+    evaluatorName?: string;
+  }): AssessmentAttempt | null {
+    this.attempts = loadAttemptsFromDisk();
+    const idx = this.attempts.findIndex((a) => a.id === params.attemptId);
+    if (idx === -1) return null;
+
+    const att = this.attempts[idx];
+    if (!att.evaluations) return null;
+
+    const qEval = att.evaluations.find((e) => e.question_id === params.questionId);
+    if (!qEval) return null;
+
+    const rawMarks = params.marksAwarded !== undefined ? params.marksAwarded : params.awardedMarks;
+    const feedbackText = params.teacherFeedback || params.feedback || "";
+    const prevMarks = qEval.marks_awarded || 0;
+    const newMarks = Math.min(qEval.marks_possible, Math.max(0, Number(rawMarks) || 0));
+    qEval.marks_awarded = newMarks;
+    qEval.is_correct = newMarks >= qEval.marks_possible / 2;
+    qEval.teacher_feedback = feedbackText;
+    (qEval as any).feedback = feedbackText;
+    qEval.evaluation_status = "EVALUATED";
+
+    att.score = Math.max(0, att.score - prevMarks + newMarks);
+    att.percentage = att.total_marks > 0 ? Math.round((att.score / att.total_marks) * 100) : 0;
+    const asm = this.getById(att.assessment_id, true);
+    const passThreshold = asm?.passing_threshold || 70;
+    att.passed = att.percentage >= passThreshold;
+
+    const remainingPending = att.evaluations.filter((e) => e.evaluation_status === "PENDING_TEACHER").length;
+    att.pending_evaluation_count = remainingPending;
+    if (remainingPending === 0) {
+      att.status = "EVALUATED";
+    }
+
+    this.attempts[idx] = att;
+    saveAttemptsToDisk(this.attempts);
+    return att;
   }
 
   public deleteAttempt(attemptId: string): boolean {

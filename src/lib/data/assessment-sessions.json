@@ -1,0 +1,207 @@
+[
+  {
+    "session_id": "ses_1795163652493_2fzps",
+    "assessment_id": "asm-aiml-01",
+    "assessment_title": "AI & Machine Learning Engineering Practicum Exam",
+    "student_email": "session.test@akashtechnolabs.com",
+    "student_name": "Session Test Candidate",
+    "started_at": "2026-11-20T08:34:12.493Z",
+    "expires_at": "2026-11-20T09:09:12.493Z",
+    "duration_minutes": 35,
+    "saved_answers": {
+      "q_ai_1": "Dropout and L2 (Ridge) Weight Regularization"
+    },
+    "marked_for_review": [
+      "q_ai_1"
+    ],
+    "visited_questions": [
+      "q_ai_1",
+      "q_ai_2"
+    ],
+    "tab_switch_count": 1,
+    "fullscreen_exit_count": 0,
+    "activity_logs": [
+      {
+        "timestamp": "2026-11-20T08:34:12.493Z",
+        "type": "START",
+        "details": "Secure examination started. Server timer scheduled until 2026-11-20T08:59:12.493Z"
+      },
+      {
+        "timestamp": "2026-11-20T08:34:12.503Z",
+        "type": "TAB_SWITCH",
+        "details": "Navigated away from browser window"
+      },
+      {
+        "timestamp": "2026-11-20T08:34:12.505Z",
+        "type": "RECONNECT",
+        "details": "Administrator granted +10 minutes extension. New deadline: 2026-11-20T09:09:12.493Z"
+      }
+    ],
+    "status": "SUBMITTED",
+    "updated_at": "2026-11-20T08:34:12.507Z"
+  },
+  {
+    "session_id": "ses_1795163602274_zvp1c",
+    "assessment_id": "asm-aiml-01",
+    "assessment_title": "AI & Machine Learning Engineering Practicum Exam",
+    "student_email": "session.test@akashtechnolabs.com",
+    "student_name": "Session Test Candidate",
+    "started_at": "2026-11-20T08:33:22.274Z",
+    "expires_at": "2026-11-20T09:08:22.274Z",
+    "duration_minutes": 35,
+    "saved_answers": {
+      "q_ai_1": "Dropout and L2 (Ridge) Weight Regularization"
+    },
+    "marked_for_review": [
+      "q_ai_1"
+    ],
+    "visited_questions": [
+      "q_ai_1",
+      "q_ai_2"
+    ],
+    "tab_switch_count": 1,
+    "fullscreen_exit_count": 0,
+    "activity_logs": [
+      {
+        "timestamp": "2026-11-20T08:33:22.274Z",
+        "type": "START",
+        "details": "Secure examination started. Server timer scheduled until 2026-11-20T08:58:22.274Z"
+      },
+      {
+        "timestamp": "2026-11-20T08:33:22.284Z",
+        "type": "TAB_SWITCH",
+        "details": "Navigated away from browser window"
+      },
+      {
+        "timestamp": "2026-11-20T08:33:22.288Z",
+        "type": "RECONNECT",
+        "details": "Administrator granted +10 minutes extension. New deadline: 2026-11-20T09:08:22.274Z"
+      }
+    ],
+    "status": "SUBMITTED",
+    "updated_at": "2026-11-20T08:33:22.290Z"
+  },
+  {
+    "session_id": "ses_1795162980086_lr0no",
+    "assessment_id": "asm-aiml-01",
+    "assessment_title": "AI & Machine Learning Engineering Practicum Exam",
+    "student_email": "session.test@akashtechnolabs.com",
+    "student_name": "Session Test Candidate",
+    "started_at": "2026-11-20T08:23:00.086Z",
+    "expires_at": "2026-11-20T08:58:00.086Z",
+    "duration_minutes": 35,
+    "saved_answers": {
+      "q_ai_1": "Dropout and L2 (Ridge) Weight Regularization"
+    },
+    "marked_for_review": [
+      "q_ai_1"
+    ],
+    "visited_questions": [
+      "q_ai_1",
+      "q_ai_2"
+    ],
+    "tab_switch_count": 1,
+    "fullscreen_exit_count": 0,
+    "activity_logs": [
+      {
+        "timestamp": "2026-11-20T08:23:00.086Z",
+        "type": "START",
+        "details": "Secure examination started. Server timer scheduled until 2026-11-20T08:48:00.086Z"
+      },
+      {
+        "timestamp": "2026-11-20T08:23:00.096Z",
+        "type": "TAB_SWITCH",
+        "details": "Navigated away from browser window"
+      },
+      {
+        "timestamp": "2026-11-20T08:23:00.100Z",
+        "type": "RECONNECT",
+        "details": "Administrator granted +10 minutes extension. New deadline: 2026-11-20T08:58:00.086Z"
+      }
+    ],
+    "status": "SUBMITTED",
+    "updated_at": "2026-11-20T08:23:00.103Z"
+  },
+  {
+    "session_id": "ses_1795162966798_hswct",
+    "assessment_id": "asm-aiml-01",
+    "assessment_title": "AI & Machine Learning Engineering Practicum Exam",
+    "student_email": "session.test@akashtechnolabs.com",
+    "student_name": "Session Test Candidate",
+    "started_at": "2026-11-20T08:22:46.798Z",
+    "expires_at": "2026-11-20T08:57:46.798Z",
+    "duration_minutes": 35,
+    "saved_answers": {
+      "q_ai_1": "Dropout and L2 (Ridge) Weight Regularization"
+    },
+    "marked_for_review": [
+      "q_ai_1"
+    ],
+    "visited_questions": [
+      "q_ai_1",
+      "q_ai_2"
+    ],
+    "tab_switch_count": 1,
+    "fullscreen_exit_count": 0,
+    "activity_logs": [
+      {
+        "timestamp": "2026-11-20T08:22:46.798Z",
+        "type": "START",
+        "details": "Secure examination started. Server timer scheduled until 2026-11-20T08:47:46.798Z"
+      },
+      {
+        "timestamp": "2026-11-20T08:22:46.813Z",
+        "type": "TAB_SWITCH",
+        "details": "Navigated away from browser window"
+      },
+      {
+        "timestamp": "2026-11-20T08:22:46.817Z",
+        "type": "RECONNECT",
+        "details": "Administrator granted +10 minutes extension. New deadline: 2026-11-20T08:57:46.798Z"
+      }
+    ],
+    "status": "SUBMITTED",
+    "updated_at": "2026-11-20T08:22:46.822Z"
+  },
+  {
+    "session_id": "ses_1795162890124_guepx",
+    "assessment_id": "asm-aiml-01",
+    "assessment_title": "AI & Machine Learning Engineering Practicum Exam",
+    "student_email": "session.test@akashtechnolabs.com",
+    "student_name": "Session Test Candidate",
+    "started_at": "2026-11-20T08:21:30.124Z",
+    "expires_at": "2026-11-20T08:56:30.124Z",
+    "duration_minutes": 35,
+    "saved_answers": {
+      "q_ai_1": "Dropout and L2 (Ridge) Weight Regularization"
+    },
+    "marked_for_review": [
+      "q_ai_1"
+    ],
+    "visited_questions": [
+      "q_ai_1",
+      "q_ai_2"
+    ],
+    "tab_switch_count": 1,
+    "fullscreen_exit_count": 0,
+    "activity_logs": [
+      {
+        "timestamp": "2026-11-20T08:21:30.124Z",
+        "type": "START",
+        "details": "Secure examination started. Server timer scheduled until 2026-11-20T08:46:30.124Z"
+      },
+      {
+        "timestamp": "2026-11-20T08:21:30.139Z",
+        "type": "TAB_SWITCH",
+        "details": "Navigated away from browser window"
+      },
+      {
+        "timestamp": "2026-11-20T08:21:30.142Z",
+        "type": "RECONNECT",
+        "details": "Administrator granted +10 minutes extension. New deadline: 2026-11-20T08:56:30.124Z"
+      }
+    ],
+    "status": "SUBMITTED",
+    "updated_at": "2026-11-20T08:21:30.144Z"
+  }
+]

@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
 
     const studentEmail = (body.email || session?.email || headerEmail || "").toLowerCase().trim();
+    const studentName = body.studentName || session?.name || "Student Intern";
     const assessmentId = body.assessmentId;
 
     if (!studentEmail) {
@@ -37,14 +38,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Assessment not found." }, { status: 404 });
     }
 
-    const sessionStartTime = new Date().toISOString();
+    // Start or resume server-authoritative exam session
+    const { session: examSession, isResumed } = assessmentStore.startSession({
+      assessmentId,
+      studentEmail,
+      studentName,
+    });
 
     return NextResponse.json({
       success: true,
-      message: "Exam session initialized with Zero-Trust proctoring active.",
+      message: isResumed
+        ? "Active examination session resumed."
+        : "Exam session initialized with Zero-Trust proctoring active.",
       assessment: asm,
-      startedAt: sessionStartTime,
-      durationMinutes: asm.duration_minutes,
+      session: examSession,
+      sessionId: examSession.session_id,
+      isResumed,
+      startedAt: examSession.started_at,
+      expiresAt: examSession.expires_at,
+      durationMinutes: examSession.duration_minutes,
+      savedAnswers: examSession.saved_answers || {},
+      markedForReview: examSession.marked_for_review || [],
+      visitedQuestions: examSession.visited_questions || [],
+      tabSwitchCount: examSession.tab_switch_count || 0,
+      fullscreenExitCount: examSession.fullscreen_exit_count || 0,
       attemptsUsed: check.attemptsUsed,
       maxAttempts: check.maxAttempts,
     });

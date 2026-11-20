@@ -18,7 +18,15 @@ export async function POST(req: NextRequest) {
 
     const studentEmail = (body.email || session?.email || headerEmail || "").toLowerCase().trim();
     const studentName = body.studentName || session?.name || "Student Intern";
-    const { assessmentId, answers, tabSwitchCount, timeSpentSeconds, startedAt } = body;
+    const {
+      assessmentId,
+      answers,
+      tabSwitchCount,
+      fullscreenExitCount,
+      timeSpentSeconds,
+      startedAt,
+      sessionId,
+    } = body;
 
     if (!studentEmail) {
       return NextResponse.json({ error: "Authentication required to submit assessment." }, { status: 401 });
@@ -29,8 +37,8 @@ export async function POST(req: NextRequest) {
     }
 
     const check = assessmentStore.canStudentStartExam(assessmentId, studentEmail);
-    // Allow submission if attempt is in-progress even if attempt limit reached
-    if (!check.canStart && check.attemptsUsed > check.maxAttempts) {
+    // Allow submission if student is submitting an in-progress session even if attempt limit reached
+    if (!check.canStart && check.attemptsUsed > check.maxAttempts && !sessionId) {
       return NextResponse.json({ error: check.error || "Attempt limit reached." }, { status: 403 });
     }
 
@@ -40,8 +48,10 @@ export async function POST(req: NextRequest) {
       studentName,
       answers: answers || {},
       tabSwitchCount: Number(tabSwitchCount) || 0,
+      fullscreenExitCount: Number(fullscreenExitCount) || 0,
       timeSpentSeconds: Number(timeSpentSeconds) || 60,
       startedAt,
+      sessionId,
     });
 
     return NextResponse.json({

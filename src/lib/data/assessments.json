@@ -1,5 +1,39 @@
 [
   {
+    "id": "asm-1795162890161",
+    "organization_id": "org-akash-01",
+    "title": "System Architecture Essay Exam",
+    "subject": "Software Architecture",
+    "topic": "Practicum",
+    "category": "Technical Practicum",
+    "description": "",
+    "duration_minutes": 30,
+    "total_marks": 50,
+    "passing_threshold": 50,
+    "attempt_limit": 1,
+    "status": "PUBLISHED",
+    "negative_marking_enabled": false,
+    "negative_mark_rate": 0.25,
+    "security_policy": {
+      "max_violations_allowed": 3,
+      "auto_submit_on_violation_limit": true,
+      "require_fullscreen": true,
+      "disable_copy_paste": true
+    },
+    "questions": [
+      {
+        "id": "q_desc_1",
+        "question": "Explain the CAP theorem and trade-offs between consistency and availability.",
+        "type": "DESCRIPTIVE",
+        "explanation": "Consistency, Availability, and Partition Tolerance.",
+        "marks": 50,
+        "rubric": "15 marks for consistency definition, 15 marks for availability, 20 marks for partition tolerance trade-off analysis."
+      }
+    ],
+    "created_at": "2026-11-20T08:21:30.161Z",
+    "updated_at": "2026-11-20T08:21:30.161Z"
+  },
+  {
     "id": "asm-aiml-01",
     "organization_id": "org-akash-01",
     "title": "AI & Machine Learning Engineering Practicum Exam",
