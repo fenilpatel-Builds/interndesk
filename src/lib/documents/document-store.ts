@@ -90,7 +90,7 @@ const CANONICAL_FENIL_OFFER: OfficialOfferLetter = {
   title: "OFFICIAL INTERNSHIP OFFER LETTER",
   recipient_name: "Mr. Fenil Patel",
   recipient_role: "AI & Machine Learning Engineering Intern",
-  issued_date: "30-10-2026",
+  issued_date: "05-11-2026",
   status: "ISSUED",
   approval_status: "APPROVED",
   approved_by: "Akash Padhiyar",

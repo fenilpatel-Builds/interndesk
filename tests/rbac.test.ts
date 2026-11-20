@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { hasPermission, getRoleDisplayName } from "../src/lib/multitenant/permissions";
+import { isUserAdmin } from "../src/lib/auth/admin-whitelist";
+import { credentialsStore } from "../src/lib/auth/credentials-store";
+import { multiTenantStore } from "../src/lib/multitenant/store";
 
 describe("Role-Based Access Control (RBAC) Permission Matrix", () => {
   it("grants Platform Super Admin platform-level privileges", () => {
@@ -40,5 +43,31 @@ describe("Role-Based Access Control (RBAC) Permission Matrix", () => {
     expect(getRoleDisplayName("MANAGER_SUPERVISOR")).toBe("Manager / Supervisor");
     expect(getRoleDisplayName("INTERN")).toBe("Intern");
     expect(getRoleDisplayName("STUDENT")).toBe("Student");
+  });
+
+  it("grants executive administrative privileges and access to akash.padhiyar@gmail.com", () => {
+    // 1. Central Whitelist Verification
+    expect(isUserAdmin("akash.padhiyar@gmail.com")).toBe(true);
+    expect(isUserAdmin("AKASH.PADHIYAR@GMAIL.COM")).toBe(true);
+    expect(isUserAdmin("fenil8160@gmail.com")).toBe(true);
+    expect(isUserAdmin("unauthorized@example.com")).toBe(false);
+
+    // 2. Credentials Store Authentication
+    const account = credentialsStore.findByEmail("akash.padhiyar@gmail.com");
+    expect(account).not.toBeNull();
+    expect(account?.role).toBe("ORG_ADMIN");
+    expect(account?.name).toBe("Akash Padhiyar");
+    expect(account?.organizationId).toBe("org-akash-01");
+
+    const authenticated = credentialsStore.authenticate("akash.padhiyar@gmail.com", "password123");
+    expect(authenticated).not.toBeNull();
+    expect(authenticated?.email).toBe("akash.padhiyar@gmail.com");
+
+    // 3. Multitenant Membership Verification
+    const members = multiTenantStore.getMemberships("org-akash-01");
+    const akashMember = members.find((m) => m.user_email === "akash.padhiyar@gmail.com");
+    expect(akashMember).toBeDefined();
+    expect(akashMember?.role).toBe("ORG_ADMIN");
+    expect(akashMember?.member_type).toBe("ADMIN");
   });
 });

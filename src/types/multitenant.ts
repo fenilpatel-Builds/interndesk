@@ -419,6 +419,10 @@ export interface IssuedDocument {
   approved_by?: string;
   approved_at?: string;
   rejection_reason?: string;
+  template_type?: string;
+  description_content?: string;
+  attached_file?: { name: string; size?: number; type?: string };
+  recipient_email?: string;
   template_data: {
     organization_name: string;
     organization_type: OrganizationType;

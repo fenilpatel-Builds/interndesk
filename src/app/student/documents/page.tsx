@@ -41,9 +41,12 @@ const STUDENT_DOCUMENTS: IssuedDocument[] = [
     title: "OFFICIAL INTERNSHIP OFFER LETTER",
     recipient_name: "Mr. Fenil Patel",
     recipient_role: "AI & Machine Learning Engineering Intern",
-    issued_date: "30-10-2026",
+    issued_date: "05-11-2026",
     status: "ISSUED",
     verification_code: "VRF-AKT-2026-OF01",
+    template_type: "INTERNSHIP OFFER LETTER (Boy)",
+    description_content:
+      "This is to inform that Mr. Fenil Patel has been selected for an internship at Akash Technolabs as a AI & Machine Learning Engineering Intern. His internship will commence on 3rd August 2026 and continue until 1st April 2027.\n\nDuring the internship period, he will work on AI & Machine Learning Engineering technology and will be involved in projects and assignments designed to enhance his technical knowledge and practical skills. He is expected to maintain a professional attitude, follow the company's policies and guidelines, and perform his assigned responsibilities with sincerity and dedication throughout the internship.\n\nUpon successful completion of the internship, he will be awarded an Internship Completion Certificate based on his performance and adherence to the company's rules and regulations.\n\nWe are pleased to welcome him to Akash Technolabs and wish him a successful and enriching internship experience.",
     template_data: {
       salutation: "Mr.",
       student_name: "Fenil Patel",

@@ -898,6 +898,7 @@ export default function WorkspacePage() {
                   {(currentUser.role === "ORG_ADMIN" ||
                     currentUser.role === "ORG_OWNER" ||
                     currentUser.email === "fenil8160@gmail.com" ||
+                    currentUser.email === "akash.padhiyar@gmail.com" ||
                     currentUser.email === "akash@akashtechnolabs.com") && (
                     <Link href="/admin/dashboard">
                       <Button

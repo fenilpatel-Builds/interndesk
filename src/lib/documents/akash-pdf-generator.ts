@@ -138,7 +138,7 @@ export async function generateAkashOfferLetterPdf(data: OfferLetterData): Promis
   });
 
   // 4. Date right aligned matching authentic PDF
-  const letterDate = data.letterDate || "01-07-2026";
+  const letterDate = data.letterDate || "05-11-2026";
   page.drawText(`Date :${letterDate}`, {
     x: 430.223,
     y: 738.703,
@@ -360,10 +360,7 @@ export async function generateAkashOfferLetterPdf(data: OfferLetterData): Promis
     }
 
     // Standard paragraph with markdown parsing & bold keyword matching
-    const isIntroIndent = trimmed.startsWith("This is to inform");
-    const prefix = isIntroIndent ? "     " : "";
-    const textToParse = prefix + trimmed;
-    const tokens = tokenizeMarkdown(textToParse, boldKeywords);
+    const tokens = tokenizeMarkdown(trimmed, boldKeywords);
 
     renderTokens(tokens, leftX);
     currentY -= paraGap;

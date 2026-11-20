@@ -1,7 +1,8 @@
 export const DEFAULT_ADMIN_EMAILS = [
   "fenil8160@gmail.com",
-  "fenil.patel@akashtechnolabs.com",
+  "akash.padhiyar@gmail.com",
   "akash@akashtechnolabs.com",
+  "fenil.patel@akashtechnolabs.com",
   "admin@akashtechnolabs.com",
 ];
 

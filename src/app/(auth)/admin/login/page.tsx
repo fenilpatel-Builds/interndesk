@@ -98,7 +98,7 @@ export default function AdminLoginPage() {
 
     if (!isUserAdmin(cleanEmail)) {
       setErrorMessage(
-        "Access Denied: This administrative portal is restricted exclusively to authorized administrators (fenil8160@gmail.com). Please use the student portal for intern logins."
+        "Access Denied: This administrative portal is restricted exclusively to authorized administrators. Please use the student portal for intern logins."
       );
       setLoading(false);
       return;
@@ -143,7 +143,7 @@ export default function AdminLoginPage() {
 
     if (!isUserAdmin(cleanEmail)) {
       setErrorMessage(
-        "Access Denied: OTP codes can only be requested for verified administrators (fenil8160@gmail.com)."
+        "Access Denied: OTP codes can only be requested for verified administrators."
       );
       return;
     }
@@ -286,7 +286,7 @@ export default function AdminLoginPage() {
                 <span className="text-xs font-bold text-slate-800 leading-tight">
                   Whitelisted Access
                 </span>
-                <span className="text-[10px] text-slate-400 mt-0.5">fenil8160@gmail.com</span>
+                <span className="text-[10px] text-slate-400 mt-0.5">Admin Security Cleared</span>
               </div>
 
               <div className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs flex flex-col items-center text-center">

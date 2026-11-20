@@ -1256,7 +1256,7 @@ export function DocumentStudioModal({
 
                   {/* Right aligned date matching PDF */}
                   <div className="text-right text-xs sm:text-sm font-medium text-slate-900 pr-1">
-                    <span>Date :{doc.issued_date || "01-07-2026"}</span>
+                    <span>Date :{doc.issued_date || "05-11-2026"}</span>
                   </div>
 
                   {/* Centered Bold Underlined Title */}
@@ -1398,10 +1398,9 @@ export function DocumentStudioModal({
                                 </div>
                               );
                             }
-                            const isIntroIndent = trimmed.startsWith("This is to inform");
                             const tokens = tokenizeMarkdown(trimmed, previewKeywords);
                             return (
-                              <p key={idx} className={isIntroIndent ? "indent-6" : ""}>
+                              <p key={idx}>
                                 {tokens.map((tok, tIdx) =>
                                   tok.bold ? (
                                     <strong key={tIdx} className="font-bold text-slate-900">
@@ -1442,7 +1441,7 @@ export function DocumentStudioModal({
                     return (
                       <div className="space-y-4 text-xs sm:text-[13px] leading-relaxed text-slate-800 font-normal text-justify">
                         <p>
-                          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;This is to inform that <strong>{displayRecipientName}</strong> has been selected for an internship at{" "}
+                          This is to inform that <strong>{displayRecipientName}</strong> has been selected for an internship at{" "}
                           <strong>Akash Technolabs</strong> as a <strong>{doc.recipient_role}</strong>. {pCapHisHer} internship will commence on{" "}
                           <strong>{doc.template_data?.commencement_date || "3rd July 2026"}</strong> and continue until{" "}
                           <strong>{doc.template_data?.continue_until_date || "30th April 2027"}</strong>.

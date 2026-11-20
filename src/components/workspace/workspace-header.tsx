@@ -173,7 +173,7 @@ export function WorkspaceHeader({
         {/* Right: Notifications, Super Admin link, Admin Console link & Real User Profile Menu */}
         <div className="flex items-center gap-2.5">
           {/* Admin Console Direct Link Button (Always visible for admin role or email) */}
-          {(currentUser.role === "ORG_ADMIN" || currentUser.role === "ORG_OWNER" || currentUser.email === "fenil8160@gmail.com" || currentUser.email === "akash@akashtechnolabs.com") && (
+          {(currentUser.role === "ORG_ADMIN" || currentUser.role === "ORG_OWNER" || currentUser.email === "fenil8160@gmail.com" || currentUser.email === "akash.padhiyar@gmail.com" || currentUser.email === "akash@akashtechnolabs.com") && (
             <Link href="/admin/dashboard">
               <Button
                 size="sm"
@@ -278,6 +278,7 @@ export function WorkspaceHeader({
                   {(currentUser.role === "ORG_ADMIN" ||
                     currentUser.role === "ORG_OWNER" ||
                     currentUser.email === "fenil8160@gmail.com" ||
+                    currentUser.email === "akash.padhiyar@gmail.com" ||
                     currentUser.email === "akash@akashtechnolabs.com") && (
                     <Link
                       href="/admin/dashboard"
