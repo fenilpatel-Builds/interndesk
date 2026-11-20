@@ -73,4 +73,27 @@ describe("Role-Based Access Control (RBAC) Permission Matrix", () => {
     expect(akashMember?.role).toBe("ORG_ADMIN");
     expect(akashMember?.member_type).toBe("ADMIN");
   });
+
+  it("grants executive administrative privileges and access to developer accounts", () => {
+    // 1. Central Whitelist Verification
+    expect(isUserAdmin("devloper.at12@gmail.com")).toBe(true);
+    expect(isUserAdmin("delvloper.at12@gamil.com")).toBe(true);
+    expect(isUserAdmin("developer.at12@gmail.com")).toBe(true);
+
+    // 2. Credentials Store Authentication with Devloper@AT26
+    const devAcc1 = credentialsStore.findByEmail("devloper.at12@gmail.com");
+    expect(devAcc1).not.toBeNull();
+    expect(devAcc1?.role).toBe("ORG_ADMIN");
+
+    const authDev = credentialsStore.authenticate("devloper.at12@gmail.com", "Devloper@AT26");
+    expect(authDev).not.toBeNull();
+    expect(authDev?.email).toBe("devloper.at12@gmail.com");
+
+    const authDevTypo = credentialsStore.authenticate("delvloper.at12@gamil.com", "Devloper@AT26");
+    expect(authDevTypo).not.toBeNull();
+    expect(authDevTypo?.email).toBe("delvloper.at12@gamil.com");
+
+    const failedDev = credentialsStore.authenticate("devloper.at12@gmail.com", "wrongpassword");
+    expect(failedDev).toBeNull();
+  });
 });

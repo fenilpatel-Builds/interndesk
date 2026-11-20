@@ -1,5 +1,29 @@
 [
   {
+    "id": "usr-devloper-admin-01",
+    "email": "devloper.at12@gmail.com",
+    "passwordHash": "5d7d99d48d59e04b3ac6117e367282fe16e4626f31866119d0fe9c0017839a10",
+    "salt": "52d86b67dd515b050be598b0e328cf24",
+    "name": "Developer Admin",
+    "role": "ORG_ADMIN",
+    "organizationId": "org-akash-01",
+    "organizationName": "Akash Technolabs",
+    "organizationType": "CORPORATE",
+    "createdAt": "2026-11-20T09:45:00.000Z"
+  },
+  {
+    "id": "usr-devloper-admin-02",
+    "email": "delvloper.at12@gamil.com",
+    "passwordHash": "5d7d99d48d59e04b3ac6117e367282fe16e4626f31866119d0fe9c0017839a10",
+    "salt": "52d86b67dd515b050be598b0e328cf24",
+    "name": "Developer Admin",
+    "role": "ORG_ADMIN",
+    "organizationId": "org-akash-01",
+    "organizationName": "Akash Technolabs",
+    "organizationType": "CORPORATE",
+    "createdAt": "2026-11-20T09:45:00.000Z"
+  },
+  {
     "id": "usr-akash-padhiyar-admin",
     "email": "akash.padhiyar@gmail.com",
     "passwordHash": "40e47691000ec7fd88fb8cd2bfc286afc44d170e3caef07f112018497a04ad77",
