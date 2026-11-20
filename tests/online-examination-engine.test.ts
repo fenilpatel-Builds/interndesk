@@ -367,4 +367,33 @@ describe("Online Examination & Anti-Cheat Assessment Engine", () => {
     const deleted = questionBankStore.deleteQuestion(created.id);
     expect(deleted).toBe(true);
   });
+
+  it("supports duplicating and cloning an assessment with all question sets in draft mode", () => {
+    const original = assessmentStore.getById("asm-aiml-01", true);
+    expect(original).toBeDefined();
+
+    const cloned = assessmentStore.createAssessment({
+      title: `${original?.title} (Copy)`,
+      subject: original?.subject || "AI & Machine Learning",
+      topic: original?.topic,
+      description: original?.description,
+      duration_minutes: original?.duration_minutes,
+      passing_threshold: original?.passing_threshold,
+      attempt_limit: original?.attempt_limit,
+      negative_marking_rate: original?.negative_mark_rate || 0,
+      security_policy: original?.security_policy,
+      status: "DRAFT",
+      questions: original?.questions || [],
+    });
+
+    expect(cloned.id).toBeDefined();
+    expect(cloned.id).not.toBe(original?.id);
+    expect(cloned.title).toContain("(Copy)");
+    expect(cloned.status).toBe("DRAFT");
+    expect(cloned.questions.length).toBe(original?.questions.length);
+
+    // Clean up
+    assessmentStore.deleteAssessment(cloned.id);
+    expect(assessmentStore.getById(cloned.id, true)).toBeNull();
+  });
 });

@@ -37,6 +37,8 @@ import {
   FileText,
   UserCheck,
   Zap,
+  Copy,
+  Play,
 } from "lucide-react";
 import {
   Assessment,
@@ -74,6 +76,16 @@ export default function AdminAssessmentsPage() {
   const [isBulkImportModalOpen, setIsBulkImportModalOpen] = useState(false);
   const [selectedAttemptForReview, setSelectedAttemptForReview] = useState<AssessmentAttempt | null>(null);
   const [selectedSessionForAudit, setSelectedSessionForAudit] = useState<ActiveExamSession | null>(null);
+  const [previewAssessment, setPreviewAssessment] = useState<Assessment | null>(null);
+
+  // Quick Question in Exam Builder
+  const [isAddingQuickQuestion, setIsAddingQuickQuestion] = useState(false);
+  const [quickQPrompt, setQuickQPrompt] = useState("");
+  const [quickQType, setQuickQType] = useState<QuestionType>("SINGLE_CHOICE");
+  const [quickQOptions, setQuickQOptions] = useState("");
+  const [quickQCorrect, setQuickQCorrect] = useState("");
+  const [quickQMarks, setQuickQMarks] = useState(10);
+  const [quickQExplanation, setQuickQExplanation] = useState("");
 
   // Subjective Evaluation Drawer
   const [evaluationDrawerAttempt, setEvaluationDrawerAttempt] = useState<AssessmentAttempt | null>(null);
@@ -282,6 +294,71 @@ export default function AdminAssessmentsPage() {
     } catch {
       alert("Network error deleting assessment.");
     }
+  };
+
+  // Duplicate Exam (Clone)
+  const handleDuplicateExam = async (asm: Assessment) => {
+    try {
+      const payload = {
+        title: `${asm.title} (Copy)`,
+        subject: asm.subject,
+        topic: asm.topic,
+        category: asm.category,
+        description: asm.description,
+        duration_minutes: asm.duration_minutes,
+        passing_threshold: asm.passing_threshold,
+        attempt_limit: asm.attempt_limit,
+        negative_marking_rate: asm.negative_mark_rate || asm.negative_marking_rate || 0,
+        security_policy: asm.security_policy,
+        status: "DRAFT" as const,
+        questions: asm.questions || [],
+      };
+
+      const res = await fetch("/api/admin/assessments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        alert("Assessment duplicated as DRAFT.");
+        loadData();
+      } else {
+        alert(data.error || "Failed to duplicate assessment.");
+      }
+    } catch {
+      alert("Network error duplicating assessment.");
+    }
+  };
+
+  // Quick Append Question in Exam Builder
+  const handleAppendQuickQuestion = () => {
+    if (!quickQPrompt.trim()) {
+      alert("Question prompt cannot be empty.");
+      return;
+    }
+    const options =
+      quickQType === "SINGLE_CHOICE" || quickQType === "MULTIPLE_CHOICE"
+        ? quickQOptions.split("\n").map((o) => o.trim()).filter(Boolean)
+        : undefined;
+
+    const newQ: AssessmentQuestion = {
+      id: `q_custom_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      question: quickQPrompt.trim(),
+      type: quickQType,
+      options,
+      correct_answer: quickQCorrect.trim(),
+      explanation: quickQExplanation.trim(),
+      marks: Number(quickQMarks) || 10,
+    };
+
+    setFormQuestions((prev) => [...prev, newQ]);
+    setQuickQPrompt("");
+    setQuickQOptions("");
+    setQuickQCorrect("");
+    setQuickQExplanation("");
+    setIsAddingQuickQuestion(false);
   };
 
   // Reset Student Attempt (Allow Retake)
@@ -527,10 +604,10 @@ export default function AdminAssessmentsPage() {
   );
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 font-sans">
+    <div className="flex-1 flex flex-col min-w-0 min-h-0 h-full overflow-hidden bg-slate-50 font-sans">
       <AdminTopbar title="Assessments & Tests" />
 
-      <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+      <main className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 lg:p-8">
         <div className="max-w-7xl w-full mx-auto space-y-8">
           {/* Navigation Banner */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 sm:p-8 shadow-xl border border-slate-800">
@@ -763,7 +840,17 @@ export default function AdminAssessmentsPage() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                    <div className="flex items-center gap-1.5 pt-2 border-t border-slate-100">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPreviewAssessment(asm)}
+                        className="text-xs font-semibold text-slate-700 hover:text-indigo-600 px-2.5"
+                        title="Preview examination paper & question keys"
+                      >
+                        <Eye className="w-3.5 h-3.5 mr-1" />
+                        Preview
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -776,8 +863,18 @@ export default function AdminAssessmentsPage() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => handleDuplicateExam(asm)}
+                        className="text-slate-500 hover:text-indigo-600 text-xs px-2"
+                        title="Duplicate Assessment"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => handleDeleteExam(asm.id)}
-                        className="text-red-600 hover:bg-red-50 text-xs px-2.5"
+                        className="text-red-600 hover:bg-red-50 text-xs px-2"
+                        title="Delete Assessment"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
@@ -1480,16 +1577,139 @@ export default function AdminAssessmentsPage() {
                     Questions ({formQuestions.length})
                   </h4>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsBankPickerOpen(true)}
-                    className="text-xs font-bold text-indigo-600 border-indigo-200 hover:bg-indigo-50 flex items-center gap-1.5"
-                  >
-                    <Database className="w-3.5 h-3.5" />
-                    Import from Question Bank
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsAddingQuickQuestion(!isAddingQuickQuestion)}
+                      className="text-xs font-bold text-slate-700 hover:bg-slate-100 flex items-center gap-1.5"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      {isAddingQuickQuestion ? "Cancel Custom" : "Add Custom Question"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsBankPickerOpen(true)}
+                      className="text-xs font-bold text-indigo-600 border-indigo-200 hover:bg-indigo-50 flex items-center gap-1.5"
+                    >
+                      <Database className="w-3.5 h-3.5" />
+                      Import from Question Bank
+                    </Button>
+                  </div>
                 </div>
+
+                {/* Inline Quick Question Form */}
+                {isAddingQuickQuestion && (
+                  <div className="p-4 rounded-xl bg-indigo-50/50 border border-indigo-200 space-y-3 text-xs animate-in fade-in">
+                    <div className="font-bold text-indigo-950 flex items-center justify-between">
+                      <span>Add Custom Question to Exam</span>
+                      <button
+                        type="button"
+                        onClick={() => setIsAddingQuickQuestion(false)}
+                        className="text-slate-400 hover:text-slate-600"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="sm:col-span-2">
+                        <label className="font-semibold text-slate-700">Question Format</label>
+                        <select
+                          value={quickQType}
+                          onChange={(e) => setQuickQType(e.target.value as QuestionType)}
+                          className="w-full mt-1 bg-white border border-slate-300 rounded p-2 text-xs outline-none"
+                        >
+                          <option value="SINGLE_CHOICE">Single Choice MCQ</option>
+                          <option value="MULTIPLE_CHOICE">Multiple Choice MCQ</option>
+                          <option value="TRUE_FALSE">True / False</option>
+                          <option value="FILL_BLANKS">Fill in the Blanks</option>
+                          <option value="SHORT_ANSWER">Short Answer</option>
+                          <option value="DESCRIPTIVE">Descriptive / Essay</option>
+                          <option value="CODING">Coding</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="font-semibold text-slate-700">Marks</label>
+                        <input
+                          type="number"
+                          value={quickQMarks}
+                          onChange={(e) => setQuickQMarks(Number(e.target.value))}
+                          className="w-full mt-1 bg-white border border-slate-300 rounded p-2 text-xs outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="font-semibold text-slate-700">Question Prompt *</label>
+                      <textarea
+                        rows={2}
+                        value={quickQPrompt}
+                        onChange={(e) => setQuickQPrompt(e.target.value)}
+                        placeholder="Enter the question text..."
+                        className="w-full mt-1 bg-white border border-slate-300 rounded p-2 text-xs outline-none"
+                      />
+                    </div>
+
+                    {(quickQType === "SINGLE_CHOICE" || quickQType === "MULTIPLE_CHOICE") && (
+                      <div>
+                        <label className="font-semibold text-slate-700">Options (1 per line)</label>
+                        <textarea
+                          rows={3}
+                          value={quickQOptions}
+                          onChange={(e) => setQuickQOptions(e.target.value)}
+                          placeholder="Option A&#10;Option B&#10;Option C&#10;Option D"
+                          className="w-full mt-1 bg-white border border-slate-300 rounded p-2 text-xs outline-none"
+                        />
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="font-semibold text-slate-700">Correct Answer Key</label>
+                        <input
+                          type="text"
+                          value={quickQCorrect}
+                          onChange={(e) => setQuickQCorrect(e.target.value)}
+                          placeholder="Exact matching correct answer..."
+                          className="w-full mt-1 bg-white border border-slate-300 rounded p-2 text-xs outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="font-semibold text-slate-700">Explanation</label>
+                        <input
+                          type="text"
+                          value={quickQExplanation}
+                          onChange={(e) => setQuickQExplanation(e.target.value)}
+                          placeholder="Technical explanation..."
+                          className="w-full mt-1 bg-white border border-slate-300 rounded p-2 text-xs outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsAddingQuickQuestion(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleAppendQuickQuestion}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+                      >
+                        Add to Exam
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
                 {formQuestions.length === 0 ? (
                   <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-300 space-y-2">
@@ -1901,6 +2121,216 @@ export default function AdminAssessmentsPage() {
                 <Button onClick={() => setSelectedSessionForAudit(null)} className="text-xs font-bold">
                   Close
                 </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* MODAL: ASSESSMENT PAPER PREVIEW                           */}
+        {/* ========================================================= */}
+        {previewAssessment && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+            <div className="bg-white rounded-2xl max-w-4xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 max-h-[90vh] overflow-y-auto my-auto">
+              <div className="flex items-start justify-between border-b border-slate-200 pb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      {previewAssessment.subject}
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                        previewAssessment.status === "PUBLISHED"
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-slate-100 text-slate-700"
+                      }`}
+                    >
+                      {previewAssessment.status}
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900 mt-2">
+                    {previewAssessment.title}
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">{previewAssessment.description}</p>
+                </div>
+                <button
+                  onClick={() => setPreviewAssessment(null)}
+                  className="text-slate-400 hover:text-slate-600 p-1"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Assessment Specs Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-center text-xs">
+                <div>
+                  <div className="text-slate-400 font-medium">Duration</div>
+                  <div className="text-sm font-bold text-slate-800">
+                    {previewAssessment.duration_minutes} Mins
+                  </div>
+                </div>
+                <div>
+                  <div className="text-slate-400 font-medium">Total Questions</div>
+                  <div className="text-sm font-bold text-slate-800">
+                    {previewAssessment.questions.length} Items
+                  </div>
+                </div>
+                <div>
+                  <div className="text-slate-400 font-medium">Total Marks</div>
+                  <div className="text-sm font-bold text-slate-800">
+                    {previewAssessment.total_marks} Pts
+                  </div>
+                </div>
+                <div>
+                  <div className="text-slate-400 font-medium">Passing Mark</div>
+                  <div className="text-sm font-bold text-emerald-600">
+                    {previewAssessment.passing_threshold}%
+                  </div>
+                </div>
+                <div>
+                  <div className="text-slate-400 font-medium">Max Attempts</div>
+                  <div className="text-sm font-bold text-slate-800">
+                    {previewAssessment.attempt_limit} Allowed
+                  </div>
+                </div>
+              </div>
+
+              {/* Questions List with Keys */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-bold text-slate-900">
+                    Examination Questions & Official Keys ({previewAssessment.questions.length})
+                  </h4>
+                  <span className="text-xs text-slate-500">
+                    Faculty Inspection View (Answers visible)
+                  </span>
+                </div>
+
+                <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
+                  {previewAssessment.questions.map((q, idx) => (
+                    <div
+                      key={q.id || idx}
+                      className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3"
+                    >
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-slate-900">Question {idx + 1}</span>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 uppercase">
+                            {q.type.replace("_", " ")}
+                          </span>
+                          {q.difficulty && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-700">
+                              {q.difficulty}
+                            </span>
+                          )}
+                        </div>
+                        <span className="font-bold text-emerald-600">+{q.marks} Marks</span>
+                      </div>
+
+                      <p className="text-sm font-semibold text-slate-900">{q.question}</p>
+
+                      {/* Options */}
+                      {q.options && q.options.length > 0 && (
+                        <div className="space-y-1.5 pl-2">
+                          {q.options.map((opt, oIdx) => {
+                            const isCorrect = Array.isArray(q.correct_answer)
+                              ? q.correct_answer.includes(opt)
+                              : q.correct_answer === opt;
+                            return (
+                              <div
+                                key={oIdx}
+                                className={`p-2 rounded-lg text-xs flex items-center justify-between ${
+                                  isCorrect
+                                    ? "bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold"
+                                    : "bg-white text-slate-700 border border-slate-200"
+                                }`}
+                              >
+                                <span>
+                                  {String.fromCharCode(65 + oIdx)}. {opt}
+                                </span>
+                                {isCorrect && (
+                                  <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Matching pairs preview */}
+                      {q.matching_pairs && q.matching_pairs.length > 0 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs bg-white p-3 rounded-lg border border-slate-200">
+                          {q.matching_pairs.map((p, pIdx) => (
+                            <div
+                              key={pIdx}
+                              className="flex items-center justify-between p-1.5 bg-slate-50 rounded"
+                            >
+                              <span className="font-medium text-slate-700">{p.left}</span>
+                              <span className="font-bold text-indigo-600">→ {p.right}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Coding starter code */}
+                      {q.starter_code && (
+                        <pre className="p-3 bg-slate-900 text-emerald-400 rounded-lg text-xs font-mono overflow-x-auto">
+                          {q.starter_code}
+                        </pre>
+                      )}
+
+                      {/* Explanation */}
+                      {q.explanation && (
+                        <div className="p-2.5 rounded bg-white border border-slate-200 text-xs text-slate-600">
+                          <strong className="text-indigo-600">Explanation: </strong> {q.explanation}
+                        </div>
+                      )}
+
+                      {/* Rubric */}
+                      {q.rubric && (
+                        <div className="p-2.5 rounded bg-amber-50 border border-amber-200 text-xs text-amber-900">
+                          <strong>Rubric: </strong> {q.rubric}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-between pt-4 border-t border-slate-200">
+                <Button
+                  variant="outline"
+                  onClick={() => setPreviewAssessment(null)}
+                  className="text-xs font-semibold"
+                >
+                  Close Preview
+                </Button>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const asmToEdit = previewAssessment;
+                      setPreviewAssessment(null);
+                      handleOpenEditExam(asmToEdit);
+                    }}
+                    className="text-xs font-bold text-indigo-600 hover:bg-indigo-50"
+                  >
+                    <Edit3 className="w-3.5 h-3.5 mr-1" />
+                    Edit Examination
+                  </Button>
+
+                  <a
+                    href="/student/assessments"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-lg shadow-sm"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    Launch as Student
+                  </a>
+                </div>
               </div>
             </div>
           </div>
