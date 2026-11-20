@@ -1,0 +1,136 @@
+[
+  {
+    "id": "att-seed-fenil-01",
+    "organization_id": "org-akash-01",
+    "assessment_id": "asm-aiml-01",
+    "assessment_title": "AI & Machine Learning Engineering Practicum Exam",
+    "student_email": "fenil.patel@akashtechnolabs.com",
+    "student_name": "Fenil Patel",
+    "score": 90,
+    "total_marks": 100,
+    "percentage": 90,
+    "passed": true,
+    "correct_count": 9,
+    "wrong_count": 1,
+    "unanswered_count": 0,
+    "tab_switch_count": 0,
+    "proctoring_flag": "CLEAN",
+    "time_spent_seconds": 980,
+    "started_at": "2026-10-25T11:00:00.000Z",
+    "submitted_at": "2026-10-25T11:16:20.000Z",
+    "answers": {
+      "q_ai_1": "Dropout and L2 (Ridge) Weight Regularization",
+      "q_ai_2": "Computing dynamic dependency weights between all token positions in parallel",
+      "q_ai_3": "Categorical Cross-Entropy Loss",
+      "q_ai_4": "Batch GD computes gradients using the entire dataset, while SGD updates parameters per single sample or mini-batch",
+      "q_ai_5": "ReLU (Rectified Linear Unit)",
+      "q_ai_6": "Max Pooling / Average Pooling",
+      "q_ai_7": "Recall (Sensitivity)",
+      "q_ai_8": "Mapping discrete tokens or concepts into dense, continuous high-dimensional semantic vector spaces",
+      "q_ai_9": "Adam (Adaptive Moment Estimation)",
+      "q_ai_10": "CPU core usage vs GPU memory limits"
+    },
+    "evaluations": [
+      {
+        "question_id": "q_ai_1",
+        "question_text": "In Supervised Learning, which technique is specifically designed to prevent deep neural networks from overfitting on training data?",
+        "selected_answer": "Dropout and L2 (Ridge) Weight Regularization",
+        "correct_answer": "Dropout and L2 (Ridge) Weight Regularization",
+        "is_correct": true,
+        "marks_awarded": 10,
+        "marks_possible": 10,
+        "explanation": "Dropout randomly deactivates neurons during forward passes, and L2 regularization penalizes large weights, preventing individual feature co-adaptation and overfitting."
+      },
+      {
+        "question_id": "q_ai_2",
+        "question_text": "What is the primary architectural purpose of the Self-Attention mechanism in Transformer neural networks?",
+        "selected_answer": "Computing dynamic dependency weights between all token positions in parallel",
+        "correct_answer": "Computing dynamic dependency weights between all token positions in parallel",
+        "is_correct": true,
+        "marks_awarded": 10,
+        "marks_possible": 10,
+        "explanation": "Self-Attention allows models to dynamically weight relational relevance across distant tokens in a sequence simultaneously without recurrent sequential bottlenecks."
+      },
+      {
+        "question_id": "q_ai_3",
+        "question_text": "Which loss function is the industry standard for multi-class classification where classes are mutually exclusive?",
+        "selected_answer": "Categorical Cross-Entropy Loss",
+        "correct_answer": "Categorical Cross-Entropy Loss",
+        "is_correct": true,
+        "marks_awarded": 10,
+        "marks_possible": 10,
+        "explanation": "Categorical Cross-Entropy calculates the log loss distance between predicted probability distributions (Softmax) and one-hot encoded ground truth vectors."
+      },
+      {
+        "question_id": "q_ai_4",
+        "question_text": "What is the difference between Batch Gradient Descent and Stochastic Gradient Descent (SGD)?",
+        "selected_answer": "Batch GD computes gradients using the entire dataset, while SGD updates parameters per single sample or mini-batch",
+        "correct_answer": "Batch GD computes gradients using the entire dataset, while SGD updates parameters per single sample or mini-batch",
+        "is_correct": true,
+        "marks_awarded": 10,
+        "marks_possible": 10,
+        "explanation": "Batch GD calculates loss over the complete dataset before each update step, whereas SGD iterates through single samples or small batches for faster convergence and memory efficiency."
+      },
+      {
+        "question_id": "q_ai_5",
+        "question_text": "Which activation function is widely preferred in deep hidden layers to prevent vanishing gradients while maintaining computational efficiency?",
+        "selected_answer": "ReLU (Rectified Linear Unit)",
+        "correct_answer": "ReLU (Rectified Linear Unit)",
+        "is_correct": true,
+        "marks_awarded": 10,
+        "marks_possible": 10,
+        "explanation": "ReLU (max(0, x)) has a constant gradient of 1 for positive inputs, eliminating saturation and vanishing gradient problems typical of Sigmoid/Tanh."
+      },
+      {
+        "question_id": "q_ai_6",
+        "question_text": "In computer vision architectures, what operation follows Convolutional layers to downsample spatial dimensions while preserving dominant features?",
+        "selected_answer": "Max Pooling / Average Pooling",
+        "correct_answer": "Max Pooling / Average Pooling",
+        "is_correct": true,
+        "marks_awarded": 10,
+        "marks_possible": 10,
+        "explanation": "Pooling layers reduce spatial dimensionality (height and width), reducing computational load and parameter count while introducing translation invariance."
+      },
+      {
+        "question_id": "q_ai_7",
+        "question_text": "What metric is most suitable for evaluating a medical diagnosis model where False Negatives carry catastrophic consequences?",
+        "selected_answer": "Recall (Sensitivity)",
+        "correct_answer": "Recall (Sensitivity)",
+        "is_correct": true,
+        "marks_awarded": 10,
+        "marks_possible": 10,
+        "explanation": "Recall = TP / (TP + FN). When False Negatives must be minimized (e.g. failing to detect a critical disease), Recall is the paramount metric."
+      },
+      {
+        "question_id": "q_ai_8",
+        "question_text": "What does the concept of 'Embedding' represent in modern Natural Language Processing and Vector Databases?",
+        "selected_answer": "Mapping discrete tokens or concepts into dense, continuous high-dimensional semantic vector spaces",
+        "correct_answer": "Mapping discrete tokens or concepts into dense, continuous high-dimensional semantic vector spaces",
+        "is_correct": true,
+        "marks_awarded": 10,
+        "marks_possible": 10,
+        "explanation": "Embeddings transform categorical concepts into dense real-valued vectors where geometric proximity corresponds to semantic similarity."
+      },
+      {
+        "question_id": "q_ai_9",
+        "question_text": "Which optimization algorithm adapts learning rates individually for each parameter based on first and second moments of gradients?",
+        "selected_answer": "Adam (Adaptive Moment Estimation)",
+        "correct_answer": "Adam (Adaptive Moment Estimation)",
+        "is_correct": true,
+        "marks_awarded": 10,
+        "marks_possible": 10,
+        "explanation": "Adam combines AdaGrad and RMSProp advantages by maintaining exponential moving averages of both past gradients (momentum) and squared gradients."
+      },
+      {
+        "question_id": "q_ai_10",
+        "question_text": "In reinforcement learning, what does the Epsilon-Greedy strategy balance?",
+        "selected_answer": "CPU core usage vs GPU memory limits",
+        "correct_answer": "Exploration (discovering new actions) vs Exploitation (leveraging known rewards)",
+        "is_correct": false,
+        "marks_awarded": 0,
+        "marks_possible": 10,
+        "explanation": "Epsilon-Greedy selects a random action with probability epsilon (exploration) and the best-known action with probability 1-epsilon (exploitation)."
+      }
+    ]
+  }
+]
