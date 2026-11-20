@@ -1233,8 +1233,8 @@ export default function AdminAssessmentsPage() {
         {/* MODAL: TEACHER SUBJECTIVE EVALUATION DRAWER               */}
         {/* ========================================================= */}
         {evaluationDrawerAttempt && evaluatingQuestionId && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-white rounded-2xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+            <div className="bg-white rounded-2xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 max-h-[90vh] overflow-y-auto my-auto">
               {(() => {
                 const qEval = evaluationDrawerAttempt.evaluations?.find(
                   (e) => e.question_id === evaluatingQuestionId
@@ -1347,8 +1347,8 @@ export default function AdminAssessmentsPage() {
         {/* MODAL: CREATE / EDIT ASSESSMENT STUDIO                    */}
         {/* ========================================================= */}
         {isExamModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-white rounded-2xl max-w-4xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+            <div className="bg-white rounded-2xl max-w-4xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 max-h-[90vh] overflow-y-auto my-auto">
               <div className="flex items-start justify-between border-b border-slate-200 pb-3">
                 <div>
                   <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
@@ -1553,8 +1553,8 @@ export default function AdminAssessmentsPage() {
         {/* MODAL: QUESTION BANK PICKER (For Exam Builder)            */}
         {/* ========================================================= */}
         {isBankPickerOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[85vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+            <div className="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[85vh] overflow-y-auto my-auto">
               <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                 <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                   <Database className="w-4 h-4 text-indigo-600" />
@@ -1634,8 +1634,8 @@ export default function AdminAssessmentsPage() {
         {/* MODAL: SINGLE QUESTION BANK CREATOR                       */}
         {/* ========================================================= */}
         {isQuestionBankModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[85vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+            <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[85vh] overflow-y-auto my-auto">
               <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                 <h3 className="text-base font-bold text-slate-900">Add New Question to Bank</h3>
                 <button onClick={() => setIsQuestionBankModalOpen(false)} className="text-slate-400 hover:text-slate-600">
@@ -1750,8 +1750,8 @@ export default function AdminAssessmentsPage() {
         {/* MODAL: BULK JSON IMPORTER                                 */}
         {/* ========================================================= */}
         {isBulkImportModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+            <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[85vh] overflow-y-auto my-auto">
               <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                 <h3 className="text-base font-bold text-slate-900">Bulk Import Questions (JSON)</h3>
                 <button onClick={() => setIsBulkImportModalOpen(false)} className="text-slate-400 hover:text-slate-600">
@@ -1787,8 +1787,8 @@ export default function AdminAssessmentsPage() {
         {/* MODAL: CANDIDATE SCORECARD & REVIEW                       */}
         {/* ========================================================= */}
         {selectedAttemptForReview && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-2xl border border-slate-200 space-y-6 max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+            <div className="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-2xl border border-slate-200 space-y-6 max-h-[90vh] overflow-y-auto my-auto">
               <div className="flex items-start justify-between border-b border-slate-200 pb-3">
                 <div>
                   <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
@@ -1869,8 +1869,8 @@ export default function AdminAssessmentsPage() {
         {/* MODAL: LIVE AUDIT LOGS MODAL                              */}
         {/* ========================================================= */}
         {selectedSessionForAudit && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[85vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+            <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[85vh] overflow-y-auto my-auto">
               <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                 <h3 className="text-base font-bold text-slate-900">
                   Telemetry Audit Log: {selectedSessionForAudit.student_name}

@@ -502,7 +502,7 @@ export default function StudentAssessmentsPage() {
   const unansweredCount = totalQuestions - answeredCount;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans select-none" onContextMenu={(e) => examState === "IN_PROGRESS" && e.preventDefault()}>
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans" onContextMenu={(e) => examState === "IN_PROGRESS" && e.preventDefault()}>
       {/* Topbar only in catalog mode */}
       {examState === "LIST" && <StudentTopbar />}
 
@@ -776,8 +776,8 @@ export default function StudentAssessmentsPage() {
       {/* 2. PRE-EXAM INSTRUCTION & CODE OF CONDUCT MODAL           */}
       {/* ========================================================= */}
       {pendingStartAssessment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 my-auto max-h-[90vh] overflow-y-auto">
             <div className="flex items-start justify-between">
               <div>
                 <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
@@ -886,9 +886,9 @@ export default function StudentAssessmentsPage() {
       {/* 3. PROCTORED EXAMINATION RUNNER STUDIO                    */}
       {/* ========================================================= */}
       {examState === "IN_PROGRESS" && activeAssessment && (
-        <div className="flex-1 flex flex-col bg-slate-900 text-slate-100 min-h-screen">
+        <div className="fixed inset-0 z-40 flex flex-col bg-slate-900 text-slate-100 h-screen w-screen overflow-hidden">
           {/* Top Bar: Proctored Header */}
-          <header className="h-16 bg-slate-950 border-b border-slate-800 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
+          <header className="h-16 flex-shrink-0 bg-slate-950 border-b border-slate-800 px-4 sm:px-6 flex items-center justify-between z-30 select-none">
             {/* Title & Badge */}
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-black text-white text-sm shadow-md">
@@ -955,16 +955,16 @@ export default function StudentAssessmentsPage() {
 
           {/* Subheader Alert (Warnings) */}
           {timeLeft <= 300 && (
-            <div className="bg-amber-500/20 border-b border-amber-500/40 text-amber-200 px-4 py-1.5 text-xs text-center font-bold flex items-center justify-center gap-2">
+            <div className="flex-shrink-0 bg-amber-500/20 border-b border-amber-500/40 text-amber-200 px-4 py-1.5 text-xs text-center font-bold flex items-center justify-center gap-2">
               <AlertTriangle className="w-4 h-4 text-amber-400" />
               Notice: Under 5 minutes remaining! Review all answers before final submission.
             </div>
           )}
 
-          {/* Main Runner Body: 2 Columns */}
-          <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-            {/* Left Column: Active Question Workspace */}
-            <div className="flex-1 flex flex-col p-4 sm:p-6 lg:p-8 overflow-y-auto space-y-6">
+          {/* Main Runner Body: 2 Columns with bounded viewport height */}
+          <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
+            {/* Left Column: Active Question Workspace - Independent smooth scroll */}
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6 overscroll-contain select-text">
               {activeAssessment.questions[currentQuestionIndex] && (
                 (() => {
                   const q = activeAssessment.questions[currentQuestionIndex];
@@ -973,7 +973,7 @@ export default function StudentAssessmentsPage() {
                   const isMarked = markedForReview.has(qId);
 
                   return (
-                    <div className="max-w-4xl w-full mx-auto space-y-6">
+                    <div className="max-w-4xl w-full mx-auto space-y-6 pb-24">
                       {/* Question Header Card */}
                       <div className="bg-slate-800/80 rounded-xl p-5 border border-slate-700/80 space-y-4 shadow-md">
                         <div className="flex items-center justify-between border-b border-slate-700/80 pb-3">
@@ -1300,8 +1300,8 @@ export default function StudentAssessmentsPage() {
               )}
             </div>
 
-            {/* Right Column: 5-State Question Palette & Candidate Profile */}
-            <aside className="w-full lg:w-80 bg-slate-950 border-t lg:border-t-0 lg:border-l border-slate-800 p-5 flex flex-col justify-between space-y-6">
+            {/* Right Column: 5-State Question Palette & Candidate Profile - Independent smooth scroll */}
+            <aside className="w-full lg:w-84 flex-shrink-0 bg-slate-950 border-t lg:border-t-0 lg:border-l border-slate-800 p-5 flex flex-col justify-between overflow-y-auto min-h-0 max-h-[45vh] lg:max-h-full overscroll-contain space-y-6 select-none">
               <div className="space-y-6">
                 {/* Candidate Overview */}
                 <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-2">
@@ -1405,8 +1405,8 @@ export default function StudentAssessmentsPage() {
       {/* 4. ANTI-CHEAT PROCTORING WARNING MODAL                    */}
       {/* ========================================================= */}
       {showTabSwitchWarning && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-red-950/80 backdrop-blur-md animate-in fade-in">
-          <div className="bg-slate-900 rounded-2xl max-w-md w-full p-6 text-center border-2 border-red-500 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-red-950/80 backdrop-blur-md animate-in fade-in overflow-y-auto">
+          <div className="bg-slate-900 rounded-2xl max-w-md w-full p-6 text-center border-2 border-red-500 shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto">
             <div className="w-14 h-14 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center mx-auto border border-red-500/40">
               <ShieldAlert className="w-8 h-8" />
             </div>
@@ -1440,8 +1440,8 @@ export default function StudentAssessmentsPage() {
       {/* 5. SUBMIT CONFIRMATION SUMMARY DIALOG                     */}
       {/* ========================================================= */}
       {showSubmitConfirmModal && activeAssessment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-slate-900 rounded-2xl max-w-lg w-full p-6 border border-slate-700 shadow-2xl space-y-6 text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+          <div className="bg-slate-900 rounded-2xl max-w-lg w-full p-6 border border-slate-700 shadow-2xl space-y-6 text-white my-auto max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-lg font-bold">Confirm Final Examination Submission</h3>
               <button
