@@ -36,6 +36,7 @@ import {
   Printer,
   ChevronRight,
   Sparkles,
+  Lock,
 } from "lucide-react";
 import { Assessment, AssessmentQuestion, AssessmentAttempt, QuestionType } from "@/lib/assessments/assessment-store";
 
@@ -338,8 +339,16 @@ export default function StudentAssessmentsPage() {
     }
   };
 
-  // Select or update answer
+  // Select or update answer - MCQ One-Time Selection Rule
   const handleAnswerChange = (qId: string, answer: any) => {
+    // Once an option is clicked for single-choice or true/false, lock it permanently
+    const activeQ = activeAssessment?.questions.find((q) => q.id === qId);
+    if (activeQ && (activeQ.type === "SINGLE_CHOICE" || activeQ.type === "TRUE_FALSE")) {
+      const existing = selectedAnswers[qId];
+      if (existing !== undefined && existing !== null && existing !== "") {
+        return; // Locked! Per examination rules, answer cannot be changed once selected
+      }
+    }
     const updated = { ...selectedAnswers, [qId]: answer };
     setSelectedAnswers(updated);
     triggerAutosave(updated, markedForReview, visitedQuestions);
@@ -347,6 +356,10 @@ export default function StudentAssessmentsPage() {
 
   // Clear answer
   const handleClearAnswer = (qId: string) => {
+    const activeQ = activeAssessment?.questions.find((q) => q.id === qId);
+    if (activeQ && (activeQ.type === "SINGLE_CHOICE" || activeQ.type === "TRUE_FALSE")) {
+      return; // Locked! One-time selected MCQ answers cannot be cleared
+    }
     const updated = { ...selectedAnswers };
     delete updated[qId];
     setSelectedAnswers(updated);
@@ -857,6 +870,9 @@ export default function StudentAssessmentsPage() {
                   <strong>Server-Authoritative Timer:</strong> The countdown timer runs on the cloud server. Refreshing the browser will not reset or extend your timer.
                 </li>
                 <li>
+                  <strong>One-Time Answer Finality:</strong> In Multiple Choice Questions (MCQ) and True/False questions, an option can only be selected ONCE. After clicking, your answer is permanently locked and cannot be changed or cleared.
+                </li>
+                <li>
                   <strong>Continuous Cloud Autosave:</strong> Your selected answers are continuously autosaved to the server in real-time.
                 </li>
                 <li>
@@ -1034,35 +1050,67 @@ export default function StudentAssessmentsPage() {
                       {/* Dynamic Question Format Renderers */}
                       <div className="bg-slate-800/60 rounded-xl p-5 sm:p-6 border border-slate-700/80 space-y-4">
                         {/* 1. SINGLE CHOICE MCQ */}
-                        {q.type === "SINGLE_CHOICE" && (
-                          <div className="space-y-3">
-                            {(q.options || []).map((opt, oIdx) => {
-                              const letter = String.fromCharCode(65 + oIdx);
-                              const isSelected = currentAnswer === opt;
-                              return (
-                                <button
-                                  key={oIdx}
-                                  type="button"
-                                  onClick={() => handleAnswerChange(qId, opt)}
-                                  className={`w-full text-left p-4 rounded-xl border transition-all flex items-center gap-4 ${
-                                    isSelected
-                                      ? "bg-indigo-600/30 border-indigo-500 text-white shadow-md shadow-indigo-900/30 ring-1 ring-indigo-500"
-                                      : "bg-slate-900/60 border-slate-700 text-slate-200 hover:bg-slate-700/50 hover:border-slate-600"
-                                  }`}
-                                >
-                                  <div
-                                    className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
-                                      isSelected ? "bg-indigo-500 text-white" : "bg-slate-800 text-slate-400 border border-slate-700"
-                                    }`}
-                                  >
-                                    {letter}
+                        {q.type === "SINGLE_CHOICE" && (() => {
+                          const isAnswered = currentAnswer !== undefined && currentAnswer !== null && currentAnswer !== "";
+                          return (
+                            <div className="space-y-3">
+                              {/* One-Time Selection Status Indicator */}
+                              <div className="flex items-center justify-between pb-1">
+                                {isAnswered ? (
+                                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/40 animate-in fade-in">
+                                    <Lock className="w-3.5 h-3.5" />
+                                    Answer Selected & Locked (Final)
                                   </div>
-                                  <span className="text-sm font-medium flex-1 leading-snug">{opt}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
+                                ) : (
+                                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-semibold border border-amber-500/40">
+                                    <AlertCircle className="w-3.5 h-3.5" />
+                                    One-Time Selection: Clicking an option locks it permanently
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="space-y-2.5">
+                                {(q.options || []).map((opt, oIdx) => {
+                                  const letter = String.fromCharCode(65 + oIdx);
+                                  const isSelected = currentAnswer === opt;
+                                  return (
+                                    <button
+                                      key={oIdx}
+                                      type="button"
+                                      disabled={isAnswered}
+                                      onClick={() => handleAnswerChange(qId, opt)}
+                                      className={`w-full text-left p-4 rounded-xl border transition-all flex items-center gap-4 ${
+                                        isSelected
+                                          ? "bg-emerald-600/30 border-emerald-500 text-white shadow-lg ring-2 ring-emerald-500/60"
+                                          : isAnswered
+                                          ? "bg-slate-900/40 border-slate-800 text-slate-500 opacity-50 cursor-not-allowed"
+                                          : "bg-slate-900/60 border-slate-700 text-slate-200 hover:bg-slate-700/50 hover:border-slate-500 cursor-pointer"
+                                      }`}
+                                    >
+                                      <div
+                                        className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                                          isSelected
+                                            ? "bg-emerald-500 text-white"
+                                            : isAnswered
+                                            ? "bg-slate-800 text-slate-600 border border-slate-800"
+                                            : "bg-slate-800 text-slate-400 border border-slate-700"
+                                        }`}
+                                      >
+                                        {letter}
+                                      </div>
+                                      <span className="text-sm font-medium flex-1 leading-snug">{opt}</span>
+                                      {isSelected && (
+                                        <span className="text-xs font-bold text-emerald-400 flex items-center gap-1 shrink-0 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-700/60">
+                                          <Lock className="w-3 h-3" /> Locked
+                                        </span>
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })()}
 
                         {/* 2. MULTIPLE CHOICE MCQ (Checkboxes) */}
                         {q.type === "MULTIPLE_CHOICE" && (
@@ -1107,27 +1155,50 @@ export default function StudentAssessmentsPage() {
                         )}
 
                         {/* 3. TRUE / FALSE */}
-                        {q.type === "TRUE_FALSE" && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {["true", "false"].map((val) => {
-                              const isSelected = String(currentAnswer).toLowerCase() === val;
-                              return (
-                                <button
-                                  key={val}
-                                  type="button"
-                                  onClick={() => handleAnswerChange(qId, val)}
-                                  className={`p-6 rounded-xl border text-center font-bold text-lg transition-all capitalize ${
-                                    isSelected
-                                      ? "bg-indigo-600 border-indigo-400 text-white shadow-lg ring-2 ring-indigo-400"
-                                      : "bg-slate-900/60 border-slate-700 text-slate-300 hover:bg-slate-700/50"
-                                  }`}
-                                >
-                                  {val === "true" ? "✓ True" : "✕ False"}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
+                        {q.type === "TRUE_FALSE" && (() => {
+                          const isAnswered = currentAnswer !== undefined && currentAnswer !== null && currentAnswer !== "";
+                          return (
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between pb-1">
+                                {isAnswered ? (
+                                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/40 animate-in fade-in">
+                                    <Lock className="w-3.5 h-3.5" />
+                                    Answer Selected & Locked (Final)
+                                  </div>
+                                ) : (
+                                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-semibold border border-amber-500/40">
+                                    <AlertCircle className="w-3.5 h-3.5" />
+                                    One-Time Selection: Clicking an option locks it permanently
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {["true", "false"].map((val) => {
+                                  const isSelected = String(currentAnswer).toLowerCase() === val;
+                                  return (
+                                    <button
+                                      key={val}
+                                      type="button"
+                                      disabled={isAnswered}
+                                      onClick={() => handleAnswerChange(qId, val)}
+                                      className={`p-6 rounded-xl border text-center font-bold text-lg transition-all capitalize flex items-center justify-center gap-2 ${
+                                        isSelected
+                                          ? "bg-emerald-600 border-emerald-400 text-white shadow-lg ring-2 ring-emerald-400"
+                                          : isAnswered
+                                          ? "bg-slate-900/40 border-slate-800 text-slate-500 opacity-50 cursor-not-allowed"
+                                          : "bg-slate-900/60 border-slate-700 text-slate-300 hover:bg-slate-700/50 cursor-pointer"
+                                      }`}
+                                    >
+                                      {val === "true" ? "✓ True" : "✕ False"}
+                                      {isSelected && <Lock className="w-4 h-4 ml-1" />}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })()}
 
                         {/* 4. FILL IN THE BLANKS */}
                         {q.type === "FILL_BLANKS" && (
@@ -1284,13 +1355,23 @@ export default function StudentAssessmentsPage() {
                           >
                             {isMarked ? "Unmark Review" : "Mark for Review"}
                           </Button>
-                          <Button
-                            variant="ghost"
-                            onClick={() => handleClearAnswer(qId)}
-                            className="text-xs text-slate-400 hover:text-white"
-                          >
-                            Clear Response
-                          </Button>
+                          {(q.type === "SINGLE_CHOICE" || q.type === "TRUE_FALSE") &&
+                          currentAnswer !== undefined &&
+                          currentAnswer !== null &&
+                          currentAnswer !== "" ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80 text-emerald-400 border border-slate-700 text-xs font-semibold">
+                              <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                              Answer Locked
+                            </span>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              onClick={() => handleClearAnswer(qId)}
+                              className="text-xs text-slate-400 hover:text-white"
+                            >
+                              Clear Response
+                            </Button>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-3">
