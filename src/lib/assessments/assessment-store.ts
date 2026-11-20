@@ -1470,6 +1470,11 @@ export class AssessmentStore {
     return this.sessions.filter((s) => s.status === "ACTIVE" && new Date(s.expires_at).getTime() > now);
   }
 
+  public getAllSessions(): ActiveExamSession[] {
+    this.sessions = loadSessionsFromDisk();
+    return this.sessions;
+  }
+
   // ================= GRADING & SUBMISSIONS =================
 
   /**

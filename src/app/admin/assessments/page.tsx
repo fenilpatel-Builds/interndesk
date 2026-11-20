@@ -78,6 +78,15 @@ export default function AdminAssessmentsPage() {
   const [selectedSessionForAudit, setSelectedSessionForAudit] = useState<ActiveExamSession | null>(null);
   const [previewAssessment, setPreviewAssessment] = useState<Assessment | null>(null);
 
+  // Live Telemetry & Polling
+  const [currentTick, setCurrentTick] = useState<number>(Date.now());
+  const [monitorShowAll, setMonitorShowAll] = useState<boolean>(false);
+
+  // Submissions Filtering
+  const [subFilterExam, setSubFilterExam] = useState<string>("ALL");
+  const [subFilterResult, setSubFilterResult] = useState<"ALL" | "PASSED" | "FAILED">("ALL");
+  const [subSearchQuery, setSubSearchQuery] = useState<string>("");
+
   // Quick Question in Exam Builder
   const [isAddingQuickQuestion, setIsAddingQuickQuestion] = useState(false);
   const [quickQPrompt, setQuickQPrompt] = useState("");
@@ -136,7 +145,7 @@ export default function AdminAssessmentsPage() {
       const [resAsm, resAtt, resSessions, resBank] = await Promise.all([
         fetch("/api/admin/assessments").then((r) => r.json()).catch(() => ({ success: false })),
         fetch("/api/admin/assessments/attempts").then((r) => r.json()).catch(() => ({ success: false })),
-        fetch("/api/admin/assessments/monitoring").then((r) => r.json()).catch(() => ({ success: false })),
+        fetch(`/api/admin/assessments/monitoring${monitorShowAll ? "?all=true" : ""}`).then((r) => r.json()).catch(() => ({ success: false })),
         fetch("/api/admin/question-bank").then((r) => r.json()).catch(() => ({ success: false })),
       ]);
 
@@ -159,30 +168,23 @@ export default function AdminAssessmentsPage() {
     }
   };
 
+  // 1-Second Clock Tick for Live Countdowns
   useEffect(() => {
-    loadData();
+    const tickInterval = setInterval(() => {
+      setCurrentTick(Date.now());
+    }, 1000);
+    return () => clearInterval(tickInterval);
   }, []);
 
-  // Polling for live candidate sessions when on MONITORING tab
+  // Continuous background synchronization & live proctor polling
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (activeTab === "MONITORING") {
-      interval = setInterval(async () => {
-        try {
-          const res = await fetch("/api/admin/assessments/monitoring");
-          if (res.ok) {
-            const data = await res.json();
-            if (data.success && Array.isArray(data.sessions)) {
-              setActiveSessions(data.sessions);
-            }
-          }
-        } catch {}
-      }, 8000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [activeTab]);
+    loadData();
+    const pollInterval = setInterval(() => {
+      loadData();
+    }, activeTab === "MONITORING" ? 4000 : 10000);
+
+    return () => clearInterval(pollInterval);
+  }, [activeTab, monitorShowAll]);
 
   // Open Exam Builder for Create
   const handleOpenCreateExam = () => {
@@ -592,6 +594,24 @@ export default function AdminAssessmentsPage() {
     return matchesSearch;
   });
 
+  // Filter Candidate Submissions
+  const filteredAttempts = attempts.filter((att) => {
+    if (subFilterExam !== "ALL" && att.assessment_id !== subFilterExam && att.assessment_title !== subFilterExam) {
+      return false;
+    }
+    if (subFilterResult === "PASSED" && !att.passed) return false;
+    if (subFilterResult === "FAILED" && att.passed) return false;
+    if (subSearchQuery.trim()) {
+      const q = subSearchQuery.toLowerCase();
+      return (
+        att.student_name.toLowerCase().includes(q) ||
+        att.student_email.toLowerCase().includes(q) ||
+        att.assessment_title.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
+
   // Calculate High-Level Metrics
   const totalExams = assessments.length;
   const publishedExams = assessments.filter((a) => a.status === "PUBLISHED").length;
@@ -612,17 +632,26 @@ export default function AdminAssessmentsPage() {
           {/* Navigation Banner */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 sm:p-8 shadow-xl border border-slate-800">
           <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold tracking-wide border border-indigo-400/30">
-                <Award className="w-3.5 h-3.5" />
-                Institute Examination & Assessment Administration Console
+            <div className="flex items-start gap-4">
+              <div className="bg-white p-2.5 rounded-2xl shadow-md border border-white/20 shrink-0">
+                <img
+                  src="/images/akash-technolabs-header-logo.png"
+                  alt="Akash Technolabs Logo"
+                  className="h-10 w-auto object-contain"
+                />
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-                Online Examination & Testing Suite
-              </h1>
-              <p className="text-slate-300 text-sm max-w-2xl">
-                Create multi-format exams, manage central Question Banks, monitor live candidate sessions with anti-cheat telemetry, and perform faculty subjective grading.
-              </p>
+              <div className="space-y-1.5">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold tracking-wide border border-indigo-400/30">
+                  <Award className="w-3.5 h-3.5" />
+                  Akash Technolabs • Official Examination & Assessment Administration
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
+                  Online Examination & Testing Suite
+                </h1>
+                <p className="text-slate-300 text-xs sm:text-sm max-w-2xl">
+                  Administer technical certifications, manage central Question Banks, monitor live candidate sessions with real-time proctoring telemetry, and review verified student submissions.
+                </p>
+              </div>
             </div>
 
             <div className="flex gap-4 sm:gap-6 bg-white/5 p-4 rounded-xl border border-white/10 backdrop-blur-sm">
@@ -1021,26 +1050,47 @@ export default function AdminAssessmentsPage() {
         {/* ========================================================= */}
         {activeTab === "MONITORING" && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="space-y-1">
                 <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                   <Activity className="w-5 h-5 text-indigo-600" />
                   Live Proctoring Operations Center
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Real-time candidate telemetry, server timer countdowns, and instant proctor interventions (+Time, Force Submit).
+                  Real-time candidate telemetry, live countdowns, anti-cheat violations, and proctor interventions (+Time, Force Submit).
                 </p>
               </div>
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={loadData}
-                className="text-xs font-semibold flex items-center gap-1.5"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Refresh Telemetry
-              </Button>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs">
+                  <button
+                    onClick={() => setMonitorShowAll(false)}
+                    className={`px-3 py-1.5 rounded-md font-bold transition-all ${
+                      !monitorShowAll ? "bg-white text-indigo-600 shadow-xs" : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    Active Live ({activeSessions.filter((s) => s.status === "ACTIVE").length})
+                  </button>
+                  <button
+                    onClick={() => setMonitorShowAll(true)}
+                    className={`px-3 py-1.5 rounded-md font-bold transition-all ${
+                      monitorShowAll ? "bg-white text-indigo-600 shadow-xs" : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    All Sessions ({activeSessions.length})
+                  </button>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={loadData}
+                  className="text-xs font-semibold flex items-center gap-1.5"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Refresh
+                </Button>
+              </div>
             </div>
 
             {activeSessions.length === 0 ? (
@@ -1048,57 +1098,92 @@ export default function AdminAssessmentsPage() {
                 <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
                 <h3 className="text-base font-bold text-slate-800">No In-Flight Candidate Sessions</h3>
                 <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  All examinations are currently completed. When a student launches a proctored examination, their live telemetry, timer, and alerts will stream here.
+                  All examinations are currently completed. When an enrolled candidate launches an examination, their live telemetry, ticking countdown, and alerts stream here automatically.
                 </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {activeSessions.map((session) => {
-                  const now = Date.now();
                   const expiryMs = new Date(session.expires_at).getTime();
-                  const remainingSec = Math.max(0, Math.floor((expiryMs - now) / 1000));
+                  const remainingSec = Math.max(0, Math.floor((expiryMs - currentTick) / 1000));
                   const m = Math.floor(remainingSec / 60);
                   const s = remainingSec % 60;
                   const formattedTime = `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+
+                  const answeredCount = Object.keys(session.saved_answers || {}).length;
+                  const targetExam = assessments.find((a) => a.id === session.assessment_id);
+                  const totalQ = targetExam?.questions?.length || 10;
+                  const progressPct = Math.min(100, Math.round((answeredCount / totalQ) * 100));
+                  const isActive = session.status === "ACTIVE" && remainingSec > 0;
 
                   return (
                     <Card
                       key={session.session_id}
                       className="bg-white border-slate-200 shadow-md flex flex-col justify-between overflow-hidden"
                     >
-                      <CardHeader className="p-5 pb-3 space-y-2">
+                      <CardHeader className="p-5 pb-3 space-y-3">
                         <div className="flex items-center justify-between">
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                            Live In-Progress
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-xs font-bold flex items-center gap-1.5 ${
+                              isActive
+                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                : "bg-slate-100 text-slate-700 border border-slate-200"
+                            }`}
+                          >
+                            <span
+                              className={`w-2 h-2 rounded-full ${
+                                isActive ? "bg-emerald-500 animate-pulse" : "bg-slate-400"
+                              }`}
+                            />
+                            {isActive ? "Live In-Progress" : session.status}
                           </span>
                           <span
-                            className={`px-2 py-0.5 rounded text-xs font-mono font-bold ${
-                              remainingSec <= 300 ? "bg-red-50 text-red-700" : "bg-slate-100 text-slate-800"
+                            className={`px-2.5 py-0.5 rounded text-xs font-mono font-bold ${
+                              remainingSec <= 300 && isActive
+                                ? "bg-red-50 text-red-700 animate-pulse border border-red-200"
+                                : "bg-slate-900 text-white"
                             }`}
                           >
                             ⏳ {formattedTime}
                           </span>
                         </div>
 
-                        <CardTitle className="text-base font-bold text-slate-900">
-                          {session.student_name}
-                        </CardTitle>
-                        <div className="text-xs text-slate-500 truncate">{session.student_email}</div>
-                        <div className="text-xs font-semibold text-indigo-600 truncate">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white font-bold text-sm flex items-center justify-center shrink-0 shadow-sm">
+                            {session.student_name.split(" ").map((n) => n[0]).join("")}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <CardTitle className="text-sm font-bold text-slate-900 truncate">
+                              {session.student_name}
+                            </CardTitle>
+                            <div className="text-xs text-slate-500 truncate">{session.student_email}</div>
+                          </div>
+                        </div>
+
+                        <div className="text-xs font-semibold text-indigo-600 bg-indigo-50/60 p-2 rounded-lg border border-indigo-100 truncate">
                           {session.assessment_title}
                         </div>
                       </CardHeader>
 
                       <CardContent className="p-5 pt-0 space-y-4">
-                        <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs text-center">
-                          <div>
-                            <div className="text-slate-400 font-medium">Saved Answers</div>
-                            <div className="font-bold text-slate-800">
-                              {Object.keys(session.saved_answers || {}).length} Qs
-                            </div>
+                        {/* Progress Bar */}
+                        <div className="space-y-1 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                          <div className="flex justify-between text-[11px]">
+                            <span className="text-slate-500 font-medium">Progress</span>
+                            <span className="font-bold text-slate-800">
+                              {answeredCount} of {totalQ} Qs ({progressPct}%)
+                            </span>
                           </div>
-                          <div>
+                          <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                            <div
+                              className="bg-indigo-600 h-full rounded-full transition-all duration-300"
+                              style={{ width: `${progressPct}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-xs text-center">
+                          <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
                             <div className="text-slate-400 font-medium">Tab Switches</div>
                             <div
                               className={`font-bold ${
@@ -1108,6 +1193,10 @@ export default function AdminAssessmentsPage() {
                               {session.tab_switch_count} Alerts
                             </div>
                           </div>
+                          <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                            <div className="text-slate-400 font-medium">Session Status</div>
+                            <div className="font-bold text-slate-800">{session.status}</div>
+                          </div>
                         </div>
 
                         {/* Proctor Quick Controls */}
@@ -1115,10 +1204,11 @@ export default function AdminAssessmentsPage() {
                           <Button
                             variant="outline"
                             size="sm"
+                            disabled={!isActive}
                             onClick={() => handleExtendSessionTime(session.session_id, 5)}
                             className="flex-1 text-xs font-bold text-indigo-600 hover:bg-indigo-50"
                           >
-                            +5 Min Extension
+                            +5 Min
                           </Button>
                           <Button
                             variant="ghost"
@@ -1126,11 +1216,12 @@ export default function AdminAssessmentsPage() {
                             onClick={() => setSelectedSessionForAudit(session)}
                             className="text-xs font-semibold text-slate-600 hover:bg-slate-100"
                           >
-                            Audit Log
+                            Audit
                           </Button>
                           <Button
                             variant="destructive"
                             size="sm"
+                            disabled={!isActive}
                             onClick={() => handleForceSubmitSession(session.session_id)}
                             className="text-xs font-bold px-2.5"
                           >
@@ -1150,12 +1241,101 @@ export default function AdminAssessmentsPage() {
         {/* TAB 4: CANDIDATE SUBMISSIONS & RESULT ARCHIVE             */}
         {/* ========================================================= */}
         {activeTab === "SUBMISSIONS" && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <CheckSquare className="w-5 h-5 text-indigo-600" />
-              Candidate Submissions & Proctoring Audits
-            </h2>
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <CheckSquare className="w-5 h-5 text-indigo-600" />
+                  Candidate Submissions & Proctoring Audits
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Verified candidate exam submissions, official scorecards, and proctoring telemetry.
+                </p>
+              </div>
 
+              <div className="text-xs font-bold text-slate-500">
+                Total Submissions: <span className="text-indigo-600 font-extrabold">{filteredAttempts.length}</span>
+              </div>
+            </div>
+
+            {/* Metrics Header */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white p-4 rounded-xl border border-slate-200">
+              <div className="p-3 bg-slate-50 rounded-lg text-center border border-slate-100">
+                <div className="text-xs text-slate-400 font-medium">Submissions</div>
+                <div className="text-xl font-black text-slate-900 mt-0.5">{attempts.length}</div>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-lg text-center border border-slate-100">
+                <div className="text-xs text-slate-400 font-medium">Passed</div>
+                <div className="text-xl font-black text-emerald-600 mt-0.5">
+                  {attempts.filter((a) => a.passed).length}
+                </div>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-lg text-center border border-slate-100">
+                <div className="text-xs text-slate-400 font-medium">Average Score</div>
+                <div className="text-xl font-black text-indigo-600 mt-0.5">
+                  {attempts.length > 0
+                    ? Math.round(attempts.reduce((acc, a) => acc + a.percentage, 0) / attempts.length)
+                    : 0}
+                  %
+                </div>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-lg text-center border border-slate-100">
+                <div className="text-xs text-slate-400 font-medium">Zero-Trust Clean</div>
+                <div className="text-xl font-black text-teal-600 mt-0.5">
+                  {attempts.length > 0
+                    ? Math.round(
+                        (attempts.filter((a) => a.proctoring_flag === "CLEAN").length / attempts.length) * 100
+                      )
+                    : 100}
+                  %
+                </div>
+              </div>
+            </div>
+
+            {/* Filter & Search Toolbar */}
+            <div className="bg-white p-4 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-[11px] font-bold uppercase text-slate-500">Filter By Examination</label>
+                <select
+                  value={subFilterExam}
+                  onChange={(e) => setSubFilterExam(e.target.value)}
+                  className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs outline-none"
+                >
+                  <option value="ALL">All Examinations ({assessments.length})</option>
+                  {assessments.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold uppercase text-slate-500">Result Status</label>
+                <select
+                  value={subFilterResult}
+                  onChange={(e) => setSubFilterResult(e.target.value as any)}
+                  className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs outline-none"
+                >
+                  <option value="ALL">All Results</option>
+                  <option value="PASSED">Passed Only</option>
+                  <option value="FAILED">Failed Only</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold uppercase text-slate-500">Search Candidate</label>
+                <input
+                  type="text"
+                  value={subSearchQuery}
+                  onChange={(e) => setSubSearchQuery(e.target.value)}
+                  placeholder="Search candidate name or email..."
+                  className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Submissions Table */}
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs sm:text-sm">
@@ -1163,7 +1343,7 @@ export default function AdminAssessmentsPage() {
                     <tr>
                       <th className="py-3 px-4">Candidate</th>
                       <th className="py-3 px-4">Assessment Title</th>
-                      <th className="py-3 px-4">Date</th>
+                      <th className="py-3 px-4">Date & Time</th>
                       <th className="py-3 px-4">Score</th>
                       <th className="py-3 px-4">Percentage</th>
                       <th className="py-3 px-4">Result</th>
@@ -1172,25 +1352,46 @@ export default function AdminAssessmentsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {attempts.map((att) => (
+                    {filteredAttempts.map((att) => (
                       <tr key={att.id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-3 px-4">
-                          <div className="font-bold text-slate-900">{att.student_name}</div>
-                          <div className="text-xs text-slate-500">{att.student_email}</div>
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center shrink-0">
+                              {att.student_name.split(" ").map((n) => n[0]).join("")}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="font-bold text-slate-900 truncate">{att.student_name}</div>
+                              <div className="text-[11px] text-slate-500 truncate">{att.student_email}</div>
+                            </div>
+                          </div>
                         </td>
-                        <td className="py-3 px-4 font-semibold text-slate-800">{att.assessment_title}</td>
-                        <td className="py-3 px-4 text-slate-500">
+                        <td className="py-3 px-4">
+                          <div className="font-semibold text-slate-800 max-w-xs truncate">{att.assessment_title}</div>
+                        </td>
+                        <td className="py-3 px-4 text-slate-500 whitespace-nowrap">
                           {new Date(att.submitted_at).toLocaleDateString([], {
                             month: "short",
                             day: "numeric",
                             year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
                           })}
                         </td>
-                        <td className="py-3 px-4 font-bold text-slate-800">
+                        <td className="py-3 px-4 font-bold text-slate-800 whitespace-nowrap">
                           {att.score} / {att.total_marks}
                         </td>
-                        <td className="py-3 px-4 font-bold">{att.percentage}%</td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-4 font-bold whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <span>{att.percentage}%</span>
+                            <div className="w-12 bg-slate-100 h-1.5 rounded-full overflow-hidden hidden sm:block">
+                              <div
+                                className={`h-full rounded-full ${att.passed ? "bg-emerald-500" : "bg-red-500"}`}
+                                style={{ width: `${att.percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap">
                           <span
                             className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
                               att.passed
@@ -1201,7 +1402,7 @@ export default function AdminAssessmentsPage() {
                             {att.passed ? "PASSED" : "FAILED"}
                           </span>
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-4 whitespace-nowrap">
                           <span
                             className={`px-2 py-0.5 rounded text-xs font-medium ${
                               att.proctoring_flag === "CLEAN"
@@ -1212,7 +1413,7 @@ export default function AdminAssessmentsPage() {
                             {att.proctoring_flag} ({att.tab_switch_count} tabs)
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-right space-x-1">
+                        <td className="py-3 px-4 text-right space-x-1 whitespace-nowrap">
                           <Button
                             variant="outline"
                             size="sm"
@@ -2011,78 +2212,114 @@ export default function AdminAssessmentsPage() {
         {/* ========================================================= */}
         {selectedAttemptForReview && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in overflow-y-auto">
-            <div className="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-2xl border border-slate-200 space-y-6 max-h-[90vh] overflow-y-auto my-auto">
-              <div className="flex items-start justify-between border-b border-slate-200 pb-3">
-                <div>
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                    Candidate Official Record
-                  </span>
-                  <h3 className="text-lg font-bold text-slate-900 mt-2">
-                    {selectedAttemptForReview.student_name}
-                  </h3>
-                  <p className="text-xs text-slate-500">{selectedAttemptForReview.assessment_title}</p>
+            <div className="bg-white rounded-2xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 max-h-[90vh] overflow-y-auto my-auto">
+              <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+                <div className="flex items-start gap-3">
+                  <div className="bg-white p-2 rounded-xl border border-slate-200 shadow-xs shrink-0 flex items-center justify-center">
+                    <img
+                      src="/images/akash-technolabs-header-logo.png"
+                      alt="Akash Technolabs"
+                      className="h-8 w-auto object-contain"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        Official Candidate Record
+                      </span>
+                      <span className="text-xs text-slate-500 font-mono">
+                        Attempt ID: #{selectedAttemptForReview.id.slice(-6)}
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-black text-slate-900 mt-1">
+                      {selectedAttemptForReview.student_name}
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      {selectedAttemptForReview.student_email} • {selectedAttemptForReview.assessment_title}
+                    </p>
+                  </div>
                 </div>
-                <button onClick={() => setSelectedAttemptForReview(null)} className="text-slate-400 hover:text-slate-600">
+                <button onClick={() => setSelectedAttemptForReview(null)} className="text-slate-400 hover:text-slate-600 p-1">
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               {/* Metrics */}
-              <div className="grid grid-cols-4 gap-3 text-center bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <div>
-                  <div className="text-xs text-slate-400">Score</div>
-                  <div className="text-base font-bold text-slate-800">
-                    {selectedAttemptForReview.score}/{selectedAttemptForReview.total_marks}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div className="p-2.5 bg-white rounded-lg border border-slate-100">
+                  <div className="text-xs text-slate-400 font-medium">Final Score</div>
+                  <div className="text-lg font-black text-slate-800">
+                    {selectedAttemptForReview.score} / {selectedAttemptForReview.total_marks}
                   </div>
                 </div>
-                <div>
-                  <div className="text-xs text-slate-400">Percentage</div>
-                  <div className="text-base font-bold">{selectedAttemptForReview.percentage}%</div>
+                <div className="p-2.5 bg-white rounded-lg border border-slate-100">
+                  <div className="text-xs text-slate-400 font-medium">Percentage</div>
+                  <div className="text-lg font-black text-indigo-600">{selectedAttemptForReview.percentage}%</div>
                 </div>
-                <div>
-                  <div className="text-xs text-slate-400">Result</div>
-                  <div className="text-base font-bold text-emerald-600">
+                <div className="p-2.5 bg-white rounded-lg border border-slate-100">
+                  <div className="text-xs text-slate-400 font-medium">Result Status</div>
+                  <div className={`text-lg font-black ${selectedAttemptForReview.passed ? "text-emerald-600" : "text-red-600"}`}>
                     {selectedAttemptForReview.passed ? "PASSED" : "FAILED"}
                   </div>
                 </div>
-                <div>
-                  <div className="text-xs text-slate-400">Tab Switches</div>
-                  <div className="text-base font-bold text-indigo-600">
-                    {selectedAttemptForReview.tab_switch_count}
+                <div className="p-2.5 bg-white rounded-lg border border-slate-100">
+                  <div className="text-xs text-slate-400 font-medium">Proctoring Flag</div>
+                  <div className="text-lg font-black text-slate-800">
+                    {selectedAttemptForReview.proctoring_flag}
                   </div>
                 </div>
               </div>
 
               {/* Detailed Evaluations List */}
               <div className="space-y-3">
-                <h4 className="text-xs font-bold uppercase text-slate-600">Question Evaluations</h4>
-                {selectedAttemptForReview.evaluations?.map((ev, evIdx) => (
-                  <div key={evIdx} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
-                    <div className="flex justify-between font-bold">
-                      <span>Q{evIdx + 1}. {ev.question_text}</span>
-                      <span className={ev.is_correct ? "text-emerald-600" : "text-red-600"}>
-                        {ev.marks_awarded} / {ev.marks_possible} pts
-                      </span>
-                    </div>
-                    <div>
-                      Candidate Answer: <strong>{String(ev.selected_answer || "None")}</strong>
-                    </div>
-                    {ev.correct_answer && (
-                      <div className="text-emerald-700">
-                        Official Key: <strong>{String(ev.correct_answer)}</strong>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Question-by-Question Evaluation & Scoring Key
+                  </h4>
+                  <span className="text-xs text-slate-400">
+                    Submitted: {new Date(selectedAttemptForReview.submitted_at).toLocaleString()}
+                  </span>
+                </div>
+
+                <div className="space-y-3 max-h-[45vh] overflow-y-auto pr-1">
+                  {selectedAttemptForReview.evaluations?.map((ev, evIdx) => (
+                    <div key={evIdx} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1.5">
+                      <div className="flex justify-between items-center font-bold">
+                        <span className="text-slate-900 font-extrabold">Q{evIdx + 1}. {ev.question_text}</span>
+                        <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${ev.is_correct ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>
+                          {ev.marks_awarded} / {ev.marks_possible} pts
+                        </span>
                       </div>
-                    )}
-                    {ev.explanation && (
-                      <div className="text-slate-500 italic mt-1">{ev.explanation}</div>
-                    )}
-                  </div>
-                ))}
+                      <div className="pt-1 text-slate-700">
+                        Candidate Answer: <strong className="text-slate-900">{typeof ev.selected_answer === "object" ? JSON.stringify(ev.selected_answer) : String(ev.selected_answer || "None")}</strong>
+                      </div>
+                      {ev.correct_answer && (
+                        <div className="text-emerald-700">
+                          Official Key: <strong>{String(ev.correct_answer)}</strong>
+                        </div>
+                      )}
+                      {ev.explanation && (
+                        <div className="text-slate-500 italic bg-white/80 p-2 rounded border border-slate-100 mt-1">
+                          <strong>Explanation:</strong> {ev.explanation}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              <div className="flex justify-end pt-3 border-t border-slate-200">
-                <Button onClick={() => setSelectedAttemptForReview(null)} className="text-xs font-bold">
-                  Close
-                </Button>
+              <div className="flex justify-between items-center pt-3 border-t border-slate-200">
+                <div className="text-[11px] text-slate-400 font-mono">
+                  Akash Technolabs Exam System • Ref #{selectedAttemptForReview.id}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => window.print()} className="text-xs">
+                    Print / Export
+                  </Button>
+                  <Button onClick={() => setSelectedAttemptForReview(null)} className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold">
+                    Close
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

@@ -36,10 +36,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Access Denied: Admin authorization required." }, { status: 403 });
     }
 
-    const activeSessions = assessmentStore.getAllActiveSessions();
+    const showAll = req.nextUrl.searchParams.get("all") === "true";
+    const targetSessions = showAll ? assessmentStore.getAllSessions() : assessmentStore.getAllActiveSessions();
     const now = Date.now();
 
-    const formatted = activeSessions.map((s) => {
+    const formatted = targetSessions.map((s) => {
       const expiryMs = new Date(s.expires_at).getTime();
       const remainingSeconds = Math.max(0, Math.floor((expiryMs - now) / 1000));
       return {

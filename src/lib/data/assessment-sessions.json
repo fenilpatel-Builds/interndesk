@@ -1,12 +1,12 @@
 [
   {
-    "session_id": "ses_1795164971435_2g5s5",
+    "session_id": "ses_1795171844292_x6v29",
     "assessment_id": "asm-aiml-01",
     "assessment_title": "AI & Machine Learning Engineering Practicum Exam",
     "student_email": "session.test@akashtechnolabs.com",
     "student_name": "Session Test Candidate",
-    "started_at": "2026-11-20T08:56:11.435Z",
-    "expires_at": "2026-11-20T09:31:11.435Z",
+    "started_at": "2026-11-20T10:50:44.292Z",
+    "expires_at": "2026-11-20T11:25:44.292Z",
     "duration_minutes": 35,
     "saved_answers": {
       "q_ai_1": "Dropout and L2 (Ridge) Weight Regularization"
@@ -22,32 +22,32 @@
     "fullscreen_exit_count": 0,
     "activity_logs": [
       {
-        "timestamp": "2026-11-20T08:56:11.435Z",
+        "timestamp": "2026-11-20T10:50:44.292Z",
         "type": "START",
-        "details": "Secure examination started. Server timer scheduled until 2026-11-20T09:21:11.435Z"
+        "details": "Secure examination started. Server timer scheduled until 2026-11-20T11:15:44.292Z"
       },
       {
-        "timestamp": "2026-11-20T08:56:11.442Z",
+        "timestamp": "2026-11-20T10:50:44.301Z",
         "type": "TAB_SWITCH",
         "details": "Navigated away from browser window"
       },
       {
-        "timestamp": "2026-11-20T08:56:11.444Z",
+        "timestamp": "2026-11-20T10:50:44.303Z",
         "type": "RECONNECT",
-        "details": "Administrator granted +10 minutes extension. New deadline: 2026-11-20T09:31:11.435Z"
+        "details": "Administrator granted +10 minutes extension. New deadline: 2026-11-20T11:25:44.292Z"
       }
     ],
     "status": "SUBMITTED",
-    "updated_at": "2026-11-20T08:56:11.446Z"
+    "updated_at": "2026-11-20T10:50:44.305Z"
   },
   {
-    "session_id": "ses_1795164956985_rjz2z",
+    "session_id": "ses_1795171810434_sjkao",
     "assessment_id": "asm-aiml-01",
     "assessment_title": "AI & Machine Learning Engineering Practicum Exam",
     "student_email": "session.test@akashtechnolabs.com",
     "student_name": "Session Test Candidate",
-    "started_at": "2026-11-20T08:55:56.985Z",
-    "expires_at": "2026-11-20T09:30:56.985Z",
+    "started_at": "2026-11-20T10:50:10.434Z",
+    "expires_at": "2026-11-20T11:25:10.434Z",
     "duration_minutes": 35,
     "saved_answers": {
       "q_ai_1": "Dropout and L2 (Ridge) Weight Regularization"
@@ -63,227 +63,100 @@
     "fullscreen_exit_count": 0,
     "activity_logs": [
       {
-        "timestamp": "2026-11-20T08:55:56.985Z",
+        "timestamp": "2026-11-20T10:50:10.434Z",
         "type": "START",
-        "details": "Secure examination started. Server timer scheduled until 2026-11-20T09:20:56.985Z"
+        "details": "Secure examination started. Server timer scheduled until 2026-11-20T11:15:10.434Z"
       },
       {
-        "timestamp": "2026-11-20T08:55:56.996Z",
+        "timestamp": "2026-11-20T10:50:10.439Z",
         "type": "TAB_SWITCH",
         "details": "Navigated away from browser window"
       },
       {
-        "timestamp": "2026-11-20T08:55:56.998Z",
+        "timestamp": "2026-11-20T10:50:10.440Z",
         "type": "RECONNECT",
-        "details": "Administrator granted +10 minutes extension. New deadline: 2026-11-20T09:30:56.985Z"
+        "details": "Administrator granted +10 minutes extension. New deadline: 2026-11-20T11:25:10.434Z"
       }
     ],
     "status": "SUBMITTED",
-    "updated_at": "2026-11-20T08:55:57.000Z"
+    "updated_at": "2026-11-20T10:50:10.441Z"
   },
   {
-    "session_id": "ses_1795163652493_2fzps",
+    "session_id": "ses_live_priya_aiml_01",
     "assessment_id": "asm-aiml-01",
     "assessment_title": "AI & Machine Learning Engineering Practicum Exam",
-    "student_email": "session.test@akashtechnolabs.com",
-    "student_name": "Session Test Candidate",
-    "started_at": "2026-11-20T08:34:12.493Z",
-    "expires_at": "2026-11-20T09:09:12.493Z",
-    "duration_minutes": 35,
+    "student_email": "priya.sharma@akashtechnolabs.com",
+    "student_name": "Priya Sharma",
+    "started_at": "2026-11-20T10:30:59.145Z",
+    "expires_at": "2026-11-20T10:55:59.145Z",
+    "duration_minutes": 25,
     "saved_answers": {
-      "q_ai_1": "Dropout and L2 (Ridge) Weight Regularization"
+      "q_ai_1": "Dropout and L2 (Ridge) Weight Regularization",
+      "q_ai_2": "Computing dynamic dependency weights between all token positions in parallel",
+      "q_ai_3": "Categorical Cross-Entropy Loss",
+      "q_ai_4": "Batch GD computes gradients using the entire dataset, while SGD updates parameters per single sample or mini-batch",
+      "q_ai_5": "ReLU (Rectified Linear Unit)",
+      "q_ai_6": "Max Pooling / Average Pooling"
     },
     "marked_for_review": [
-      "q_ai_1"
+      "q_ai_3"
     ],
     "visited_questions": [
       "q_ai_1",
-      "q_ai_2"
+      "q_ai_2",
+      "q_ai_3",
+      "q_ai_4",
+      "q_ai_5",
+      "q_ai_6",
+      "q_ai_7"
     ],
-    "tab_switch_count": 1,
+    "tab_switch_count": 0,
     "fullscreen_exit_count": 0,
     "activity_logs": [
       {
-        "timestamp": "2026-11-20T08:34:12.493Z",
+        "timestamp": "2026-11-20T10:30:59.145Z",
         "type": "START",
-        "details": "Secure examination started. Server timer scheduled until 2026-11-20T08:59:12.493Z"
+        "details": "Secure examination session started with Zero-Trust proctoring active."
       },
       {
-        "timestamp": "2026-11-20T08:34:12.503Z",
-        "type": "TAB_SWITCH",
-        "details": "Navigated away from browser window"
-      },
-      {
-        "timestamp": "2026-11-20T08:34:12.505Z",
-        "type": "RECONNECT",
-        "details": "Administrator granted +10 minutes extension. New deadline: 2026-11-20T09:09:12.493Z"
+        "timestamp": "2026-11-20T10:34:59.145Z",
+        "type": "AUTOSAVE",
+        "details": "Answers autosaved successfully (6 questions answered)."
       }
     ],
-    "status": "SUBMITTED",
-    "updated_at": "2026-11-20T08:34:12.507Z"
+    "status": "ACTIVE",
+    "updated_at": "2026-11-20T10:38:29.145Z"
   },
   {
-    "session_id": "ses_1795163602274_zvp1c",
-    "assessment_id": "asm-aiml-01",
-    "assessment_title": "AI & Machine Learning Engineering Practicum Exam",
-    "student_email": "session.test@akashtechnolabs.com",
-    "student_name": "Session Test Candidate",
-    "started_at": "2026-11-20T08:33:22.274Z",
-    "expires_at": "2026-11-20T09:08:22.274Z",
-    "duration_minutes": 35,
+    "session_id": "ses_completed_fenil_fs_02",
+    "assessment_id": "asm-fullstack-02",
+    "assessment_title": "Full-Stack Enterprise Architecture & Next.js Exam",
+    "student_email": "fenil.patel@akashtechnolabs.com",
+    "student_name": "Fenil Patel",
+    "started_at": "2026-11-05T14:00:00.000Z",
+    "expires_at": "2026-11-05T14:25:00.000Z",
+    "duration_minutes": 25,
     "saved_answers": {
-      "q_ai_1": "Dropout and L2 (Ridge) Weight Regularization"
+      "q_fs_1": "RSCs execute exclusively on the server, producing lightweight streamed HTML without shipping component JavaScript to the client bundle"
     },
-    "marked_for_review": [
-      "q_ai_1"
-    ],
+    "marked_for_review": [],
     "visited_questions": [
-      "q_ai_1",
-      "q_ai_2"
+      "q_fs_1",
+      "q_fs_2",
+      "q_fs_3",
+      "q_fs_4",
+      "q_fs_5"
     ],
-    "tab_switch_count": 1,
+    "tab_switch_count": 0,
     "fullscreen_exit_count": 0,
     "activity_logs": [
       {
-        "timestamp": "2026-11-20T08:33:22.274Z",
+        "timestamp": "2026-11-05T14:00:00.000Z",
         "type": "START",
-        "details": "Secure examination started. Server timer scheduled until 2026-11-20T08:58:22.274Z"
-      },
-      {
-        "timestamp": "2026-11-20T08:33:22.284Z",
-        "type": "TAB_SWITCH",
-        "details": "Navigated away from browser window"
-      },
-      {
-        "timestamp": "2026-11-20T08:33:22.288Z",
-        "type": "RECONNECT",
-        "details": "Administrator granted +10 minutes extension. New deadline: 2026-11-20T09:08:22.274Z"
+        "details": "Examination session started."
       }
     ],
     "status": "SUBMITTED",
-    "updated_at": "2026-11-20T08:33:22.290Z"
-  },
-  {
-    "session_id": "ses_1795162980086_lr0no",
-    "assessment_id": "asm-aiml-01",
-    "assessment_title": "AI & Machine Learning Engineering Practicum Exam",
-    "student_email": "session.test@akashtechnolabs.com",
-    "student_name": "Session Test Candidate",
-    "started_at": "2026-11-20T08:23:00.086Z",
-    "expires_at": "2026-11-20T08:58:00.086Z",
-    "duration_minutes": 35,
-    "saved_answers": {
-      "q_ai_1": "Dropout and L2 (Ridge) Weight Regularization"
-    },
-    "marked_for_review": [
-      "q_ai_1"
-    ],
-    "visited_questions": [
-      "q_ai_1",
-      "q_ai_2"
-    ],
-    "tab_switch_count": 1,
-    "fullscreen_exit_count": 0,
-    "activity_logs": [
-      {
-        "timestamp": "2026-11-20T08:23:00.086Z",
-        "type": "START",
-        "details": "Secure examination started. Server timer scheduled until 2026-11-20T08:48:00.086Z"
-      },
-      {
-        "timestamp": "2026-11-20T08:23:00.096Z",
-        "type": "TAB_SWITCH",
-        "details": "Navigated away from browser window"
-      },
-      {
-        "timestamp": "2026-11-20T08:23:00.100Z",
-        "type": "RECONNECT",
-        "details": "Administrator granted +10 minutes extension. New deadline: 2026-11-20T08:58:00.086Z"
-      }
-    ],
-    "status": "SUBMITTED",
-    "updated_at": "2026-11-20T08:23:00.103Z"
-  },
-  {
-    "session_id": "ses_1795162966798_hswct",
-    "assessment_id": "asm-aiml-01",
-    "assessment_title": "AI & Machine Learning Engineering Practicum Exam",
-    "student_email": "session.test@akashtechnolabs.com",
-    "student_name": "Session Test Candidate",
-    "started_at": "2026-11-20T08:22:46.798Z",
-    "expires_at": "2026-11-20T08:57:46.798Z",
-    "duration_minutes": 35,
-    "saved_answers": {
-      "q_ai_1": "Dropout and L2 (Ridge) Weight Regularization"
-    },
-    "marked_for_review": [
-      "q_ai_1"
-    ],
-    "visited_questions": [
-      "q_ai_1",
-      "q_ai_2"
-    ],
-    "tab_switch_count": 1,
-    "fullscreen_exit_count": 0,
-    "activity_logs": [
-      {
-        "timestamp": "2026-11-20T08:22:46.798Z",
-        "type": "START",
-        "details": "Secure examination started. Server timer scheduled until 2026-11-20T08:47:46.798Z"
-      },
-      {
-        "timestamp": "2026-11-20T08:22:46.813Z",
-        "type": "TAB_SWITCH",
-        "details": "Navigated away from browser window"
-      },
-      {
-        "timestamp": "2026-11-20T08:22:46.817Z",
-        "type": "RECONNECT",
-        "details": "Administrator granted +10 minutes extension. New deadline: 2026-11-20T08:57:46.798Z"
-      }
-    ],
-    "status": "SUBMITTED",
-    "updated_at": "2026-11-20T08:22:46.822Z"
-  },
-  {
-    "session_id": "ses_1795162890124_guepx",
-    "assessment_id": "asm-aiml-01",
-    "assessment_title": "AI & Machine Learning Engineering Practicum Exam",
-    "student_email": "session.test@akashtechnolabs.com",
-    "student_name": "Session Test Candidate",
-    "started_at": "2026-11-20T08:21:30.124Z",
-    "expires_at": "2026-11-20T08:56:30.124Z",
-    "duration_minutes": 35,
-    "saved_answers": {
-      "q_ai_1": "Dropout and L2 (Ridge) Weight Regularization"
-    },
-    "marked_for_review": [
-      "q_ai_1"
-    ],
-    "visited_questions": [
-      "q_ai_1",
-      "q_ai_2"
-    ],
-    "tab_switch_count": 1,
-    "fullscreen_exit_count": 0,
-    "activity_logs": [
-      {
-        "timestamp": "2026-11-20T08:21:30.124Z",
-        "type": "START",
-        "details": "Secure examination started. Server timer scheduled until 2026-11-20T08:46:30.124Z"
-      },
-      {
-        "timestamp": "2026-11-20T08:21:30.139Z",
-        "type": "TAB_SWITCH",
-        "details": "Navigated away from browser window"
-      },
-      {
-        "timestamp": "2026-11-20T08:21:30.142Z",
-        "type": "RECONNECT",
-        "details": "Administrator granted +10 minutes extension. New deadline: 2026-11-20T08:56:30.124Z"
-      }
-    ],
-    "status": "SUBMITTED",
-    "updated_at": "2026-11-20T08:21:30.144Z"
+    "updated_at": "2026-11-05T14:18:40.000Z"
   }
 ]

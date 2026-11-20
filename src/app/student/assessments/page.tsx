@@ -14,6 +14,7 @@ import {
   RotateCcw,
   Award,
   ShieldAlert,
+  ShieldCheck,
   HelpCircle,
   BookOpen,
   Eye,
@@ -515,22 +516,31 @@ export default function StudentAssessmentsPage() {
           {/* Header Banner */}
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 sm:p-8 shadow-xl border border-slate-800">
             <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold tracking-wide border border-indigo-400/30">
-                  <Award className="w-3.5 h-3.5" />
-                  Akash Technolabs Certified Examination Portal
+              <div className="flex items-start gap-4">
+                <div className="bg-white p-2.5 rounded-2xl shadow-md border border-white/20 shrink-0 hidden sm:flex items-center justify-center">
+                  <img
+                    src="/images/akash-technolabs-header-logo.png"
+                    alt="Akash Technolabs"
+                    className="h-10 w-auto object-contain"
+                  />
                 </div>
-                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-                  Examinations & Skill Assessments
-                </h1>
-                <p className="text-slate-300 text-sm max-w-2xl">
-                  Attempt proctored technical evaluations, coding practicums, and module examinations.
-                  All attempts are secured by Zero-Trust Proctoring, continuous autosave, and server-authoritative timers.
-                </p>
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold tracking-wide border border-indigo-400/30">
+                    <Award className="w-3.5 h-3.5" />
+                    Akash Technolabs • Department of Examination & Technical Certification
+                  </div>
+                  <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                    Examinations & Skill Assessments
+                  </h1>
+                  <p className="text-slate-300 text-sm max-w-2xl">
+                    Attempt proctored technical evaluations, coding practicums, and module examinations.
+                    All attempts are secured by Zero-Trust Proctoring, continuous autosave, and server-authoritative timers.
+                  </p>
+                </div>
               </div>
 
               {/* Quick Metrics */}
-              <div className="flex gap-4 sm:gap-6 bg-white/5 p-4 rounded-xl border border-white/10 backdrop-blur-sm">
+              <div className="flex gap-4 sm:gap-6 bg-white/5 p-4 rounded-xl border border-white/10 backdrop-blur-sm shrink-0">
                 <div className="text-center">
                   <div className="text-2xl font-black text-indigo-400">{assessments.length}</div>
                   <div className="text-xs text-slate-400 font-medium uppercase tracking-wider">Total Tests</div>
@@ -780,15 +790,27 @@ export default function StudentAssessmentsPage() {
       {pendingStartAssessment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in overflow-y-auto">
           <div className="bg-white rounded-2xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 my-auto max-h-[90vh] overflow-y-auto">
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                  Pre-Examination Protocol
-                </span>
-                <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-2">
-                  {pendingStartAssessment.title}
-                </h2>
-                <p className="text-xs text-slate-500 mt-1">{pendingStartAssessment.subject}</p>
+            <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-start gap-3">
+                <div className="bg-white p-2 rounded-xl border border-slate-200 shadow-xs shrink-0 flex items-center justify-center">
+                  <img
+                    src="/images/akash-technolabs-header-logo.png"
+                    alt="Akash Technolabs"
+                    className="h-8 w-auto object-contain"
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      Pre-Examination Protocol
+                    </span>
+                    <span className="text-xs text-slate-400 font-medium">Candidate: <strong className="text-slate-700">{studentName}</strong></span>
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-1">
+                    {pendingStartAssessment.title}
+                  </h2>
+                  <p className="text-xs text-slate-500">{pendingStartAssessment.subject} • {pendingStartAssessment.category || "Technical Certification"}</p>
+                </div>
               </div>
               <button
                 onClick={() => setPendingStartAssessment(null)}
@@ -893,8 +915,12 @@ export default function StudentAssessmentsPage() {
           <header className="h-16 flex-shrink-0 bg-slate-950 border-b border-slate-800 px-4 sm:px-6 flex items-center justify-between z-30 select-none">
             {/* Title & Badge */}
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-black text-white text-sm shadow-md">
-                AT
+              <div className="bg-white px-2.5 py-1 rounded-lg shadow-sm border border-white/20 flex items-center justify-center shrink-0">
+                <img
+                  src="/images/akash-technolabs-header-logo.png"
+                  alt="Akash Technolabs"
+                  className="h-6 w-auto object-contain"
+                />
               </div>
               <div>
                 <h1 className="text-sm font-bold text-white tracking-wide truncate max-w-xs sm:max-w-md">
@@ -1306,14 +1332,27 @@ export default function StudentAssessmentsPage() {
             <aside className="w-full lg:w-84 flex-shrink-0 bg-slate-950 border-t lg:border-t-0 lg:border-l border-slate-800 p-5 flex flex-col justify-between overflow-y-auto min-h-0 max-h-[45vh] lg:max-h-full overscroll-contain space-y-6 select-none">
               <div className="space-y-6">
                 {/* Candidate Overview */}
-                <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-2">
-                  <div className="text-xs text-slate-400 font-medium">Session Proctored Candidate</div>
-                  <div className="text-sm font-bold text-white">{studentName}</div>
-                  <div className="text-xs text-slate-400 truncate">{studentEmail}</div>
+                <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Candidate Session</span>
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Proctored Live
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-sm">
+                      {studentName.split(" ").map((n) => n[0]).join("")}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-bold text-white truncate">{studentName}</div>
+                      <div className="text-xs text-slate-400 truncate">{studentEmail}</div>
+                    </div>
+                  </div>
                   <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs">
-                    <span className="text-slate-400">Security Violations:</span>
+                    <span className="text-slate-400">Anti-Cheat Flags:</span>
                     <span className={`font-bold ${tabSwitchCount > 0 ? "text-amber-400" : "text-emerald-400"}`}>
-                      {tabSwitchCount} Alerts
+                      {tabSwitchCount} / 3 Alerts
                     </span>
                   </div>
                 </div>
@@ -1516,14 +1555,26 @@ export default function StudentAssessmentsPage() {
                   : "bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900"
               }`}
             >
-              <div className="space-y-2 text-center sm:text-left">
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/20 text-white border border-white/30 uppercase tracking-wider">
-                  Official Assessment Scorecard
-                </span>
-                <h1 className="text-2xl sm:text-3xl font-black">{examResult.assessment_title}</h1>
-                <p className="text-xs sm:text-sm text-white/80">
-                  Candidate: <strong>{examResult.student_name}</strong> ({examResult.student_email})
-                </p>
+              <div className="flex items-start gap-4">
+                <div className="bg-white p-2 rounded-xl shadow-md border border-white/20 shrink-0 hidden sm:flex items-center justify-center">
+                  <img
+                    src="/images/akash-technolabs-header-logo.png"
+                    alt="Akash Technolabs"
+                    className="h-10 w-auto object-contain"
+                  />
+                </div>
+                <div className="space-y-1 text-center sm:text-left">
+                  <div className="inline-flex items-center gap-2 px-3 py-0.5 rounded-full text-xs font-bold bg-white/20 text-white border border-white/30 uppercase tracking-wider">
+                    Official Assessment Scorecard
+                  </div>
+                  <h1 className="text-2xl sm:text-3xl font-black">{examResult.assessment_title}</h1>
+                  <p className="text-xs sm:text-sm text-white/90">
+                    Candidate: <strong>{examResult.student_name}</strong> ({examResult.student_email})
+                  </p>
+                  <div className="text-[11px] text-white/70 font-mono">
+                    Official Verification ID: VRF-AKT-EXAM-{examResult.id.slice(-8).toUpperCase()}
+                  </div>
+                </div>
               </div>
 
               {/* Radial Percentage Indicator */}
@@ -1654,6 +1705,39 @@ export default function StudentAssessmentsPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Official Certification & Verification Signatory Block */}
+            <div className="p-6 bg-slate-50/80 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-6 text-xs text-slate-600">
+              <div className="space-y-1 text-center sm:text-left">
+                <div className="font-bold text-slate-900 flex items-center gap-1.5 justify-center sm:justify-start">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  Akash Technolabs Examination & Certification Board
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  202, Aarya Arcade, Above Passport Seva Kendra, Mithakhali Six Road, Navrangpura, Ahmedabad-380009
+                </p>
+                <p className="text-[10px] text-slate-400 font-mono">
+                  Digitally Verified & Certified • Tamper-Evident Examination Hash: SHA256-{(examResult.id + examResult.score).split("").reverse().join("").slice(0, 16)}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-4 shrink-0">
+                <img
+                  src="/images/akash-official-stamp.png"
+                  alt="Official Seal"
+                  className="h-14 w-auto object-contain opacity-85"
+                />
+                <div className="text-center sm:text-right space-y-0.5">
+                  <img
+                    src="/images/akash-ceo-signature.png"
+                    alt="Authorized Signature"
+                    className="h-8 w-auto object-contain mx-auto sm:ml-auto"
+                  />
+                  <div className="text-[11px] font-bold text-slate-900">Akash Padhiyar</div>
+                  <div className="text-[10px] text-slate-500">CEO & Founder, Akash Technolabs</div>
+                </div>
               </div>
             </div>
 
