@@ -270,10 +270,21 @@ export default function StudentDocumentsPage() {
     currentUser?.email === "huntarmy001@gmail.com" ||
     !currentUser?.email;
 
-  const defaultDocs = isFenilUser ? STUDENT_DOCUMENTS : [];
-  const baseDocs = apiDocs.length > 0 ? apiDocs : defaultDocs;
+  // Combine pre-seeded student documents with live API documents ensuring canonical offer letter and certificate are ALWAYS present and never disappear on refresh
+  const combinedDocsMap = new Map<string, IssuedDocument>();
+  if (isFenilUser) {
+    STUDENT_DOCUMENTS.forEach((d) => combinedDocsMap.set(d.document_number, d));
+  }
+  apiDocs.forEach((d) => {
+    combinedDocsMap.set(d.document_number || d.id, d);
+  });
+  const baseDocs = Array.from(combinedDocsMap.values());
+
   const docsList = baseDocs.map((doc) => {
     let name = studentName || doc.recipient_name;
+    if (isFenilUser && (!name || name === "Student Intern")) {
+      name = "Mr. Fenil Patel";
+    }
     if (doc.recipient_name?.startsWith("Mr.") && !name.startsWith("Mr.")) {
       name = `Mr. ${name}`;
     } else if (doc.recipient_name?.startsWith("Ms.") && !name.startsWith("Ms.")) {

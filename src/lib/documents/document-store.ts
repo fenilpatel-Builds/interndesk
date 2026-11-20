@@ -171,7 +171,57 @@ const CANONICAL_FENIL_CERT: OfficialOfferLetter = {
   created_at: "2026-10-15T12:00:00.000Z",
 };
 
-const INITIAL_DOCS: OfficialOfferLetter[] = [CANONICAL_FENIL_OFFER, CANONICAL_FENIL_CERT];
+const CANONICAL_HELLY_OFFER: OfficialOfferLetter = {
+  id: "doc-akt-offer-helly-01",
+  organization_id: "org-akash-01",
+  organization_name: "Akash Technolabs",
+  member_id: "usr-hellyleuva",
+  recipient_email: "hellyleuva.29@gmail.com",
+  document_number: "ID-AKT-2026-INTR03",
+  document_type: "OFFER_LETTER",
+  title: "OFFICIAL INTERNSHIP OFFER LETTER",
+  recipient_name: "Ms. Helly Leuva",
+  recipient_role: "UI/UX Design Intern",
+  issued_date: "05-11-2026",
+  status: "ISSUED",
+  approval_status: "APPROVED",
+  approved_by: "Akash Padhiyar",
+  approved_at: "2026-11-05T12:00:00.000Z",
+  verification_code: "VRF-AKT-2026-IN03",
+  template_type: "INTERNSHIP_OFFER",
+  description_content:
+    "This is to inform that Ms. Helly Leuva has been selected for an internship at Akash Technolabs as a UI/UX Design Intern. Her internship will commence on 8th August 2026 and continue until 5th April 2027.\n\nDuring the internship period, she will work on UI/UX Design technology and will be involved in projects and assignments designed to enhance her technical knowledge and practical skills. She is expected to maintain a professional attitude, follow the company's policies and guidelines, and perform her assigned responsibilities with sincerity and dedication throughout the internship.\n\nUpon successful completion of the internship, she will be awarded an Internship Completion Certificate based on her performance and adherence to the company's rules and regulations.\n\nWe are pleased to welcome her to Akash Technolabs and wish her a successful and enriching internship experience.",
+  template_data: {
+    salutation: "Ms.",
+    student_name: "Helly Leuva",
+    organization_name: "Akash Technolabs",
+    organization_type: "CORPORATE",
+    organization_logo: "/images/akash-technolabs-header-logo.png",
+    organization_address:
+      "202, Aarya Arcade, Above Passport Seva Kendra, Mithakhali Six Road, Navrangpura, Ahmedabad-09.",
+    organization_website: "www.akashtechnolabs.com",
+    contact_email: "info@akashtechnolabs.com",
+    contact_phone: "+91 99786 21654",
+    signatory_name: "Akash Padhiyar",
+    signatory_title: "CEO",
+    program_or_track: "UI/UX Design technology",
+    commencement_date: "8th August 2026",
+    continue_until_date: "5th April 2027",
+    technology: "UI/UX Design",
+    brand_color: "#dc2626",
+    secondary_color: "#1e3a8a",
+    is_akash_template: true,
+    validity: "Active / Verified Credential",
+    purpose: "Academic Project & Practicum Training",
+  },
+  created_at: "2026-11-05T12:00:00.000Z",
+};
+
+const INITIAL_DOCS: OfficialOfferLetter[] = [
+  CANONICAL_FENIL_OFFER,
+  CANONICAL_FENIL_CERT,
+  CANONICAL_HELLY_OFFER,
+];
 
 let memoryCache: OfficialOfferLetter[] | null = null;
 
@@ -196,7 +246,7 @@ function loadFromDisk(): OfficialOfferLetter[] {
       loaded = [...INITIAL_DOCS];
     }
 
-    // Ensure the canonical verified offer letter and certificate for Fenil Patel are always preserved
+    // Ensure the canonical verified offer letter for Fenil Patel is always preserved
     const hasFenilOffer = loaded.some(
       (d) =>
         d.id === "doc-akt-offer-fenil-01" ||
@@ -209,13 +259,49 @@ function loadFromDisk(): OfficialOfferLetter[] {
 
     if (!hasFenilOffer) {
       loaded.unshift(CANONICAL_FENIL_OFFER);
-      try {
-        fs.writeFileSync(DOCS_FILE, JSON.stringify(loaded, null, 2), "utf-8");
-      } catch {}
     }
 
-    memoryCache = loaded;
-    return loaded;
+    // Ensure the canonical certificate for Fenil Patel is always preserved
+    const hasFenilCert = loaded.some(
+      (d) =>
+        d.id === "doc-akt-cert-fenil-01" ||
+        d.document_number === "ID-AKT-2026-CERT01" ||
+        ((d.document_type === "COMPLETION_CERTIFICATE" || d.title?.toLowerCase().includes("certificate")) &&
+          (d.recipient_email === "fenil.patel@akashtechnolabs.com" ||
+            d.recipient_email === "huntarmy001@gmail.com" ||
+            d.recipient_name?.toLowerCase().includes("fenil")))
+    );
+
+    if (!hasFenilCert) {
+      loaded.push(CANONICAL_FENIL_CERT);
+    }
+
+    // Ensure Helly Leuva document is preserved
+    const hasHellyOffer = loaded.some(
+      (d) =>
+        d.id === "doc-akt-offer-helly-01" ||
+        d.document_number === "ID-AKT-2026-INTR03" ||
+        d.document_number === "ID-AKT-2026-INTRO3" ||
+        d.recipient_email === "hellyleuva.29@gmail.com"
+    );
+
+    if (!hasHellyOffer) {
+      loaded.push(CANONICAL_HELLY_OFFER);
+    }
+
+    // Deduplicate documents by id and document_number
+    const seen = new Set<string>();
+    const deduplicated: OfficialOfferLetter[] = [];
+    for (const d of loaded) {
+      const key = `${d.document_number || d.id}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        deduplicated.push(d);
+      }
+    }
+
+    memoryCache = deduplicated;
+    return deduplicated;
   } catch {
     return memoryCache || INITIAL_DOCS;
   }
@@ -264,7 +350,7 @@ export class DocumentStore {
       cleanName === "fenil patel" ||
       cleanName.includes("fenil");
 
-    return this.docs.filter((doc) => {
+    const matched = this.docs.filter((doc) => {
       const docEmail = doc.recipient_email?.toLowerCase().trim();
       const docMember = doc.member_id?.toLowerCase().trim();
       const docName = (doc.template_data?.student_name || doc.recipient_name || "")
@@ -293,11 +379,33 @@ export class DocumentStore {
 
       return false;
     });
+
+    if (isFenil) {
+      if (!matched.some((d) => d.id === CANONICAL_FENIL_OFFER.id || d.document_number === CANONICAL_FENIL_OFFER.document_number)) {
+        matched.unshift(CANONICAL_FENIL_OFFER);
+      }
+      if (!matched.some((d) => d.id === CANONICAL_FENIL_CERT.id || d.document_number === CANONICAL_FENIL_CERT.document_number)) {
+        matched.push(CANONICAL_FENIL_CERT);
+      }
+    }
+
+    // Deduplicate
+    const seen = new Set<string>();
+    const result: OfficialOfferLetter[] = [];
+    for (const d of matched) {
+      const key = `${d.document_number || d.id}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(d);
+      }
+    }
+    return result;
   }
 
   public getById(id: string): OfficialOfferLetter | null {
     this.docs = loadFromDisk();
     const cleanId = (id || "").toLowerCase().trim();
+    const normCleanId = cleanId.replace(/o/g, "0").replace(/[^a-z0-9]/g, "");
     return (
       this.docs.find(
         (d) =>
@@ -306,7 +414,9 @@ export class DocumentStore {
           d.verification_code === id ||
           d.id?.toLowerCase().trim() === cleanId ||
           d.document_number?.toLowerCase().trim() === cleanId ||
-          d.verification_code?.toLowerCase().trim() === cleanId
+          d.verification_code?.toLowerCase().trim() === cleanId ||
+          d.document_number?.toLowerCase().replace(/o/g, "0").replace(/[^a-z0-9]/g, "") === normCleanId ||
+          d.id?.toLowerCase().replace(/o/g, "0").replace(/[^a-z0-9]/g, "") === normCleanId
       ) || null
     );
   }
@@ -322,12 +432,15 @@ export class DocumentStore {
   ): OfficialOfferLetter | null {
     this.docs = loadFromDisk();
     const cleanId = (id || "").toLowerCase().trim();
+    const normCleanId = cleanId.replace(/o/g, "0").replace(/[^a-z0-9]/g, "");
     let idx = this.docs.findIndex(
       (d) =>
         d.id === id ||
         d.document_number === id ||
         d.id?.toLowerCase().trim() === cleanId ||
-        d.document_number?.toLowerCase().trim() === cleanId
+        d.document_number?.toLowerCase().trim() === cleanId ||
+        d.document_number?.toLowerCase().replace(/o/g, "0").replace(/[^a-z0-9]/g, "") === normCleanId ||
+        d.id?.toLowerCase().replace(/o/g, "0").replace(/[^a-z0-9]/g, "") === normCleanId
     );
     if (idx === -1) return null;
 
@@ -391,12 +504,15 @@ export class DocumentStore {
   public rejectDocument(id: string): boolean {
     this.docs = loadFromDisk();
     const cleanId = (id || "").toLowerCase().trim();
+    const normCleanId = cleanId.replace(/o/g, "0").replace(/[^a-z0-9]/g, "");
     const idx = this.docs.findIndex(
       (d) =>
         d.id === id ||
         d.document_number === id ||
         d.id?.toLowerCase().trim() === cleanId ||
-        d.document_number?.toLowerCase().trim() === cleanId
+        d.document_number?.toLowerCase().trim() === cleanId ||
+        d.document_number?.toLowerCase().replace(/o/g, "0").replace(/[^a-z0-9]/g, "") === normCleanId ||
+        d.id?.toLowerCase().replace(/o/g, "0").replace(/[^a-z0-9]/g, "") === normCleanId
     );
     if (idx === -1) return false;
     this.docs.splice(idx, 1);
@@ -434,21 +550,26 @@ export class DocumentStore {
 
     this.docs = loadFromDisk();
     const cleanId = (id || "").toLowerCase().trim();
+    const normCleanId = cleanId.replace(/o/g, "0").replace(/[^a-z0-9]/g, "");
     let idx = this.docs.findIndex(
       (d) =>
         d.id === id ||
         d.document_number === id ||
         d.id?.toLowerCase().trim() === cleanId ||
-        d.document_number?.toLowerCase().trim() === cleanId
+        d.document_number?.toLowerCase().trim() === cleanId ||
+        d.document_number?.toLowerCase().replace(/o/g, "0").replace(/[^a-z0-9]/g, "") === normCleanId ||
+        d.id?.toLowerCase().replace(/o/g, "0").replace(/[^a-z0-9]/g, "") === normCleanId
     );
 
     // If still not matched, check documentNumber from payload
     if (idx === -1 && payload.documentNumber) {
       const cleanDocNum = payload.documentNumber.toLowerCase().trim();
+      const normDocNum = cleanDocNum.replace(/o/g, "0").replace(/[^a-z0-9]/g, "");
       idx = this.docs.findIndex(
         (d) =>
           d.document_number === payload.documentNumber ||
-          d.document_number?.toLowerCase().trim() === cleanDocNum
+          d.document_number?.toLowerCase().trim() === cleanDocNum ||
+          d.document_number?.toLowerCase().replace(/o/g, "0").replace(/[^a-z0-9]/g, "") === normDocNum
       );
     }
 
