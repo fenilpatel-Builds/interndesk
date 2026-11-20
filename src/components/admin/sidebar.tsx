@@ -59,7 +59,6 @@ export function AdminSidebar() {
       title: "DOCUMENTS & CREDENTIALS",
       items: [
         { label: "Official Documents", href: "/admin/documents", icon: Award },
-        { label: "Verify Credentials", href: "/verify/ID-AKT-2026-0701", icon: Award },
       ],
     },
     {

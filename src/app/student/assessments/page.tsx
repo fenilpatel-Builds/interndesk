@@ -502,7 +502,7 @@ export default function StudentAssessmentsPage() {
   const unansweredCount = totalQuestions - answeredCount;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans" onContextMenu={(e) => examState === "IN_PROGRESS" && e.preventDefault()}>
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 font-sans" onContextMenu={(e) => examState === "IN_PROGRESS" && e.preventDefault()}>
       {/* Topbar only in catalog mode */}
       {examState === "LIST" && <StudentTopbar />}
 
@@ -510,7 +510,8 @@ export default function StudentAssessmentsPage() {
       {/* 1. ASSESSMENT CATALOG VIEW                                */}
       {/* ========================================================= */}
       {examState === "LIST" && (
-        <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+          <div className="max-w-7xl w-full mx-auto space-y-8">
           {/* Header Banner */}
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 sm:p-8 shadow-xl border border-slate-800">
             <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
@@ -769,6 +770,7 @@ export default function StudentAssessmentsPage() {
               </div>
             </div>
           )}
+          </div>
         </main>
       )}
 
@@ -1502,7 +1504,8 @@ export default function StudentAssessmentsPage() {
       {/* 6. RESULT & OFFICIAL SCORECARD VIEW                       */}
       {/* ========================================================= */}
       {examState === "RESULT" && examResult && (
-        <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+          <div className="max-w-4xl w-full mx-auto space-y-8">
           {/* Official Scorecard Card */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden">
             {/* Header with Result Status */}
@@ -1673,8 +1676,9 @@ export default function StudentAssessmentsPage() {
               </Button>
             </div>
           </div>
-        </main>
-      )}
+        </div>
+      </main>
+    )}
     </div>
   );
 }
