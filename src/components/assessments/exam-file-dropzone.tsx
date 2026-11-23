@@ -20,7 +20,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AssessmentQuestion, QuestionType } from "@/lib/assessments/assessment-store";
-import { ParsedExamMetadata } from "@/lib/assessments/exam-file-parser";
+import {
+  ParsedExamMetadata,
+  parseExcelOrCsvBuffer,
+  parseJsonExamContent,
+} from "@/lib/assessments/exam-file-parser";
 
 interface ExamFileDropzoneProps {
   mode: "CREATE_EXAM" | "QUESTION_BANK" | "INLINE_APPEND";
@@ -36,6 +40,7 @@ export function ExamFileDropzone({
   onClose,
 }: ExamFileDropzoneProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dragCounter = useRef(0);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -48,26 +53,42 @@ export function ExamFileDropzone({
   const [warnings, setWarnings] = useState<string[]>([]);
   const [examStatus, setExamStatus] = useState<"PUBLISHED" | "DRAFT">("PUBLISHED");
 
-  // Handle Drag events
+  // Handle Drag events with dragCounter to prevent child flickering
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current++;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  };
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    e.dataTransfer.dropEffect = "copy";
     setIsDragging(true);
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(false);
+    dragCounter.current--;
+    if (dragCounter.current <= 0) {
+      setIsDragging(false);
+      dragCounter.current = 0;
+    }
   };
 
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
+    dragCounter.current = 0;
 
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const file = e.dataTransfer.files[0];
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      const file = files[0];
       await processSelectedFile(file);
     }
   };
@@ -79,12 +100,48 @@ export function ExamFileDropzone({
     }
   };
 
-  // Process file via API
+  // Process file via Client-Side parser with Server-Side fallback
   const processSelectedFile = async (file: File) => {
     setErrorMessage(null);
     setIsProcessing(true);
 
+    const ext = file.name.toLowerCase().split(".").pop() || "";
+
     try {
+      // 1. Direct client-side parsing for instant Excel/CSV/JSON processing
+      if (ext === "xlsx" || ext === "xls" || ext === "csv") {
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const clientResult = parseExcelOrCsvBuffer(new Uint8Array(arrayBuffer), file.name);
+          if (clientResult.success && clientResult.questions.length > 0) {
+            setCurrentFileName(file.name);
+            setParsedMetadata(clientResult.metadata);
+            setParsedQuestions(clientResult.questions);
+            setWarnings(clientResult.warnings || []);
+            setIsProcessing(false);
+            return;
+          }
+        } catch {
+          // Fall back to server API
+        }
+      } else if (ext === "json") {
+        try {
+          const text = await file.text();
+          const clientResult = parseJsonExamContent(text);
+          if (clientResult.success && clientResult.questions.length > 0) {
+            setCurrentFileName(file.name);
+            setParsedMetadata(clientResult.metadata);
+            setParsedQuestions(clientResult.questions);
+            setWarnings(clientResult.warnings || []);
+            setIsProcessing(false);
+            return;
+          }
+        } catch {
+          // Fall back to server API
+        }
+      }
+
+      // 2. Server API processing (handles PDFs and complex files)
       const formData = new FormData();
       formData.append("file", file);
       formData.append("action", "PREVIEW");
@@ -281,13 +338,14 @@ export function ExamFileDropzone({
       {/* DROPZONE SURFACE (WHEN NO FILE PARSED YET) */}
       {!parsedMetadata && (
         <div
+          onDragEnter={handleDragEnter}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
           className={`relative border-2 border-dashed rounded-2xl p-8 sm:p-12 text-center cursor-pointer transition-all duration-200 ${
             isDragging
-              ? "border-emerald-500 bg-emerald-50/40 ring-4 ring-emerald-500/10 scale-[1.01]"
+              ? "border-emerald-500 bg-emerald-50/60 ring-4 ring-emerald-500/20 scale-[1.01]"
               : "border-slate-300 hover:border-indigo-400 bg-slate-50/60 hover:bg-indigo-50/30"
           }`}
         >
@@ -299,7 +357,7 @@ export function ExamFileDropzone({
             className="hidden"
           />
 
-          <div className="max-w-md mx-auto space-y-4">
+          <div className={`max-w-md mx-auto space-y-4 ${isDragging ? "pointer-events-none" : ""}`}>
             <div className="w-16 h-16 mx-auto rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
               {isProcessing ? (
                 <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />

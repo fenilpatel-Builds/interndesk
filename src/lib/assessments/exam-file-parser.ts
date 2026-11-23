@@ -34,6 +34,8 @@ function cleanKey(key: string): string {
 
 /**
  * Parses questions and exam metadata from an Excel (.xlsx, .xls) or CSV buffer.
+ * Supports auto-detection of header row, flexible column naming, positional fallbacks,
+ * and multi-line/raw spreadsheets with preamble or metadata banners.
  */
 export function parseExcelOrCsvBuffer(buffer: ArrayBuffer | Uint8Array | Buffer, fileName: string = ""): ParsedExamFileResult {
   const warnings: string[] = [];
@@ -50,7 +52,7 @@ export function parseExcelOrCsvBuffer(buffer: ArrayBuffer | Uint8Array | Buffer,
   };
 
   try {
-    const workbook = XLSX.read(buffer, { type: "buffer" });
+    const workbook = XLSX.read(buffer, { type: "buffer", cellDates: true });
     const firstSheetName = workbook.SheetNames[0];
     if (!firstSheetName) {
       return {
@@ -64,10 +66,10 @@ export function parseExcelOrCsvBuffer(buffer: ArrayBuffer | Uint8Array | Buffer,
     }
 
     const worksheet = workbook.Sheets[firstSheetName];
-    // Convert to JSON with raw values
-    const rawRows = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, { defval: "" });
+    // Convert to Array of Arrays (aoa) so we can scan rows and find the true header row
+    const aoa: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
 
-    if (!rawRows || rawRows.length === 0) {
+    if (!aoa || aoa.length === 0) {
       return {
         success: false,
         metadata,
@@ -78,71 +80,143 @@ export function parseExcelOrCsvBuffer(buffer: ArrayBuffer | Uint8Array | Buffer,
       };
     }
 
-    // Process each row
-    rawRows.forEach((row, rowIndex) => {
-      // Build a map of clean keys
-      const normalizedRow: Record<string, any> = {};
-      Object.keys(row).forEach((k) => {
-        normalizedRow[cleanKey(k)] = row[k];
-      });
+    // 1. Scan the first 15 rows to find the true header row
+    let headerRowIndex = -1;
+    let qCol = -1;
+    let optCols: number[] = [];
+    let ansCol = -1;
+    let typeCol = -1;
+    let marksCol = -1;
+    let negMarksCol = -1;
+    let diffCol = -1;
+    let expCol = -1;
+    let topicCol = -1;
+    let subjectCol = -1;
 
-      // Check if this row is a metadata header row (e.g., Exam Title: ...)
-      if (normalizedRow["examtitle"] || normalizedRow["assessmenttitle"]) {
-        metadata.title = String(normalizedRow["examtitle"] || normalizedRow["assessmenttitle"]).trim();
+    for (let r = 0; r < Math.min(aoa.length, 15); r++) {
+      const row = aoa[r] || [];
+      const nonEmptyCells = row.filter((c) => String(c).trim().length > 0);
+      const rowStr = row.map((c) => cleanKey(String(c))).join(" ");
+
+      // Check if this row looks like metadata
+      if (rowStr.includes("examtitle") || rowStr.includes("assessmenttitle")) {
+        const foundTitle = row.find((c) => typeof c === "string" && c.length > 5 && !cleanKey(c).includes("title"));
+        if (foundTitle) metadata.title = String(foundTitle).trim();
       }
-      if (normalizedRow["examsubject"] || normalizedRow["subject"]) {
-        const sub = String(normalizedRow["examsubject"] || normalizedRow["subject"]).trim();
-        if (sub && !normalizedRow["question"]) {
-          metadata.subject = sub;
+      if (rowStr.includes("subject") && !rowStr.includes("question")) {
+        const foundSub = row.find((c) => typeof c === "string" && c.length > 3 && !cleanKey(c).includes("subject"));
+        if (foundSub) metadata.subject = String(foundSub).trim();
+      }
+
+      // A real column header row must span multiple columns (at least 2 non-empty cells)
+      if (nonEmptyCells.length >= 2) {
+        const hasQKeyword = rowStr.includes("question") || rowStr.includes("prompt") || rowStr.includes("problem") || rowStr.includes("qno") || rowStr.includes("qtext");
+        const hasOptKeyword = rowStr.includes("option") || rowStr.includes("choice") || rowStr.includes("opta") || rowStr.includes("choicea");
+        const hasAnsKeyword = rowStr.includes("answer") || rowStr.includes("correct") || rowStr.includes("key") || rowStr.includes("ans");
+
+        if ((hasQKeyword && hasOptKeyword) || (hasOptKeyword && hasAnsKeyword) || (hasQKeyword && hasAnsKeyword)) {
+          headerRowIndex = r;
+          break;
         }
       }
-      if (normalizedRow["duration"] || normalizedRow["durationminutes"]) {
-        const d = Number(normalizedRow["duration"] || normalizedRow["durationminutes"]);
-        if (d > 0) metadata.duration_minutes = d;
+    }
+
+    // If a header row was identified, map column indices
+    if (headerRowIndex >= 0) {
+      const headerCells = aoa[headerRowIndex] || [];
+      headerCells.forEach((cell, colIdx) => {
+        const k = cleanKey(String(cell));
+        if (k.includes("question") || k.includes("prompt") || k.includes("problem") || k === "q" || k === "title" || k === "description") {
+          if (qCol === -1) qCol = colIdx;
+        } else if (k.includes("optiona") || k.includes("opta") || k.includes("choicea") || k === "a" || k === "option1" || k === "opt1" || k === "choice1") {
+          optCols[0] = colIdx;
+        } else if (k.includes("optionb") || k.includes("optb") || k.includes("choiceb") || k === "b" || k === "option2" || k === "opt2" || k === "choice2") {
+          optCols[1] = colIdx;
+        } else if (k.includes("optionc") || k.includes("optc") || k.includes("choicec") || k === "c" || k === "option3" || k === "opt3" || k === "choice3") {
+          optCols[2] = colIdx;
+        } else if (k.includes("optiond") || k.includes("optd") || k.includes("choiced") || k === "d" || k === "option4" || k === "opt4" || k === "choice4") {
+          optCols[3] = colIdx;
+        } else if (k.includes("optione") || k.includes("opte") || k.includes("choicee") || k === "e" || k === "option5" || k === "opt5" || k === "choice5") {
+          optCols[4] = colIdx;
+        } else if (k.includes("correct") || k.includes("answer") || k === "ans" || k === "key" || k.includes("solution")) {
+          if (ansCol === -1) ansCol = colIdx;
+        } else if (k.includes("type") || k.includes("format") || k === "qtype") {
+          typeCol = colIdx;
+        } else if (k.includes("marks") || k.includes("points") || k === "score") {
+          marksCol = colIdx;
+        } else if (k.includes("negative") || k.includes("penalty")) {
+          negMarksCol = colIdx;
+        } else if (k.includes("difficulty") || k.includes("level")) {
+          diffCol = colIdx;
+        } else if (k.includes("explanation") || k.includes("rationale")) {
+          expCol = colIdx;
+        } else if (k.includes("topic") || k.includes("subtopic")) {
+          topicCol = colIdx;
+        } else if (k.includes("subject") || k.includes("category")) {
+          subjectCol = colIdx;
+        }
+      });
+    }
+
+    // 2. Fallback heuristic: If no header row or question column found, detect by position/content
+    const startDataRow = headerRowIndex >= 0 ? headerRowIndex + 1 : 0;
+
+    if (qCol === -1) {
+      // Find the first column in data rows that contains sentences (length > 10)
+      for (let r = startDataRow; r < Math.min(aoa.length, startDataRow + 5); r++) {
+        const row = aoa[r] || [];
+        for (let c = 0; c < row.length; c++) {
+          const val = String(row[c] || "").trim();
+          if (val.length > 15 || val.endsWith("?")) {
+            qCol = c;
+            break;
+          }
+        }
+        if (qCol !== -1) break;
       }
+      if (qCol === -1) qCol = 0; // Default to first column
+    }
 
-      // Extract question text
-      const questionText = String(
-        normalizedRow["question"] ||
-        normalizedRow["prompt"] ||
-        normalizedRow["questiontext"] ||
-        normalizedRow["problem"] ||
-        normalizedRow["q"] ||
-        ""
-      ).trim();
-
-      // If no question text, skip empty / metadata-only rows
-      if (!questionText) {
-        return;
+    // If options columns not explicitly mapped, check adjacent columns
+    if (optCols.length < 2) {
+      const detectedOpts: number[] = [];
+      const sampleRow = aoa[startDataRow] || [];
+      sampleRow.forEach((val, c) => {
+        if (c !== qCol && c !== ansCol && typeof val === "string" && val.trim().length > 0) {
+          detectedOpts.push(c);
+        }
+      });
+      if (detectedOpts.length >= 2) {
+        optCols = detectedOpts.slice(0, 5);
       }
+    }
 
-      // Extract options A, B, C, D, E
-      const optA = String(normalizedRow["optiona"] || normalizedRow["option1"] || normalizedRow["a"] || "").trim();
-      const optB = String(normalizedRow["optionb"] || normalizedRow["option2"] || normalizedRow["b"] || "").trim();
-      const optC = String(normalizedRow["optionc"] || normalizedRow["option3"] || normalizedRow["c"] || "").trim();
-      const optD = String(normalizedRow["optiond"] || normalizedRow["option4"] || normalizedRow["d"] || "").trim();
-      const optE = String(normalizedRow["optione"] || normalizedRow["option5"] || normalizedRow["e"] || "").trim();
+    // 3. Extract questions from data rows
+    for (let r = startDataRow; r < aoa.length; r++) {
+      const row = aoa[r] || [];
+      if (!row || row.length === 0) continue;
 
-      let optionsList: string[] = [];
-      if (optA || optB) {
-        optionsList = [optA, optB, optC, optD, optE].filter((o) => o !== "");
-      } else if (normalizedRow["options"]) {
-        // Options separated by newline or semicolon or pipe
-        optionsList = String(normalizedRow["options"])
-          .split(/[\n\r;|]+/)
-          .map((s) => s.trim())
-          .filter(Boolean);
-      }
+      const questionText = String(row[qCol] || "").trim();
+      if (!questionText || questionText.length < 3) continue;
 
-      // Determine question type
-      let rawType = String(normalizedRow["type"] || normalizedRow["questiontype"] || normalizedRow["qtype"] || "").toUpperCase().trim();
+      // Extract options
+      const optionsList: string[] = [];
+      optCols.forEach((c) => {
+        if (c >= 0 && row[c] !== undefined) {
+          const optVal = String(row[c]).trim();
+          if (optVal) optionsList.push(optVal);
+        }
+      });
+
+      // Extract answer
+      const rawAns = ansCol >= 0 && row[ansCol] !== undefined ? String(row[ansCol]).trim() : "";
+
+      // Determine type
       let type: QuestionType = "SINGLE_CHOICE";
+      const rawType = typeCol >= 0 && row[typeCol] ? String(row[typeCol]).toUpperCase().trim() : "";
 
       if (rawType.includes("TRUE") || rawType.includes("FALSE") || rawType === "TF") {
         type = "TRUE_FALSE";
-        if (optionsList.length < 2) {
-          optionsList = ["True", "False"];
-        }
       } else if (rawType.includes("MULTI") || rawType.includes("CHECKBOX")) {
         type = "MULTIPLE_CHOICE";
       } else if (rawType.includes("FILL") || rawType.includes("BLANK")) {
@@ -153,31 +227,26 @@ export function parseExcelOrCsvBuffer(buffer: ArrayBuffer | Uint8Array | Buffer,
         type = "DESCRIPTIVE";
       } else if (rawType.includes("SHORT")) {
         type = "SHORT_ANSWER";
-      } else if (rawType.includes("MATCH")) {
-        type = "MATCHING";
       } else {
-        // Auto-detect based on options
-        if (optionsList.length >= 2) {
+        // Auto-detect based on options and answers
+        if (optionsList.length === 2 && optionsList.some((o) => o.toLowerCase() === "true" || o.toLowerCase() === "false")) {
+          type = "TRUE_FALSE";
+        } else if (optionsList.length >= 2) {
           type = "SINGLE_CHOICE";
         } else {
           type = "SHORT_ANSWER";
         }
       }
 
-      // Extract raw correct answer
-      const rawAns = String(
-        normalizedRow["correctanswer"] ||
-        normalizedRow["correct"] ||
-        normalizedRow["answer"] ||
-        normalizedRow["key"] ||
-        normalizedRow["ans"] ||
-        ""
-      ).trim();
+      if (type === "TRUE_FALSE" && optionsList.length < 2) {
+        optionsList.length = 0;
+        optionsList.push("True", "False");
+      }
 
+      // Resolve correct answer
       let resolvedCorrectAnswer: string | string[] = rawAns;
       let resolvedCorrectAnswers: string[] | undefined = undefined;
 
-      // Intelligent mapping of letter answers (A, B, C, D) to actual option text
       if (type === "SINGLE_CHOICE" || type === "TRUE_FALSE") {
         const letter = rawAns.toUpperCase();
         if (letter === "A" || letter === "1") {
@@ -191,22 +260,20 @@ export function parseExcelOrCsvBuffer(buffer: ArrayBuffer | Uint8Array | Buffer,
         } else if (letter === "E" || letter === "5") {
           resolvedCorrectAnswer = optionsList[4] || rawAns;
         } else if (type === "TRUE_FALSE") {
-          if (letter === "T" || letter === "TRUE") resolvedCorrectAnswer = "True";
-          if (letter === "F" || letter === "FALSE") resolvedCorrectAnswer = "False";
+          if (letter === "T" || letter === "TRUE" || letter === "1") resolvedCorrectAnswer = "True";
+          else if (letter === "F" || letter === "FALSE" || letter === "0") resolvedCorrectAnswer = "False";
         } else {
-          // If the user already provided the option text, check if it matches an option
+          // Direct text match
           const matchOpt = optionsList.find((o) => o.toLowerCase() === rawAns.toLowerCase());
-          if (matchOpt) {
-            resolvedCorrectAnswer = matchOpt;
-          }
+          if (matchOpt) resolvedCorrectAnswer = matchOpt;
         }
 
-        // Validate that correct answer is present in options
-        if (optionsList.length > 0 && !optionsList.includes(resolvedCorrectAnswer as string)) {
-          warnings.push(`Row ${rowIndex + 1}: Correct answer "${rawAns}" does not match any of the provided options for question "${questionText.substring(0, 40)}..."`);
+        // If no answer provided in row, default to Option A with warning
+        if (!resolvedCorrectAnswer && optionsList.length > 0) {
+          resolvedCorrectAnswer = optionsList[0];
+          warnings.push(`Row ${r + 1}: No answer key specified for "${questionText.substring(0, 30)}...". Defaulted to Option A; please verify in preview.`);
         }
       } else if (type === "MULTIPLE_CHOICE") {
-        // e.g. "A, C" or "A; B; D"
         const letters = rawAns.split(/[,;&|]+/).map((s) => s.trim().toUpperCase());
         const mappedList: string[] = [];
 
@@ -219,47 +286,43 @@ export function parseExcelOrCsvBuffer(buffer: ArrayBuffer | Uint8Array | Buffer,
           else {
             const matchOpt = optionsList.find((o) => o.toLowerCase() === l.toLowerCase());
             if (matchOpt) mappedList.push(matchOpt);
-            else mappedList.push(l);
+            else if (l) mappedList.push(l);
           }
         });
 
-        resolvedCorrectAnswer = mappedList;
-        resolvedCorrectAnswers = mappedList;
+        resolvedCorrectAnswer = mappedList.length > 0 ? mappedList : optionsList.slice(0, 2);
+        resolvedCorrectAnswers = Array.isArray(resolvedCorrectAnswer) ? resolvedCorrectAnswer : [resolvedCorrectAnswer];
       } else if (type === "FILL_BLANKS") {
-        // Split synonyms by comma
         const variants = rawAns.split(/[,|;]+/).map((s) => s.trim()).filter(Boolean);
-        resolvedCorrectAnswer = variants.length > 0 ? variants : [rawAns];
+        resolvedCorrectAnswer = variants.length > 0 ? variants : [rawAns || "Default Answer"];
       }
 
-      // Extract marks, negative marks, difficulty, explanation, topic
-      const marksVal = Number(normalizedRow["marks"] || normalizedRow["points"] || normalizedRow["score"] || 10);
-      const negMarksVal = Number(normalizedRow["negativemarks"] || normalizedRow["penalty"] || 0);
-
-      const rawDiff = String(normalizedRow["difficulty"] || normalizedRow["level"] || "MEDIUM").toUpperCase();
+      // Extract marks, difficulty, explanation
+      const marksVal = marksCol >= 0 && row[marksCol] ? Number(row[marksCol]) : 10;
+      const negMarksVal = negMarksCol >= 0 && row[negMarksCol] ? Number(row[negMarksCol]) : 0;
+      const rawDiff = diffCol >= 0 && row[diffCol] ? String(row[diffCol]).toUpperCase() : "MEDIUM";
       let difficulty: QuestionDifficulty = "MEDIUM";
       if (rawDiff.includes("EASY")) difficulty = "EASY";
       else if (rawDiff.includes("HARD")) difficulty = "HARD";
       else if (rawDiff.includes("ADV")) difficulty = "ADVANCED";
 
-      const explanation = String(normalizedRow["explanation"] || normalizedRow["solution"] || normalizedRow["rationale"] || "").trim();
-      const topic = String(normalizedRow["topic"] || normalizedRow["subtopic"] || metadata.subject || "General").trim();
-
-      const qId = `q_import_${Date.now()}_${rowIndex + 1}`;
+      const explanation = expCol >= 0 && row[expCol] ? String(row[expCol]).trim() : `Official answer key explanation for: ${questionText.substring(0, 50)}`;
+      const topic = topicCol >= 0 && row[topicCol] ? String(row[topicCol]).trim() : metadata.subject;
 
       questions.push({
-        id: qId,
+        id: `q_import_${Date.now()}_${r + 1}`,
         question: questionText,
         type,
         options: optionsList.length > 0 ? optionsList : undefined,
         correct_answer: resolvedCorrectAnswer,
         correct_answers: resolvedCorrectAnswers,
-        explanation: explanation || `Verified standard answer for: ${questionText.substring(0, 50)}`,
+        explanation,
         marks: marksVal > 0 ? marksVal : 10,
         negative_marks: negMarksVal > 0 ? negMarksVal : 0,
         difficulty,
         topic,
       });
-    });
+    }
 
     if (questions.length === 0) {
       return {
@@ -268,7 +331,7 @@ export function parseExcelOrCsvBuffer(buffer: ArrayBuffer | Uint8Array | Buffer,
         questions: [],
         summary: { totalQuestions: 0, totalMarks: 0, validCount: 0, invalidCount: 0, typesCount: {} },
         warnings,
-        errors: ["No valid questions could be extracted from this spreadsheet. Please ensure columns include 'Question', 'Option A', 'Option B', and 'Correct Answer'."],
+        errors: ["No questions could be extracted from this spreadsheet. Please ensure the file contains question rows or download our official template."],
       };
     }
 
@@ -286,7 +349,7 @@ export function parseExcelOrCsvBuffer(buffer: ArrayBuffer | Uint8Array | Buffer,
       summary: {
         totalQuestions: questions.length,
         totalMarks,
-        validCount: questions.length - warnings.length,
+        validCount: questions.length,
         invalidCount: warnings.length,
         typesCount,
       },

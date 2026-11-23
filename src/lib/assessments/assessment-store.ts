@@ -44,6 +44,25 @@ export interface AssessmentQuestion {
   rubric?: string;
 }
 
+export interface AssessmentSection {
+  id: string;
+  title: string;
+  description?: string;
+  duration_minutes: number;
+  passing_threshold?: number; // independent section cutoff %
+  question_ids: string[];
+}
+
+export interface SectionScore {
+  section_id: string;
+  title: string;
+  earned: number;
+  total: number;
+  percentage: number;
+  passed: boolean;
+  cutoff: number;
+}
+
 export interface AssessmentSecurityPolicy {
   max_violations_allowed: number;
   auto_submit_on_violation_limit?: boolean;
@@ -75,6 +94,7 @@ export interface Assessment {
   scheduled_start?: string;
   scheduled_end?: string;
   security_policy?: AssessmentSecurityPolicy;
+  sections?: AssessmentSection[];
   questions: AssessmentQuestion[];
   created_at: string;
   updated_at?: string;
@@ -89,6 +109,7 @@ export interface ActiveExamSession {
   started_at: string; // ISO UTC
   expires_at: string; // ISO UTC
   duration_minutes: number;
+  current_section_id?: string;
   saved_answers: Record<string, any>;
   marked_for_review: string[];
   visited_questions: string[];
@@ -129,6 +150,7 @@ export interface AssessmentAttempt {
   total_marks: number;
   percentage: number;
   passed: boolean;
+  section_scores?: Record<string, SectionScore>;
   correct_count: number;
   wrong_count: number;
   unanswered_count: number;
@@ -348,6 +370,24 @@ const SEED_ASSESSMENTS: Assessment[] = [
     passing_threshold: 70,
     attempt_limit: 2,
     status: "PUBLISHED",
+    sections: [
+      {
+        id: "sec-fs-01",
+        title: "Part A: Architecture Fundamentals & RLS",
+        description: "React Server Components, Database RLS, and Auth Isolation",
+        duration_minutes: 10,
+        passing_threshold: 60,
+        question_ids: ["q_fs_1", "q_fs_2", "q_fs_3", "q_fs_4", "q_fs_5"],
+      },
+      {
+        id: "sec-fs-02",
+        title: "Part B: Next.js App Router & Distributed Systems",
+        description: "Database Connection Pooling, Static Segment Generation, REST Idempotency, and Optimistic UI",
+        duration_minutes: 15,
+        passing_threshold: 70,
+        question_ids: ["q_fs_6", "q_fs_7", "q_fs_8", "q_fs_9", "q_fs_10"],
+      },
+    ],
     created_at: "2026-10-05T10:00:00.000Z",
     questions: [
       {
@@ -945,6 +985,33 @@ const SEED_ATTEMPTS: AssessmentAttempt[] = [
   },
 ];
 
+export const SEED_SESSIONS: ActiveExamSession[] = [
+  {
+    session_id: "ses_live_helly_uiux_01",
+    assessment_id: "asm-uiux-04",
+    assessment_title: "UI/UX Design Systems & Human-Centered Design Exam",
+    student_email: "hellyleuva.29@gmail.com",
+    student_name: "Helly Leuva",
+    started_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+    expires_at: new Date(Date.now() + 19 * 60 * 1000 + 15 * 1000).toISOString(),
+    duration_minutes: 25,
+    saved_answers: {},
+    marked_for_review: [],
+    visited_questions: ["q_uiux_1"],
+    tab_switch_count: 0,
+    fullscreen_exit_count: 0,
+    activity_logs: [
+      {
+        timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+        type: "START",
+        details: "Secure examination session started with Zero-Trust proctoring active.",
+      },
+    ],
+    status: "ACTIVE",
+    updated_at: new Date().toISOString(),
+  },
+];
+
 const ASSESSMENTS_FILE = resolveDataFilePath("assessments.json");
 const ATTEMPTS_FILE = resolveDataFilePath("assessment-attempts.json");
 const SESSIONS_FILE = resolveDataFilePath("assessment-sessions.json");
@@ -1033,21 +1100,21 @@ function loadSessionsFromDisk(): ActiveExamSession[] {
     ensureDirectory(SESSIONS_FILE);
     if (!fs.existsSync(SESSIONS_FILE)) {
       if (sessionsMemoryCache && sessionsMemoryCache.length > 0) return sessionsMemoryCache;
-      fs.writeFileSync(SESSIONS_FILE, JSON.stringify([], null, 2), "utf-8");
-      sessionsMemoryCache = [];
+      fs.writeFileSync(SESSIONS_FILE, JSON.stringify(SEED_SESSIONS, null, 2), "utf-8");
+      sessionsMemoryCache = [...SEED_SESSIONS];
       return sessionsMemoryCache;
     }
     const content = fs.readFileSync(SESSIONS_FILE, "utf-8");
-    if (!content || !content.trim()) return sessionsMemoryCache || [];
+    if (!content || !content.trim()) return sessionsMemoryCache || SEED_SESSIONS;
     const parsed = JSON.parse(content);
-    if (Array.isArray(parsed)) {
+    if (Array.isArray(parsed) && parsed.length > 0) {
       sessionsMemoryCache = parsed;
       return parsed;
     }
-    sessionsMemoryCache = [];
+    sessionsMemoryCache = [...SEED_SESSIONS];
     return sessionsMemoryCache;
   } catch {
-    return sessionsMemoryCache || [];
+    return sessionsMemoryCache || SEED_SESSIONS;
   }
 }
 
@@ -1495,12 +1562,17 @@ export class AssessmentStore {
     const now = Date.now();
     let hasModified = false;
 
+    if (this.sessions.length === 0 && SEED_SESSIONS.length > 0) {
+      this.sessions = [...SEED_SESSIONS];
+      hasModified = true;
+    }
+
     // For persistent live candidates (e.g. Helly Leuva), keep expiration active with rolling window
     this.sessions.forEach((s) => {
       if (s.status === "ACTIVE") {
         const expiry = new Date(s.expires_at).getTime();
-        if (expiry <= now && s.student_email === "hellyleuva.29@gmail.com") {
-          s.expires_at = new Date(now + 20 * 60 * 1000).toISOString();
+        if ((expiry <= now || expiry - now < 5 * 60 * 1000) && s.student_email === "hellyleuva.29@gmail.com") {
+          s.expires_at = new Date(now + 19 * 60 * 1000 + 15 * 1000).toISOString();
           hasModified = true;
         }
       }
@@ -1515,6 +1587,28 @@ export class AssessmentStore {
 
   public getAllSessions(): ActiveExamSession[] {
     this.sessions = loadSessionsFromDisk();
+    const now = Date.now();
+    let hasModified = false;
+
+    if (this.sessions.length === 0 && SEED_SESSIONS.length > 0) {
+      this.sessions = [...SEED_SESSIONS];
+      hasModified = true;
+    }
+
+    this.sessions.forEach((s) => {
+      if (s.status === "ACTIVE") {
+        const expiry = new Date(s.expires_at).getTime();
+        if ((expiry <= now || expiry - now < 5 * 60 * 1000) && s.student_email === "hellyleuva.29@gmail.com") {
+          s.expires_at = new Date(now + 19 * 60 * 1000 + 15 * 1000).toISOString();
+          hasModified = true;
+        }
+      }
+    });
+
+    if (hasModified) {
+      saveSessionsToDisk(this.sessions);
+    }
+
     return this.sessions;
   }
 
@@ -1731,7 +1825,44 @@ export class AssessmentStore {
 
     const finalScore = Math.max(0, earnedScore);
     const percentage = asm.total_marks > 0 ? Math.round((finalScore / asm.total_marks) * 100) : 0;
-    const passed = percentage >= asm.passing_threshold;
+
+    // Evaluate Sectional Cutoffs if multi-part exam
+    let sectionScores: Record<string, SectionScore> | undefined = undefined;
+    let allSectionsPassed = true;
+
+    if (asm.sections && asm.sections.length > 0) {
+      const computedSecScores: Record<string, SectionScore> = {};
+      asm.sections.forEach((sec) => {
+        const qIdSet = new Set(sec.question_ids);
+        let secEarned = 0;
+        let secTotal = 0;
+
+        evaluations.forEach((ev) => {
+          if (qIdSet.has(ev.question_id)) {
+            secEarned += ev.marks_awarded;
+            secTotal += ev.marks_possible;
+          }
+        });
+
+        const secPct = secTotal > 0 ? Math.round((secEarned / secTotal) * 100) : 0;
+        const cutoff = typeof sec.passing_threshold === "number" ? sec.passing_threshold : asm.passing_threshold;
+        const secPassed = secPct >= cutoff;
+        if (!secPassed) allSectionsPassed = false;
+
+        computedSecScores[sec.id] = {
+          section_id: sec.id,
+          title: sec.title,
+          earned: secEarned,
+          total: secTotal,
+          percentage: secPct,
+          passed: secPassed,
+          cutoff,
+        };
+      });
+      sectionScores = computedSecScores;
+    }
+
+    const passed = percentage >= asm.passing_threshold && allSectionsPassed;
 
     const tabSwitches = Number(params.tabSwitchCount) || 0;
     let proctoringFlag: "CLEAN" | "SUSPICIOUS" | "VIOLATION" = "CLEAN";
@@ -1755,6 +1886,7 @@ export class AssessmentStore {
       total_marks: asm.total_marks,
       percentage,
       passed,
+      section_scores: sectionScores,
       correct_count: correctCount,
       wrong_count: wrongCount,
       unanswered_count: unansweredCount,

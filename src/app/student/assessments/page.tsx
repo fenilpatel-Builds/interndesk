@@ -62,6 +62,10 @@ export default function StudentAssessmentsPage() {
   const [syncStatus, setSyncStatus] = useState<"SAVED" | "SAVING" | "OFFLINE">("SAVED");
   const [lastSavedTime, setLastSavedTime] = useState<string>("");
 
+  // Sectional Timing & Multi-Part Exam States
+  const [currentSectionIndex, setCurrentSectionIndex] = useState<number>(0);
+  const [sectionTimeLeft, setSectionTimeLeft] = useState<number>(600); // in seconds
+
   // Anti-Cheat Proctoring States
   const [tabSwitchCount, setTabSwitchCount] = useState<number>(0);
   const [fullscreenExitCount, setFullscreenExitCount] = useState<number>(0);
@@ -119,7 +123,28 @@ export default function StudentAssessmentsPage() {
     loadData();
   }, []);
 
-  // Server-Authoritative Timer Runner
+  // Advance Section or Submit on section expiration
+  const handleSectionExpireOrProceed = () => {
+    if (!activeAssessment?.sections || activeAssessment.sections.length === 0) return;
+    const nextIdx = currentSectionIndex + 1;
+    if (nextIdx < activeAssessment.sections.length) {
+      const nextSec = activeAssessment.sections[nextIdx];
+      setCurrentSectionIndex(nextIdx);
+      setSectionTimeLeft(nextSec.duration_minutes * 60);
+
+      // Find first question index of new section
+      const firstQId = nextSec.question_ids[0];
+      const foundQIdx = activeAssessment.questions.findIndex((q) => q.id === firstQId);
+      if (foundQIdx !== -1) {
+        setCurrentQuestionIndex(foundQIdx);
+      }
+    } else {
+      // Last section completed -> auto submit assessment
+      handleSubmitAssessment(true);
+    }
+  };
+
+  // Server-Authoritative Timer Runner with Sectional Countdown Support
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (examState === "IN_PROGRESS" && expiresAt) {
@@ -128,6 +153,17 @@ export default function StudentAssessmentsPage() {
         const expiryMs = new Date(expiresAt).getTime();
         const remaining = Math.max(0, Math.floor((expiryMs - now) / 1000));
         setTimeLeft(remaining);
+
+        // Section Countdown
+        if (activeAssessment?.sections && activeAssessment.sections.length > 0) {
+          setSectionTimeLeft((prevSec) => {
+            if (prevSec <= 1) {
+              handleSectionExpireOrProceed();
+              return 0;
+            }
+            return prevSec - 1;
+          });
+        }
 
         if (remaining <= 0) {
           clearInterval(timer);
@@ -139,7 +175,7 @@ export default function StudentAssessmentsPage() {
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [examState, expiresAt]);
+  }, [examState, expiresAt, activeAssessment, currentSectionIndex]);
 
   // Periodic session sync every 30 seconds
   useEffect(() => {
@@ -329,6 +365,14 @@ export default function StudentAssessmentsPage() {
 
       const durationSec = (data.durationMinutes || pendingStartAssessment.duration_minutes || 25) * 60;
       setTimeLeft(durationSec);
+
+      if (pendingStartAssessment.sections && pendingStartAssessment.sections.length > 0) {
+        setCurrentSectionIndex(0);
+        setSectionTimeLeft(pendingStartAssessment.sections[0].duration_minutes * 60);
+      } else {
+        setCurrentSectionIndex(0);
+        setSectionTimeLeft(durationSec);
+      }
       setPendingStartAssessment(null);
       setExamState("IN_PROGRESS");
 
@@ -996,6 +1040,62 @@ export default function StudentAssessmentsPage() {
               </Button>
             </div>
           </header>
+
+          {/* Sectional Timing & Multi-Part Navigation Bar */}
+          {activeAssessment.sections && activeAssessment.sections.length > 0 && (
+            <div className="flex-shrink-0 bg-slate-950/90 border-b border-slate-800 px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 select-none">
+              <div className="flex items-center gap-2 overflow-x-auto">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">Parts:</span>
+                {activeAssessment.sections.map((sec, sIdx) => {
+                  const isActive = sIdx === currentSectionIndex;
+                  const isCompleted = sIdx < currentSectionIndex;
+
+                  return (
+                    <div
+                      key={sec.id}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
+                        isActive
+                          ? "bg-indigo-600 text-white shadow-md ring-2 ring-indigo-400"
+                          : isCompleted
+                          ? "bg-emerald-950/70 text-emerald-300 border border-emerald-800"
+                          : "bg-slate-900 text-slate-500 border border-slate-800"
+                      }`}
+                    >
+                      <span>{sec.title}</span>
+                      {isActive && (
+                        <span className="px-2 py-0.5 rounded text-[10px] bg-indigo-900/80 text-amber-300 font-mono font-black border border-indigo-500/50">
+                          ⏳ Part Time: {formatTimerDisplay(sectionTimeLeft)}
+                        </span>
+                      )}
+                      {isCompleted && (
+                        <span className="text-[10px] text-emerald-400">✓ Completed</span>
+                      )}
+                      {!isActive && !isCompleted && (
+                        <span className="text-[10px] text-slate-500">🔒 Locked</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Section Cutoff Info & Proceed button */}
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] text-slate-400 hidden md:inline">
+                  Part Cutoff: <strong className="text-slate-200">{activeAssessment.sections[currentSectionIndex]?.passing_threshold || activeAssessment.passing_threshold}%</strong>
+                </span>
+
+                {currentSectionIndex < activeAssessment.sections.length - 1 && (
+                  <Button
+                    size="sm"
+                    onClick={handleSectionExpireOrProceed}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm"
+                  >
+                    Complete Section & Proceed to Part {currentSectionIndex + 2} →
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Subheader Alert (Warnings) */}
           {timeLeft <= 300 && (
@@ -1706,6 +1806,48 @@ export default function StudentAssessmentsPage() {
                 <div className="text-lg font-black text-indigo-600">{examResult.proctoring_flag}</div>
               </div>
             </div>
+
+            {/* Sectional Performance & Cutoff Verification Card */}
+            {examResult.section_scores && Object.keys(examResult.section_scores).length > 0 && (
+              <div className="p-6 border-b border-slate-200 bg-slate-50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Sectional Performance & Cutoff Verification
+                  </h4>
+                  <span className="text-[11px] text-slate-500">All mandatory section cutoffs must be met</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {Object.values(examResult.section_scores).map((sec) => (
+                    <div
+                      key={sec.section_id}
+                      className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 ${
+                        sec.passed
+                          ? "bg-emerald-50/70 border-emerald-200 text-emerald-950"
+                          : "bg-red-50/70 border-red-200 text-red-950"
+                      }`}
+                    >
+                      <div className="space-y-0.5 min-w-0 flex-1">
+                        <div className="text-xs font-bold truncate text-slate-900">{sec.title}</div>
+                        <div className="text-[11px] text-slate-600">
+                          Score: <strong>{sec.earned} / {sec.total}</strong> ({sec.percentage}%) • Cutoff: <strong>{sec.cutoff}%</strong>
+                        </div>
+                      </div>
+
+                      <span
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold border shrink-0 ${
+                          sec.passed
+                            ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                            : "bg-red-100 text-red-800 border-red-300"
+                        }`}
+                      >
+                        {sec.passed ? "CUTOFF PASSED" : "CUTOFF FAILED"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Pending Subjective Evaluations Alert */}
             {examResult.pending_evaluation_count && examResult.pending_evaluation_count > 0 ? (

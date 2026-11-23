@@ -93,6 +93,29 @@ describe("Exam File Parser & Drag-and-Drop Creation Engine", () => {
     expect(result.questions[1].type).toBe("MULTIPLE_CHOICE");
   });
 
+  it("handles spreadsheets with metadata banner rows and custom column names", () => {
+    const customData = [
+      ["Akash Technolabs - Examination Paper 2026", "", "", "", "", "", ""],
+      ["Instructions: Answer all questions carefully.", "", "", "", "", "", ""],
+      ["Q. No.", "Problem Prompt", "Choice A", "Choice B", "Choice C", "Choice D", "Answer Key"],
+      [1, "What does HTML stand for?", "HyperText Markup Language", "High Tech Modern Language", "Hyperlink Text Mode", "Home Tool Markup", "A"],
+      [2, "Which language runs in browser?", "Java", "C", "Python", "JavaScript", "D"]
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(customData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+    const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+
+    const result = parseExcelOrCsvBuffer(buf, "custom-exam.xlsx");
+    expect(result.success).toBe(true);
+    expect(result.questions.length).toBe(2);
+    expect(result.questions[0].question).toBe("What does HTML stand for?");
+    expect(result.questions[0].correct_answer).toBe("HyperText Markup Language");
+    expect(result.questions[1].question).toBe("Which language runs in browser?");
+    expect(result.questions[1].correct_answer).toBe("JavaScript");
+  });
+
   it("handles empty or corrupted files gracefully with clear error messages", () => {
     const emptyBuffer = Buffer.from("");
     const result = parseExcelOrCsvBuffer(emptyBuffer, "empty.xlsx");

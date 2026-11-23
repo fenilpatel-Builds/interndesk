@@ -5,8 +5,8 @@
     "assessment_title": "UI/UX Design Systems & Human-Centered Design Exam",
     "student_email": "hellyleuva.29@gmail.com",
     "student_name": "Helly Leuva",
-    "started_at": "2026-11-20T11:10:00.000Z",
-    "expires_at": "2026-11-20T11:35:00.000Z",
+    "started_at": "2026-11-23T10:30:00.000Z",
+    "expires_at": "2026-11-23T10:55:00.000Z",
     "duration_minutes": 25,
     "saved_answers": {},
     "marked_for_review": [],
@@ -17,12 +17,12 @@
     "fullscreen_exit_count": 0,
     "activity_logs": [
       {
-        "timestamp": "2026-11-20T11:10:00.000Z",
+        "timestamp": "2026-11-23T10:30:00.000Z",
         "type": "START",
         "details": "Secure examination session started with Zero-Trust proctoring active."
       }
     ],
     "status": "ACTIVE",
-    "updated_at": "2026-11-20T11:12:00.000Z"
+    "updated_at": "2026-11-23T10:32:00.000Z"
   }
 ]

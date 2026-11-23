@@ -41,6 +41,7 @@ import {
   Play,
   UploadCloud,
   FileSpreadsheet,
+  Bot,
 } from "lucide-react";
 import {
   Assessment,
@@ -52,6 +53,7 @@ import {
 } from "@/lib/assessments/assessment-store";
 import { BankQuestion, SEED_BANK_QUESTIONS } from "@/lib/assessments/question-bank-store";
 import { ExamFileDropzone } from "@/components/assessments/exam-file-dropzone";
+import { AIQuestionGeneratorModal } from "@/components/assessments/ai-question-generator-modal";
 
 export default function AdminAssessmentsPage() {
   const [activeTab, setActiveTab] = useState<"EXAMS" | "QUESTION_BANK" | "MONITORING" | "SUBMISSIONS" | "EVALUATION">("EXAMS");
@@ -78,6 +80,7 @@ export default function AdminAssessmentsPage() {
   const [isFileExamModalOpen, setIsFileExamModalOpen] = useState(false);
   const [isFileQuestionBankModalOpen, setIsFileQuestionBankModalOpen] = useState(false);
   const [isInlineFileImportOpen, setIsInlineFileImportOpen] = useState(false);
+  const [isAIGeneratorModalOpen, setIsAIGeneratorModalOpen] = useState(false);
   const [isQuestionBankModalOpen, setIsQuestionBankModalOpen] = useState(false);
   const [isBulkImportModalOpen, setIsBulkImportModalOpen] = useState(false);
   const [selectedAttemptForReview, setSelectedAttemptForReview] = useState<AssessmentAttempt | null>(null);
@@ -742,7 +745,14 @@ return (
           </div>
 
           {activeTab === "EXAMS" && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                onClick={() => setIsAIGeneratorModalOpen(true)}
+                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-bold py-2 px-3.5 rounded-lg flex items-center gap-1.5 shadow-sm"
+              >
+                <Bot className="w-4 h-4" />
+                Generate Exam with AI
+              </Button>
               <Button
                 onClick={() => setIsFileExamModalOpen(true)}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-3.5 rounded-lg flex items-center gap-1.5 shadow-sm"
@@ -761,7 +771,14 @@ return (
           )}
 
           {activeTab === "QUESTION_BANK" && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                onClick={() => setIsAIGeneratorModalOpen(true)}
+                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-bold py-2 px-3.5 rounded-lg flex items-center gap-1.5 shadow-sm"
+              >
+                <Bot className="w-4 h-4" />
+                Generate with AI
+              </Button>
               <Button
                 onClick={() => setIsFileQuestionBankModalOpen(true)}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-3.5 rounded-lg flex items-center gap-1.5 shadow-sm"
@@ -1829,6 +1846,15 @@ return (
                 <UploadCloud className="w-3.5 h-3.5 text-emerald-600" />
                 Import from Excel / PDF
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsAIGeneratorModalOpen(true)}
+                className="text-xs font-bold text-purple-700 border-purple-300 hover:bg-purple-50 flex items-center gap-1.5"
+              >
+                <Bot className="w-3.5 h-3.5 text-purple-600" />
+                Generate with AI
+              </Button>
             </div>
           </div>
 
@@ -2226,6 +2252,28 @@ return (
     </div>
   )
 }
+
+{/* ========================================================= */}
+{/* MODAL: AI-POWERED QUESTION & EXAM GENERATOR (GEMINI)      */}
+{/* ========================================================= */}
+<AIQuestionGeneratorModal
+  isOpen={isAIGeneratorModalOpen}
+  onClose={() => setIsAIGeneratorModalOpen(false)}
+  onQuestionsImportedToBank={(qs, count) => {
+    loadData();
+    alert(`Successfully generated and imported ${count} questions into the Question Bank.`);
+  }}
+  onAddToExamBuilder={(newQs) => {
+    setFormQuestions((prev) => [...prev, ...newQs]);
+    alert(`Added ${newQs.length} AI-generated questions to the current examination.`);
+  }}
+  onCreateNewExam={(newQs, topic, sub) => {
+    handleOpenCreateExam();
+    setFormTitle(`${topic} Certification Examination`);
+    setFormSubject(sub);
+    setFormQuestions(newQs);
+  }}
+/>
 
 {/* ========================================================= */}
 {/* MODAL: CREATE EXAM FROM FILE (EXCEL / PDF / DRAG & DROP)  */}

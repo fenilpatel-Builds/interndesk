@@ -165,6 +165,36 @@
     "passing_threshold": 70,
     "attempt_limit": 2,
     "status": "PUBLISHED",
+    "sections": [
+      {
+        "id": "sec-fs-01",
+        "title": "Part A: Architecture Fundamentals & RLS",
+        "description": "React Server Components, Database RLS, and Auth Isolation",
+        "duration_minutes": 10,
+        "passing_threshold": 60,
+        "question_ids": [
+          "q_fs_1",
+          "q_fs_2",
+          "q_fs_3",
+          "q_fs_4",
+          "q_fs_5"
+        ]
+      },
+      {
+        "id": "sec-fs-02",
+        "title": "Part B: Next.js App Router & Distributed Systems",
+        "description": "Database Connection Pooling, Static Segment Generation, REST Idempotency, and Optimistic UI",
+        "duration_minutes": 15,
+        "passing_threshold": 70,
+        "question_ids": [
+          "q_fs_6",
+          "q_fs_7",
+          "q_fs_8",
+          "q_fs_9",
+          "q_fs_10"
+        ]
+      }
+    ],
     "created_at": "2026-10-05T10:00:00.000Z",
     "questions": [
       {
