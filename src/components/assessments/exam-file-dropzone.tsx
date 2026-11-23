@@ -170,7 +170,7 @@ export function ExamFileDropzone({
   };
 
   // Download template
-  const handleDownloadTemplate = (format: "excel" | "csv" | "json") => {
+  const handleDownloadTemplate = (format: "excel" | "csv" | "json" | "pdf") => {
     window.open(`/api/admin/assessments/import-file?format=${format}`, "_blank");
   };
 
@@ -316,6 +316,16 @@ export function ExamFileDropzone({
             >
               <FileCode className="w-3.5 h-3.5 mr-1 text-amber-600" />
               JSON Schema
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handleDownloadTemplate("pdf")}
+              className="text-xs font-semibold border-rose-200 text-rose-800 hover:bg-rose-50 bg-rose-50/50"
+            >
+              <FileText className="w-3.5 h-3.5 mr-1 text-rose-600" />
+              PDF Document (.pdf)
             </Button>
           </div>
         </div>

@@ -11,6 +11,7 @@ import {
   generateSampleExcelBuffer,
   generateSampleCsvString,
   generateSampleJsonString,
+  generateSamplePdfBuffer,
   ParsedExamFileResult,
 } from "@/lib/assessments/exam-file-parser";
 
@@ -18,9 +19,21 @@ import {
 async function extractTextFromPdfBuffer(buffer: Buffer): Promise<string> {
   try {
     const pdfModule: any = await import("pdf-parse");
+    // Support modern pdf-parse v2 class API
+    if (pdfModule?.PDFParse || pdfModule?.default?.PDFParse) {
+      const PDFParserClass = pdfModule.PDFParse || pdfModule.default.PDFParse;
+      const parser = new PDFParserClass({ data: buffer });
+      const result = await parser.getText();
+      await parser.destroy().catch(() => {});
+      return typeof result === "string" ? result : (result?.text || "");
+    }
+    // Support legacy pdf-parse v1 function API
     const pdf = typeof pdfModule === "function" ? pdfModule : (pdfModule.default || pdfModule);
-    const data = await pdf(buffer);
-    return data.text || "";
+    if (typeof pdf === "function") {
+      const data = await pdf(buffer);
+      return data.text || "";
+    }
+    throw new Error("Compatible PDF parser interface not found in pdf-parse module.");
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "PDF extraction failed";
     throw new Error(`Failed to extract text from PDF: ${message}`);
@@ -53,7 +66,7 @@ async function verifyAdminAuth(req: NextRequest) {
 }
 
 /**
- * GET: Download sample templates in Excel, CSV, or JSON format.
+ * GET: Download sample templates in Excel, CSV, JSON, or PDF format.
  */
 export async function GET(req: NextRequest) {
   const format = (req.nextUrl.searchParams.get("format") || "excel").toLowerCase();
@@ -74,6 +87,16 @@ export async function GET(req: NextRequest) {
       headers: {
         "Content-Type": "application/json; charset=utf-8",
         "Content-Disposition": 'attachment; filename="akash-technolabs-exam-template.json"',
+      },
+    });
+  }
+
+  if (format === "pdf") {
+    const pdfBuffer = await generateSamplePdfBuffer();
+    return new NextResponse(new Uint8Array(pdfBuffer), {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": 'attachment; filename="akash-technolabs-exam-template.pdf"',
       },
     });
   }

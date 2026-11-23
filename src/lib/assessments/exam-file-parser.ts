@@ -142,10 +142,10 @@ export function parseExcelOrCsvBuffer(buffer: ArrayBuffer | Uint8Array | Buffer,
           if (ansCol === -1) ansCol = colIdx;
         } else if (k.includes("type") || k.includes("format") || k === "qtype") {
           typeCol = colIdx;
-        } else if (k.includes("marks") || k.includes("points") || k === "score") {
-          marksCol = colIdx;
-        } else if (k.includes("negative") || k.includes("penalty")) {
+        } else if (k.includes("negative") || k.includes("penalty") || k.includes("negmark")) {
           negMarksCol = colIdx;
+        } else if ((k.includes("marks") || k.includes("points") || k === "score") && !k.includes("neg")) {
+          marksCol = colIdx;
         } else if (k.includes("difficulty") || k.includes("level")) {
           diffCol = colIdx;
         } else if (k.includes("explanation") || k.includes("rationale")) {
@@ -416,56 +416,67 @@ export function parseQuestionsFromText(text: string, titleHint?: string): Parsed
     const trimmed = block.trim();
     if (!trimmed || trimmed.length < 15) return;
 
-    // Search for options (A), (B), (C), (D) or A., B., C., D.
-    const optionMatches = Array.from(trimmed.matchAll(/(?:^|\n|\s)(?:\(([A-Ea-e])\)|([A-Ea-e])[\.\)])\s*([^\n\r(]+)/g));
-
-    // Search for answer
-    const ansMatch = trimmed.match(/(?:Answer|Correct Answer|Ans)[:\s]+(?:\()?([A-Ea-e]|[^\n\r]+)(?:\))?/i);
-    // Search for explanation
-    const expMatch = trimmed.match(/(?:Explanation|Solution|Rationale)[:\s]+([^\n\r]+)/i);
-
-    let questionPrompt = trimmed;
+    const lines = trimmed.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const promptLines: string[] = [];
     const options: string[] = [];
+    let detectedAnswer = "";
+    let detectedExplanation = "";
+    let detectedMarks = 10;
+    let detectedType: QuestionType | null = null;
+    let isParsingOptions = false;
 
-    if (optionMatches.length >= 2) {
-      // Find where options start in the text to isolate question prompt
-      const firstOptionIndex = trimmed.indexOf(optionMatches[0][0]);
-      if (firstOptionIndex > 0) {
-        questionPrompt = trimmed.substring(0, firstOptionIndex).trim();
+    for (const line of lines) {
+      const optMatch = line.match(/^(?:(?:\(([A-Ea-e])\)|([A-Ea-e])[\.\)]))\s*(.+)$/i);
+      const ansMatch = line.match(/^(?:Answer|Correct Answer|Ans)[:\s]+(?:\()?([A-Ea-e]|[^\n\r]+)(?:\))?/i);
+      const expMatch = line.match(/^(?:Explanation|Solution|Rationale)[:\s]+(.+)$/i);
+      const marksMatch = line.match(/^(?:Marks|Points|Score)[:\s]+(\d+)/i);
+      const typeMatch = line.match(/^(?:Type|Format)[:\s]+([A-Z_]+)/i);
+
+      if (ansMatch) {
+        detectedAnswer = ansMatch[1].trim();
+        isParsingOptions = false;
+      } else if (expMatch) {
+        detectedExplanation = expMatch[1].trim();
+        isParsingOptions = false;
+      } else if (marksMatch) {
+        detectedMarks = parseInt(marksMatch[1], 10);
+      } else if (typeMatch) {
+        detectedType = typeMatch[1].toUpperCase() as QuestionType;
+      } else if (optMatch) {
+        isParsingOptions = true;
+        options.push(optMatch[3].trim());
+      } else if (isParsingOptions && options.length > 0) {
+        // Multi-line option continuation
+        options[options.length - 1] += " " + line;
+      } else {
+        promptLines.push(line);
       }
-
-      optionMatches.forEach((m) => {
-        const optText = (m[3] || "").trim();
-        if (optText) options.push(optText);
-      });
     }
 
-    // Clean question prompt
-    questionPrompt = questionPrompt.replace(/^(?:Question\s*\d+[:.]|Q\s*\d+[:.]|\d+[\.)])\s*/i, "").trim();
-
+    let questionPrompt = promptLines.join(" ").replace(/^(?:Question\s*\d+[:.]|Q\s*\d+[:.]|\d+[\.)])\s*/i, "").trim();
+    if (!questionPrompt && options.length > 0) {
+      questionPrompt = `Question ${idx + 1}`;
+    }
     if (!questionPrompt) return;
 
     let correct_answer: string | string[] = "";
-    if (ansMatch) {
-      const rawA = ansMatch[1].trim();
-      const upper = rawA.toUpperCase();
+    if (detectedAnswer) {
+      const upper = detectedAnswer.toUpperCase();
       if (upper === "A" && options[0]) correct_answer = options[0];
       else if (upper === "B" && options[1]) correct_answer = options[1];
       else if (upper === "C" && options[2]) correct_answer = options[2];
       else if (upper === "D" && options[3]) correct_answer = options[3];
       else if (upper === "E" && options[4]) correct_answer = options[4];
       else {
-        // Text match
-        const found = options.find((o) => o.toLowerCase() === rawA.toLowerCase());
-        correct_answer = found || rawA;
+        const found = options.find((o) => o.toLowerCase() === detectedAnswer.toLowerCase());
+        correct_answer = found || detectedAnswer;
       }
     } else if (options.length > 0) {
-      // Fallback to first option if not explicitly stated, with warning
       correct_answer = options[0];
       warnings.push(`Question ${idx + 1}: No explicit answer key found. Assigned option A as default.`);
     }
 
-    const type: QuestionType = options.length >= 2 ? "SINGLE_CHOICE" : "SHORT_ANSWER";
+    const type: QuestionType = detectedType || (options.length >= 2 ? "SINGLE_CHOICE" : "SHORT_ANSWER");
 
     questions.push({
       id: `q_pdf_${Date.now()}_${idx + 1}`,
@@ -473,8 +484,8 @@ export function parseQuestionsFromText(text: string, titleHint?: string): Parsed
       type,
       options: options.length > 0 ? options : undefined,
       correct_answer: correct_answer || "Descriptive answer key",
-      explanation: expMatch ? expMatch[1].trim() : `Evaluated standard response for: ${questionPrompt.substring(0, 50)}`,
-      marks: 10,
+      explanation: detectedExplanation || `Evaluated standard response for: ${questionPrompt.substring(0, 50)}`,
+      marks: detectedMarks || 10,
       negative_marks: 0,
       difficulty: "MEDIUM",
       topic: metadata.subject,
@@ -605,104 +616,214 @@ export function parseJsonExamContent(jsonStr: string): ParsedExamFileResult {
 }
 
 /**
+ * 10 Accurate, Technically Verified Examination Questions
+ * Covering Data Structures, Cloud Architecture, Databases, Networking, and Systems.
+ */
+export const VERIFIED_SAMPLE_QUESTIONS = [
+  {
+    question: "Which data structure operates strictly on a First-In, First-Out (FIFO) principle?",
+    type: "SINGLE_CHOICE" as QuestionType,
+    options: ["Queue", "Stack", "Binary Search Tree", "Hash Map"],
+    correct_answer: "Queue",
+    marks: 10,
+    negative_marks: 2.5,
+    difficulty: "EASY" as QuestionDifficulty,
+    explanation: "A Queue processes elements strictly in the order they were inserted (FIFO).",
+    subject: "Data Structures & Algorithms",
+    topic: "Linear Data Structures",
+  },
+  {
+    question: "How do React Server Components (RSC) fundamentally differ from standard Client Components?",
+    type: "SINGLE_CHOICE" as QuestionType,
+    options: [
+      "RSCs execute exclusively on the server, producing lightweight streamed HTML without shipping component JavaScript to the client bundle",
+      "RSCs execute inside a browser Service Worker to cache offline network assets",
+      "RSCs are strictly limited to rendering static images and cannot query databases",
+      "RSCs re-render on every client mousemove event",
+    ],
+    correct_answer: "RSCs execute exclusively on the server, producing lightweight streamed HTML without shipping component JavaScript to the client bundle",
+    marks: 10,
+    negative_marks: 2.5,
+    difficulty: "MEDIUM" as QuestionDifficulty,
+    explanation: "RSCs keep sensitive data, direct database connections, and heavy dependencies on the server, streaming minimal zero-bundle HTML to client browsers.",
+    subject: "Full-Stack Web Development",
+    topic: "React Architecture",
+  },
+  {
+    question: "In PostgreSQL, what is the primary architectural security benefit of Row-Level Security (RLS)?",
+    type: "SINGLE_CHOICE" as QuestionType,
+    options: [
+      "RLS security policies are enforced at the database engine level, preventing cross-tenant data leakage even if application queries omit tenant filters",
+      "RLS automatically compresses table indexes on disk",
+      "RLS eliminates the requirement for primary keys and foreign keys",
+      "RLS converts relational SQL tables into NoSQL document collections",
+    ],
+    correct_answer: "RLS security policies are enforced at the database engine level, preventing cross-tenant data leakage even if application queries omit tenant filters",
+    marks: 10,
+    negative_marks: 2.5,
+    difficulty: "MEDIUM" as QuestionDifficulty,
+    explanation: "RLS policies are enforced directly by the database engine for every query, ensuring strict tenant isolation by default.",
+    subject: "Database Systems",
+    topic: "PostgreSQL Security",
+  },
+  {
+    question: "In HTTP/1.1 semantics, which of the following request methods are guaranteed to be idempotent?",
+    type: "SINGLE_CHOICE" as QuestionType,
+    options: [
+      "GET, HEAD, PUT, and DELETE",
+      "POST only",
+      "POST and PATCH only",
+      "None of the standard HTTP methods are idempotent",
+    ],
+    correct_answer: "GET, HEAD, PUT, and DELETE",
+    marks: 10,
+    negative_marks: 2.5,
+    difficulty: "EASY" as QuestionDifficulty,
+    explanation: "Making multiple identical GET, HEAD, PUT, or DELETE requests produces the exact same server state as a single request.",
+    subject: "Full-Stack Web Development",
+    topic: "HTTP Networking",
+  },
+  {
+    question: "Under ANSI SQL standards, which transaction isolation level provides complete immunity against Dirty Reads, Non-Repeatable Reads, and Phantom Reads?",
+    type: "SINGLE_CHOICE" as QuestionType,
+    options: [
+      "SERIALIZABLE",
+      "REPEATABLE READ",
+      "READ COMMITTED",
+      "READ UNCOMMITTED",
+    ],
+    correct_answer: "SERIALIZABLE",
+    marks: 10,
+    negative_marks: 2.5,
+    difficulty: "HARD" as QuestionDifficulty,
+    explanation: "SERIALIZABLE execution simulates sequential transaction execution, providing complete isolation against Dirty, Non-Repeatable, and Phantom reads.",
+    subject: "Database Systems",
+    topic: "ACID Concurrency",
+  },
+  {
+    question: "When verifying a JSON Web Token (JWT) signed with an asymmetric algorithm like RS256, which key must the verifying backend service use?",
+    type: "SINGLE_CHOICE" as QuestionType,
+    options: [
+      "The Identity Provider's Public Key",
+      "The Identity Provider's Private Key",
+      "A symmetric shared secret password",
+      "The client browser's TLS session cookie",
+    ],
+    correct_answer: "The Identity Provider's Public Key",
+    marks: 10,
+    negative_marks: 2.5,
+    difficulty: "MEDIUM" as QuestionDifficulty,
+    explanation: "Asymmetric signing uses the Private Key to create signatures (held by the auth issuer) and the Public Key to mathematically verify signatures.",
+    subject: "Cybersecurity & Cloud Systems",
+    topic: "Token Authentication",
+  },
+  {
+    question: "In Node.js and modern browser runtimes, what is the execution priority between Microtasks and Macrotasks?",
+    type: "SINGLE_CHOICE" as QuestionType,
+    options: [
+      "All Microtasks in the microtask queue are drained before the event loop advances to the next Macrotask",
+      "Macrotasks always execute before any queued Microtasks",
+      "Microtasks and Macrotasks run concurrently across multiple OS threads",
+      "Microtasks execute only when the browser window loses focus",
+    ],
+    correct_answer: "All Microtasks in the microtask queue are drained before the event loop advances to the next Macrotask",
+    marks: 10,
+    negative_marks: 2.5,
+    difficulty: "MEDIUM" as QuestionDifficulty,
+    explanation: "The event loop drains the entire microtask queue (Promise callbacks, process.nextTick, queueMicrotask) immediately after the current call stack clears and before processing the next macrotask.",
+    subject: "Computer Science",
+    topic: "Event Loop Architecture",
+  },
+  {
+    question: "Why do Docker containers start in milliseconds with minimal memory overhead compared to traditional Type-2 Hypervisor Virtual Machines?",
+    type: "SINGLE_CHOICE" as QuestionType,
+    options: [
+      "Containers share the host operating system kernel and isolate user space using cgroups/namespaces, whereas VMs emulate virtual hardware and boot a full guest OS",
+      "Containers bypass the CPU and execute exclusively on GPU Tensor cores",
+      "Containers compile application source code directly to hardware microcode",
+      "Containers disable all filesystem write permissions",
+    ],
+    correct_answer: "Containers share the host operating system kernel and isolate user space using cgroups/namespaces, whereas VMs emulate virtual hardware and boot a full guest OS",
+    marks: 10,
+    negative_marks: 2.5,
+    difficulty: "EASY" as QuestionDifficulty,
+    explanation: "Containers are lightweight processes sharing the host Linux kernel through namespaces and cgroups, avoiding the guest OS initialization overhead of virtual machines.",
+    subject: "DevOps & Cloud Infrastructure",
+    topic: "Containerization",
+  },
+  {
+    question: "In the Cache-Aside (Lazy Loading) caching pattern, how does the application handle a cache miss?",
+    type: "SINGLE_CHOICE" as QuestionType,
+    options: [
+      "The application queries the primary database, populates the retrieved data into the cache, and returns it to the client",
+      "The application returns a 404 Not Found error response immediately",
+      "The cache engine automatically triggers a database query via native database extensions",
+      "The application blocks all incoming HTTP requests until a cache warmup script finishes",
+    ],
+    correct_answer: "The application queries the primary database, populates the retrieved data into the cache, and returns it to the client",
+    marks: 10,
+    negative_marks: 2.5,
+    difficulty: "MEDIUM" as QuestionDifficulty,
+    explanation: "Under Cache-Aside, the application first inspects the cache; upon a miss, it queries the database, writes the result into the cache with a TTL, and serves the caller.",
+    subject: "Enterprise Architecture",
+    topic: "Distributed Caching",
+  },
+  {
+    question: "Why is a B-Tree index preferred over a Hash index for database columns frequently queried with range operators (e.g., BETWEEN, <, >)?",
+    type: "SINGLE_CHOICE" as QuestionType,
+    options: [
+      "B-Tree keeps index keys in sorted order with doubly linked leaf nodes for rapid range scans, whereas Hash index only supports O(1) equality lookups",
+      "Hash indexes cannot store integers or timestamps",
+      "B-Tree indexes do not consume disk storage",
+      "Hash indexes require distributed 2-phase commit protocols for every query",
+    ],
+    correct_answer: "B-Tree keeps index keys in sorted order with doubly linked leaf nodes for rapid range scans, whereas Hash index only supports O(1) equality lookups",
+    marks: 10,
+    negative_marks: 2.5,
+    difficulty: "MEDIUM" as QuestionDifficulty,
+    explanation: "B-Tree leaf nodes form a sorted doubly linked list allowing efficient range scans, whereas hash functions distribute keys randomly across buckets, making range queries impossible.",
+    subject: "Database Systems",
+    topic: "Index Optimization",
+  },
+];
+
+/**
  * Generates an official Excel template buffer (.xlsx) for educators and administrators.
  */
 export function generateSampleExcelBuffer(): Buffer {
   const wb = XLSX.utils.book_new();
 
-  const sampleData = [
-    {
-      "Question": "Which data structure operates on a First-In, First-Out (FIFO) principle?",
-      "Type": "SINGLE_CHOICE",
-      "Option A": "Queue",
-      "Option B": "Stack",
-      "Option C": "Binary Search Tree",
-      "Option D": "Hash Map",
-      "Correct Answer": "A",
-      "Marks": 10,
-      "Negative Marks": 2.5,
-      "Difficulty": "EASY",
-      "Explanation": "A Queue processes elements strictly in the order they were inserted (FIFO).",
-      "Subject": "Data Structures & Algorithms",
-      "Topic": "Linear Data Structures",
-    },
-    {
-      "Question": "In HTTP semantics, the GET request method must be safe and idempotent.",
-      "Type": "TRUE_FALSE",
-      "Option A": "True",
-      "Option B": "False",
-      "Option C": "",
-      "Option D": "",
-      "Correct Answer": "True",
-      "Marks": 10,
-      "Negative Marks": 0,
-      "Difficulty": "EASY",
-      "Explanation": "GET requests are read-only; multiple identical requests produce no server side-effects.",
-      "Subject": "Full-Stack Web Development",
-      "Topic": "HTTP Networking",
-    },
-    {
-      "Question": "Which of the following database phenomena are prevented under SERIALIZABLE isolation? (Select all that apply)",
-      "Type": "MULTIPLE_CHOICE",
-      "Option A": "Dirty Reads",
-      "Option B": "Non-Repeatable Reads",
-      "Option C": "Phantom Reads",
-      "Option D": "Deadlock Immunity",
-      "Correct Answer": "A, B, C",
-      "Marks": 15,
-      "Negative Marks": 3,
-      "Difficulty": "HARD",
-      "Explanation": "Serializable isolation guarantees full isolation against dirty, non-repeatable, and phantom reads.",
-      "Subject": "Database Systems",
-      "Topic": "ACID Concurrency",
-    },
-    {
-      "Question": "In database management, the acronym ACID stands for Atomicity, Consistency, Isolation, and ______.",
-      "Type": "FILL_BLANKS",
-      "Option A": "",
-      "Option B": "",
-      "Option C": "",
-      "Option D": "",
-      "Correct Answer": "Durability",
-      "Marks": 10,
-      "Negative Marks": 0,
-      "Difficulty": "MEDIUM",
-      "Explanation": "Durability guarantees that committed transactions persist even during system power failures.",
-      "Subject": "Database Systems",
-      "Topic": "Transaction Management",
-    },
-    {
-      "Question": "Explain the architectural difference between Monolithic and Microservices design patterns.",
-      "Type": "DESCRIPTIVE",
-      "Option A": "",
-      "Option B": "",
-      "Option C": "",
-      "Option D": "",
-      "Correct Answer": "Monoliths deploy all modules in a single process; microservices deploy discrete independent domain services communicating via network RPC/REST.",
-      "Marks": 20,
-      "Negative Marks": 0,
-      "Difficulty": "HARD",
-      "Explanation": "Monoliths offer simple local calls and unified transactions, while microservices allow independent scaling and decoupled deployments.",
-      "Subject": "Enterprise Architecture",
-      "Topic": "System Design",
-    },
-  ];
+  const sampleData = VERIFIED_SAMPLE_QUESTIONS.map((q) => ({
+    "Question": q.question,
+    "Type": q.type,
+    "Option A": q.options[0] || "",
+    "Option B": q.options[1] || "",
+    "Option C": q.options[2] || "",
+    "Option D": q.options[3] || "",
+    "Correct Answer": "A", // Option A is the verified correct answer in this normalized template
+    "Marks": q.marks,
+    "Negative Marks": q.negative_marks,
+    "Difficulty": q.difficulty,
+    "Explanation": q.explanation,
+    "Subject": q.subject,
+    "Topic": q.topic,
+  }));
 
   const ws = XLSX.utils.json_to_sheet(sampleData);
 
   // Set column widths for readability
   ws["!cols"] = [
-    { wch: 45 }, // Question
+    { wch: 55 }, // Question
     { wch: 18 }, // Type
-    { wch: 25 }, // Option A
-    { wch: 25 }, // Option B
-    { wch: 25 }, // Option C
-    { wch: 25 }, // Option D
+    { wch: 45 }, // Option A
+    { wch: 35 }, // Option B
+    { wch: 35 }, // Option C
+    { wch: 35 }, // Option D
     { wch: 16 }, // Correct Answer
     { wch: 8 },  // Marks
     { wch: 14 }, // Negative Marks
     { wch: 12 }, // Difficulty
-    { wch: 40 }, // Explanation
+    { wch: 55 }, // Explanation
     { wch: 25 }, // Subject
     { wch: 25 }, // Topic
   ];
@@ -732,53 +853,23 @@ export function generateSampleCsvString(): string {
     "Topic",
   ];
 
-  const rows = [
-    [
-      '"Which data structure operates on a First-In, First-Out (FIFO) principle?"',
-      "SINGLE_CHOICE",
-      '"Queue"',
-      '"Stack"',
-      '"Binary Search Tree"',
-      '"Hash Map"',
-      '"A"',
-      "10",
-      "2.5",
-      "EASY",
-      '"A Queue processes elements strictly in the order they were inserted (FIFO)."',
-      '"Data Structures"',
-      '"Linear"',
-    ],
-    [
-      '"In HTTP semantics, the GET request method must be safe and idempotent."',
-      "TRUE_FALSE",
-      '"True"',
-      '"False"',
-      '""',
-      '""',
-      '"True"',
-      "10",
-      "0",
-      "EASY",
-      '"GET requests are read-only; multiple identical requests produce no server side-effects."',
-      '"Web Dev"',
-      '"HTTP"',
-    ],
-    [
-      '"Which of the following phenomena are prevented under SERIALIZABLE isolation?"',
-      "MULTIPLE_CHOICE",
-      '"Dirty Reads"',
-      '"Non-Repeatable Reads"',
-      '"Phantom Reads"',
-      '"Deadlock Immunity"',
-      '"A, B, C"',
-      "15",
-      "3",
-      "HARD",
-      '"Serializable isolation prevents Dirty, Non-Repeatable, and Phantom Reads."',
-      '"Databases"',
-      '"ACID"',
-    ],
-  ];
+  const escapeCsv = (str: string | number) => `"${String(str).replace(/"/g, '""')}"`;
+
+  const rows = VERIFIED_SAMPLE_QUESTIONS.map((q) => [
+    escapeCsv(q.question),
+    q.type,
+    escapeCsv(q.options[0] || ""),
+    escapeCsv(q.options[1] || ""),
+    escapeCsv(q.options[2] || ""),
+    escapeCsv(q.options[3] || ""),
+    '"A"',
+    q.marks,
+    q.negative_marks,
+    q.difficulty,
+    escapeCsv(q.explanation),
+    escapeCsv(q.subject),
+    escapeCsv(q.topic),
+  ]);
 
   return [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
 }
@@ -788,51 +879,119 @@ export function generateSampleCsvString(): string {
  */
 export function generateSampleJsonString(): string {
   const sample = {
-    title: "Full-Stack Enterprise Certification Examination",
-    subject: "Full-Stack Web Development",
-    description: "Official evaluation of modern React, Next.js, and cloud database fundamentals.",
+    title: "Akash Technolabs - Technical Engineering Practicum Examination",
+    subject: "Computer Science & Engineering",
+    description: "Official comprehensive technical examination covering full-stack architecture, algorithms, and databases.",
     duration_minutes: 30,
     passing_threshold: 70,
     attempt_limit: 2,
-    questions: [
-      {
-        question: "How do React Server Components (RSC) fundamentally differ from standard Client Components?",
-        type: "SINGLE_CHOICE",
-        options: [
-          "RSCs execute exclusively on the server, producing lightweight streamed HTML without shipping component JavaScript to the client bundle",
-          "RSCs execute inside a browser Service Worker to cache offline network assets",
-          "RSCs are strictly limited to rendering static images and cannot query databases",
-          "RSCs re-render on every client mousemove event"
-        ],
-        correct_answer: "RSCs execute exclusively on the server, producing lightweight streamed HTML without shipping component JavaScript to the client bundle",
-        marks: 10,
-        negative_marks: 2.5,
-        difficulty: "MEDIUM",
-        explanation: "RSCs keep sensitive data and heavyweight libraries on the server, streaming minimal zero-bundle HTML to client browsers.",
-        topic: "React Architecture"
-      },
-      {
-        question: "Which of the following statements regarding the Transformer Attention mechanism are correct? (Select all that apply)",
-        type: "MULTIPLE_CHOICE",
-        options: [
-          "Self-Attention calculates dynamic dot-product affinity between Query and Key vectors",
-          "Multi-Head Attention allows the model to attend to information from different representation subspaces jointly",
-          "Scaled Dot-Product divides by sqrt(d_k) to prevent softmax gradients from vanishing in high dimensions",
-          "Transformers require recurrent loops to pass hidden states sequentially between time steps"
-        ],
-        correct_answer: [
-          "Self-Attention calculates dynamic dot-product affinity between Query and Key vectors",
-          "Multi-Head Attention allows the model to attend to information from different representation subspaces jointly",
-          "Scaled Dot-Product divides by sqrt(d_k) to prevent softmax gradients from vanishing in high dimensions"
-        ],
-        marks: 15,
-        negative_marks: 3,
-        difficulty: "HARD",
-        explanation: "Transformers operate without recurrent loops; Query, Key, and Value dot products allow global parallel token attention.",
-        topic: "Transformers & Attention"
-      }
-    ]
+    questions: VERIFIED_SAMPLE_QUESTIONS.map((q, idx) => ({
+      id: `q_sample_${idx + 1}`,
+      question: q.question,
+      type: q.type,
+      options: q.options,
+      correct_answer: q.correct_answer,
+      marks: q.marks,
+      negative_marks: q.negative_marks,
+      difficulty: q.difficulty,
+      explanation: q.explanation,
+      subject: q.subject,
+      topic: q.topic,
+    })),
   };
 
   return JSON.stringify(sample, null, 2);
+}
+
+/**
+ * Generates an official sample PDF buffer (.pdf) with verified questions and answers.
+ */
+export async function generateSamplePdfBuffer(): Promise<Buffer> {
+  const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
+  const doc = await PDFDocument.create();
+  const fontRegular = await doc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
+
+  let page = doc.addPage([595.28, 841.89]); // A4 portrait
+  let y = 800;
+
+  const checkPage = (neededSpace: number = 60) => {
+    if (y < neededSpace) {
+      page = doc.addPage([595.28, 841.89]);
+      y = 800;
+    }
+  };
+
+  // Header Banner
+  page.drawText("Akash Technolabs - Technical Engineering Practicum Examination", {
+    x: 50,
+    y,
+    size: 15,
+    font: fontBold,
+    color: rgb(0.12, 0.16, 0.45),
+  });
+  y -= 18;
+
+  page.drawText("Standard Examination Document | Duration: 30 Mins | Passing: 70% | Total Marks: 100", {
+    x: 50,
+    y,
+    size: 9.5,
+    font: fontRegular,
+    color: rgb(0.4, 0.4, 0.4),
+  });
+  y -= 25;
+
+  const letterLabels = ["A", "B", "C", "D"];
+
+  VERIFIED_SAMPLE_QUESTIONS.forEach((q, idx) => {
+    checkPage(130);
+
+    // Question Number & Text
+    page.drawText(`${idx + 1}. ${q.question}`, {
+      x: 50,
+      y,
+      size: 9.5,
+      font: fontBold,
+      color: rgb(0.1, 0.1, 0.15),
+    });
+    y -= 15;
+
+    // Options
+    q.options.forEach((opt, optIdx) => {
+      checkPage(30);
+      const label = letterLabels[optIdx] || "A";
+      page.drawText(`${label}. ${opt}`, {
+        x: 65,
+        y,
+        size: 8.5,
+        font: fontRegular,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      y -= 13;
+    });
+
+    // Answer
+    checkPage(35);
+    page.drawText(`Answer: A`, {
+      x: 65,
+      y,
+      size: 8.5,
+      font: fontBold,
+      color: rgb(0.05, 0.5, 0.2),
+    });
+    y -= 12;
+
+    // Explanation
+    page.drawText(`Explanation: ${q.explanation}`, {
+      x: 65,
+      y,
+      size: 7.5,
+      font: fontRegular,
+      color: rgb(0.4, 0.4, 0.4),
+    });
+    y -= 20;
+  });
+
+  const pdfBytes = await doc.save();
+  return Buffer.from(pdfBytes);
 }
