@@ -41,6 +41,11 @@
       "Multi-Head Attention allows the model to attend to information from different representation subspaces jointly",
       "Scaled Dot-Product divides by sqrt(d_k) to prevent softmax gradients from vanishing in high dimensions"
     ],
+    "correct_answers": [
+      "Self-Attention calculates dynamic dot-product affinity between Query and Key vectors",
+      "Multi-Head Attention allows the model to attend to information from different representation subspaces jointly",
+      "Scaled Dot-Product divides by sqrt(d_k) to prevent softmax gradients from vanishing in high dimensions"
+    ],
     "explanation": "Transformers operate fully in parallel without sequential recurrent loops. Queries, Keys, and Values are scaled by 1/sqrt(d_k) to maintain gradient stability.",
     "marks": 15,
     "negative_marks": 3,
@@ -215,6 +220,11 @@
       "Deadlock Immunity"
     ],
     "correct_answer": [
+      "Dirty Reads",
+      "Non-Repeatable Reads",
+      "Phantom Reads"
+    ],
+    "correct_answers": [
       "Dirty Reads",
       "Non-Repeatable Reads",
       "Phantom Reads"

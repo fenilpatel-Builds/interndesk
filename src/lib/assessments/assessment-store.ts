@@ -31,6 +31,7 @@ export interface AssessmentQuestion {
   type: QuestionType;
   options?: string[];
   correct_answer?: string | string[];
+  correct_answers?: string[];
   explanation: string;
   marks: number;
   negative_marks?: number;
@@ -1614,10 +1615,11 @@ export class AssessmentStore {
             : typeof studentRawAns === "string"
             ? studentRawAns.split(",").map((s) => s.trim())
             : [];
-          const correctArr: string[] = Array.isArray(q.correct_answer)
-            ? q.correct_answer.map((s) => String(s).trim())
-            : typeof q.correct_answer === "string"
-            ? q.correct_answer.split(",").map((s) => s.trim())
+          const rawCorrect = q.correct_answers || q.correct_answer;
+          const correctArr: string[] = Array.isArray(rawCorrect)
+            ? rawCorrect.map((s) => String(s).trim())
+            : typeof rawCorrect === "string"
+            ? rawCorrect.split(",").map((s) => s.trim())
             : [];
 
           const normStudent = studentArr.map((s) => s.toLowerCase()).sort().join("|");

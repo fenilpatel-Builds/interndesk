@@ -33,6 +33,7 @@ export interface BankQuestion {
   question: string;
   options?: string[];
   correct_answer?: string | string[]; // Single string or array of correct answers
+  correct_answers?: string[];
   explanation: string;
   marks: number;
   negative_marks?: number;

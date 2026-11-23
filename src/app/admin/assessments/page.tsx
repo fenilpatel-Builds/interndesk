@@ -39,6 +39,8 @@ import {
   Zap,
   Copy,
   Play,
+  UploadCloud,
+  FileSpreadsheet,
 } from "lucide-react";
 import {
   Assessment,
@@ -49,6 +51,7 @@ import {
   ActiveExamSession,
 } from "@/lib/assessments/assessment-store";
 import { BankQuestion, SEED_BANK_QUESTIONS } from "@/lib/assessments/question-bank-store";
+import { ExamFileDropzone } from "@/components/assessments/exam-file-dropzone";
 
 export default function AdminAssessmentsPage() {
   const [activeTab, setActiveTab] = useState<"EXAMS" | "QUESTION_BANK" | "MONITORING" | "SUBMISSIONS" | "EVALUATION">("EXAMS");
@@ -72,6 +75,9 @@ export default function AdminAssessmentsPage() {
   // Modals
   const [isExamModalOpen, setIsExamModalOpen] = useState(false);
   const [editingAssessment, setEditingAssessment] = useState<Assessment | null>(null);
+  const [isFileExamModalOpen, setIsFileExamModalOpen] = useState(false);
+  const [isFileQuestionBankModalOpen, setIsFileQuestionBankModalOpen] = useState(false);
+  const [isInlineFileImportOpen, setIsInlineFileImportOpen] = useState(false);
   const [isQuestionBankModalOpen, setIsQuestionBankModalOpen] = useState(false);
   const [isBulkImportModalOpen, setIsBulkImportModalOpen] = useState(false);
   const [selectedAttemptForReview, setSelectedAttemptForReview] = useState<AssessmentAttempt | null>(null);
@@ -736,24 +742,40 @@ return (
           </div>
 
           {activeTab === "EXAMS" && (
-            <Button
-              onClick={handleOpenCreateExam}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2 px-4 rounded-lg flex items-center gap-2 shadow-sm"
-            >
-              <Plus className="w-4 h-4" />
-              Create New Assessment
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => setIsFileExamModalOpen(true)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-3.5 rounded-lg flex items-center gap-1.5 shadow-sm"
+              >
+                <UploadCloud className="w-4 h-4" />
+                Create from Excel / PDF (Drag & Drop)
+              </Button>
+              <Button
+                onClick={handleOpenCreateExam}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2 px-4 rounded-lg flex items-center gap-2 shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                Create New Assessment
+              </Button>
+            </div>
           )}
 
           {activeTab === "QUESTION_BANK" && (
             <div className="flex items-center gap-2">
               <Button
+                onClick={() => setIsFileQuestionBankModalOpen(true)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-3.5 rounded-lg flex items-center gap-1.5 shadow-sm"
+              >
+                <UploadCloud className="w-4 h-4" />
+                Import (Excel / PDF / Drag & Drop)
+              </Button>
+              <Button
                 variant="outline"
                 onClick={() => setIsBulkImportModalOpen(true)}
-                className="text-xs font-semibold py-2 px-3 border-slate-300"
+                className="text-xs font-semibold py-2 px-3 border-slate-300 text-slate-700 hover:text-indigo-600"
               >
                 <Upload className="w-3.5 h-3.5 mr-1" />
-                Bulk Import JSON
+                Paste JSON
               </Button>
               <Button
                 onClick={() => setIsQuestionBankModalOpen(true)}
@@ -1798,6 +1820,15 @@ return (
                 <Database className="w-3.5 h-3.5" />
                 Import from Question Bank
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsInlineFileImportOpen(true)}
+                className="text-xs font-bold text-emerald-700 border-emerald-300 hover:bg-emerald-50 flex items-center gap-1.5"
+              >
+                <UploadCloud className="w-3.5 h-3.5 text-emerald-600" />
+                Import from Excel / PDF
+              </Button>
             </div>
           </div>
 
@@ -1914,12 +1945,33 @@ return (
           )}
 
           {formQuestions.length === 0 ? (
-            <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-300 space-y-2">
+            <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-300 space-y-3">
               <Database className="w-8 h-8 text-slate-400 mx-auto" />
               <div className="text-xs font-bold text-slate-700">No Questions Added Yet</div>
-              <p className="text-xs text-slate-500">
-                Click "Import from Question Bank" to select questions from the central repository.
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                Add questions manually, select from the central Question Bank, or drag & drop an Excel / PDF file.
               </p>
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsBankPickerOpen(true)}
+                  className="text-xs font-bold text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                >
+                  <Database className="w-3.5 h-3.5 mr-1" />
+                  Import from Question Bank
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => setIsInlineFileImportOpen(true)}
+                  className="text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  <UploadCloud className="w-3.5 h-3.5 mr-1" />
+                  Drop Excel / PDF File
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
@@ -2174,6 +2226,129 @@ return (
     </div>
   )
 }
+
+{/* ========================================================= */}
+{/* MODAL: CREATE EXAM FROM FILE (EXCEL / PDF / DRAG & DROP)  */}
+{/* ========================================================= */}
+{isFileExamModalOpen && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+    <div className="bg-white rounded-2xl max-w-4xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 max-h-[90vh] overflow-y-auto my-auto">
+      <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div className="flex items-center gap-2">
+          <div className="p-2 rounded-lg bg-emerald-100 text-emerald-700">
+            <UploadCloud className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-900">
+              Create Examination from File (Excel / PDF / CSV / JSON)
+            </h3>
+            <p className="text-xs text-slate-500">
+              Drag & drop your question document. Questions, options, and verified answers will be auto-extracted.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => setIsFileExamModalOpen(false)}
+          className="text-slate-400 hover:text-slate-600 p-1"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <ExamFileDropzone
+        mode="CREATE_EXAM"
+        onExamCreated={(newExam) => {
+          loadData();
+          setIsFileExamModalOpen(false);
+          alert(`Successfully created examination: ${newExam.title}`);
+        }}
+        onClose={() => setIsFileExamModalOpen(false)}
+      />
+    </div>
+  </div>
+)}
+
+{/* ========================================================= */}
+{/* MODAL: IMPORT QUESTIONS TO QUESTION BANK FROM FILE        */}
+{/* ========================================================= */}
+{isFileQuestionBankModalOpen && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+    <div className="bg-white rounded-2xl max-w-4xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 max-h-[90vh] overflow-y-auto my-auto">
+      <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div className="flex items-center gap-2">
+          <div className="p-2 rounded-lg bg-emerald-100 text-emerald-700">
+            <Database className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-900">
+              Import Questions into Question Bank (Excel / PDF / CSV / JSON)
+            </h3>
+            <p className="text-xs text-slate-500">
+              Upload spreadsheet or PDF to bulk-populate the central Question Bank repository.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => setIsFileQuestionBankModalOpen(false)}
+          className="text-slate-400 hover:text-slate-600 p-1"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <ExamFileDropzone
+        mode="QUESTION_BANK"
+        onQuestionsImported={(qs, count) => {
+          loadData();
+          setIsFileQuestionBankModalOpen(false);
+          alert(`Successfully imported ${count} questions into the Question Bank.`);
+        }}
+        onClose={() => setIsFileQuestionBankModalOpen(false)}
+      />
+    </div>
+  </div>
+)}
+
+{/* ========================================================= */}
+{/* MODAL: INLINE APPEND QUESTIONS TO CURRENT EXAM BUILDER    */}
+{/* ========================================================= */}
+{isInlineFileImportOpen && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+    <div className="bg-white rounded-2xl max-w-4xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 max-h-[90vh] overflow-y-auto my-auto">
+      <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div className="flex items-center gap-2">
+          <div className="p-2 rounded-lg bg-indigo-100 text-indigo-700">
+            <UploadCloud className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-900">
+              Import Questions from File into Current Exam
+            </h3>
+            <p className="text-xs text-slate-500">
+              Extracted questions will be appended directly to the current examination questions list.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => setIsInlineFileImportOpen(false)}
+          className="text-slate-400 hover:text-slate-600 p-1"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <ExamFileDropzone
+        mode="INLINE_APPEND"
+        onQuestionsImported={(newQs, count) => {
+          setFormQuestions((prev) => [...prev, ...newQs]);
+          setIsInlineFileImportOpen(false);
+          alert(`Appended ${count} questions to examination.`);
+        }}
+        onClose={() => setIsInlineFileImportOpen(false)}
+      />
+    </div>
+  </div>
+)}
 
 {/* ========================================================= */ }
 {/* MODAL: BULK JSON IMPORTER                                 */ }

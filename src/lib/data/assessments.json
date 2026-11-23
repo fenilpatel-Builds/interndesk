@@ -685,6 +685,11 @@
           "An async event loop is executed on a single thread to multiplex I/O-bound operations",
           "Blocking synchronous calls (e.g. time.sleep) should be avoided inside coroutines or delegated to run_in_executor"
         ],
+        "correct_answers": [
+          "asyncio uses cooperative multitasking where coroutines explicitly yield control via 'await'",
+          "An async event loop is executed on a single thread to multiplex I/O-bound operations",
+          "Blocking synchronous calls (e.g. time.sleep) should be avoided inside coroutines or delegated to run_in_executor"
+        ],
         "explanation": "asyncio multiplexes I/O-bound coroutines on a single-threaded cooperative event loop. Coroutines yield control voluntarily at await expressions.",
         "marks": 10
       },
