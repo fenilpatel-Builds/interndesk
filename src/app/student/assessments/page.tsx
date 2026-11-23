@@ -39,6 +39,7 @@ import {
   Lock,
 } from "lucide-react";
 import { Assessment, AssessmentQuestion, AssessmentAttempt, QuestionType } from "@/lib/assessments/assessment-store";
+import { SandboxedCodeEditor } from "@/components/assessments/sandboxed-code-editor";
 
 export default function StudentAssessmentsPage() {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
@@ -1354,45 +1355,17 @@ export default function StudentAssessmentsPage() {
                           </div>
                         )}
 
-                        {/* 7. CODING / PROGRAMMING */}
+                        {/* 7. CODING / PROGRAMMING (IN-BROWSER CODE RUNNER) */}
                         {q.type === "CODING" && (
                           <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <span className="px-2.5 py-1 rounded bg-slate-900 text-indigo-400 font-mono text-xs font-bold border border-slate-700">
-                                Language: {q.code_language || "python"}
-                              </span>
-                              {q.starter_code && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleAnswerChange(qId, q.starter_code)}
-                                  className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold"
-                                >
-                                  Reset Starter Code
-                                </button>
-                              )}
-                            </div>
-                            <textarea
-                              rows={10}
-                              value={currentAnswer !== undefined ? currentAnswer : q.starter_code || ""}
-                              onChange={(e) => handleAnswerChange(qId, e.target.value)}
-                              placeholder="# Write your executable code implementation here..."
-                              className="w-full bg-slate-950 border border-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl p-4 text-emerald-400 font-mono text-sm outline-none"
+                            <SandboxedCodeEditor
+                              questionId={qId}
+                              language={q.code_language || "python"}
+                              starterCode={q.starter_code}
+                              initialCode={currentAnswer !== undefined ? currentAnswer : q.starter_code}
+                              testCases={q.test_cases}
+                              onCodeChange={(newCode) => handleAnswerChange(qId, newCode)}
                             />
-
-                            {/* Test Cases Preview */}
-                            {q.test_cases && q.test_cases.length > 0 && (
-                              <div className="space-y-2">
-                                <span className="text-xs font-semibold text-slate-400">Visible Verification Test Cases:</span>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                  {q.test_cases.map((tc, tcIdx) => (
-                                    <div key={tcIdx} className="bg-slate-900 p-3 rounded-lg border border-slate-700 text-xs font-mono">
-                                      <div className="text-slate-400">Input: <span className="text-white">{tc.input}</span></div>
-                                      <div className="text-slate-400">Expected: <span className="text-emerald-400">{tc.expected_output}</span></div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
                           </div>
                         )}
 

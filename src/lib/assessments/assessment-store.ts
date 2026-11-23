@@ -2,6 +2,10 @@ import fs from "fs";
 import path from "path";
 import { resolveDataFilePath } from "../data/storage-path";
 import { isUserAdmin } from "../auth/admin-whitelist";
+import {
+  executeJavaScriptInBrowser,
+  executePythonInBrowserFallback,
+} from "./code-sandbox-runner";
 
 export type QuestionType =
   | "SINGLE_CHOICE"
@@ -1790,8 +1794,34 @@ export class AssessmentStore {
           }
         } else if (qType === "CODING") {
           const studentCode = String(studentRawAns).trim();
-          if (studentCode.length > 25 && !studentCode.includes("pass")) {
-            // Auto-grade initial pass or mark for faculty review
+          if (q.test_cases && q.test_cases.length > 0) {
+            let execRes;
+            if (q.code_language === "javascript") {
+              execRes = executeJavaScriptInBrowser(studentCode, q.test_cases);
+            } else {
+              execRes = executePythonInBrowserFallback(studentCode, q.test_cases);
+            }
+
+            if (execRes && execRes.overallPassed) {
+              isCorrect = true;
+              awardedMarks = qMarks;
+              earnedScore += qMarks;
+              correctCount++;
+            } else if (execRes && execRes.passedTests > 0) {
+              isCorrect = true;
+              awardedMarks = Math.round((execRes.passedTests / execRes.totalTests) * qMarks);
+              earnedScore += awardedMarks;
+              correctCount++;
+            } else if (studentCode.length > 25 && !studentCode.includes("pass")) {
+              isCorrect = true;
+              awardedMarks = Math.round(qMarks * 0.5);
+              earnedScore += awardedMarks;
+              correctCount++;
+            } else {
+              isCorrect = false;
+              wrongCount++;
+            }
+          } else if (studentCode.length > 25 && !studentCode.includes("pass")) {
             isCorrect = true;
             awardedMarks = qMarks;
             earnedScore += qMarks;
