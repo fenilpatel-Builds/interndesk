@@ -2035,27 +2035,56 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
 
   // Dedicated Drag & Drop / File Select Screen (Step 1)
   const renderUploadScreen = () => (
-    <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-50/70 flex flex-col justify-center max-w-4xl mx-auto w-full space-y-6">
-      {/* Upload Screen Banner */}
-      <div className="text-center space-y-2">
-        <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-[#0F4C81] to-[#00A8CC] flex items-center justify-center text-white mx-auto shadow-lg">
-          <FileSpreadsheet className="w-8 h-8" />
+    <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 bg-slate-50/70">
+      <div className="max-w-4xl mx-auto w-full space-y-6 pb-20">
+        {/* Upload Screen Banner */}
+        <div className="text-center space-y-2 pt-2">
+          <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-[#0F4C81] to-[#00A8CC] flex items-center justify-center text-white mx-auto shadow-lg">
+            <FileSpreadsheet className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+            Select or Drag &amp; Drop Candidate Spreadsheet
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto">
+            Upload your Excel (.xlsx, .xls) or CSV (.csv) file to generate authentic corporate letters in bulk with live letterhead preview and 1-click ZIP export.
+          </p>
         </div>
-        <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-          Select or Drag &amp; Drop Candidate Spreadsheet
-        </h2>
-        <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto">
-          Upload your Excel (.xlsx, .xls) or CSV (.csv) file to generate authentic corporate letters in bulk with live letterhead preview and 1-click ZIP export.
-        </p>
-      </div>
 
-      {/* Error message banner */}
-      {fileError && (
-        <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-xs text-red-800 flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-          <span>{fileError}</span>
-        </div>
-      )}
+        {/* Actionable Error Banner with 1-click solutions */}
+        {fileError && (
+          <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-300 text-xs text-amber-950 space-y-2.5 shadow-xs animate-in fade-in">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-bold text-amber-950">{fileError}</p>
+                <p className="text-[11px] text-amber-800 leading-relaxed">
+                  Supported candidate name columns: <strong>Candidate Name</strong>, <strong>Student Name</strong>, <strong>Intern Name</strong>, <strong>Full Name</strong>, or separate <strong>First Name + Last Name</strong> columns.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 pt-1 pl-7">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleDownloadSample}
+                className="h-8 text-xs font-bold bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50 rounded-xl cursor-pointer shadow-2xs"
+              >
+                <Download className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                Download Ready Template (.xlsx)
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleLoadSampleRoster}
+                className="h-8 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl cursor-pointer shadow-2xs"
+              >
+                <Sparkles className="w-3.5 h-3.5 mr-1 text-amber-300" />
+                Open Studio with 5 Demo Candidates
+              </Button>
+            </div>
+          </div>
+        )}
 
       {/* Main Drag & Drop Zone */}
       <div
@@ -2181,6 +2210,7 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
           </Button>
         </div>
       )}
+      </div>
     </div>
   );
 
@@ -2349,7 +2379,7 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
         </div>
 
         {/* Feedback message banner */}
-        {statusMessage && (
+        {statusMessage && (modalStage === "STUDIO" || statusMessage.type === "success") && (
           <div
             className={`px-6 py-2.5 text-xs font-semibold flex items-center justify-between border-b shrink-0 ${
               statusMessage.type === "success"

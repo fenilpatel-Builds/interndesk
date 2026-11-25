@@ -39,33 +39,133 @@ export interface BulkGenerationOptions {
 }
 
 /**
- * Normalizes keys and values extracted from raw Excel/CSV rows.
+ * Normalizes header keys by lowercasing and removing non-alphanumeric characters.
  */
-function findRowValue(row: Record<string, any>, possibleKeys: string[]): string {
+function cleanHeaderKey(key: any): string {
+  return String(key || "").toLowerCase().trim().replace(/[^a-z0-9]/g, "");
+}
+
+/**
+ * Checks if a string is simply a meta-label or table header title rather than actual candidate data.
+ */
+function isHeaderOrMetaLabel(val: string): boolean {
+  const v = cleanHeaderKey(val);
+  const metaLabels = [
+    "name", "studentname", "candidatename", "internname", "fullname",
+    "firstname", "lastname", "srno", "sr", "sno", "serialno",
+    "email", "phone", "contact", "mobile", "role", "position",
+    "technology", "track", "college", "university", "total", "count",
+    "students", "candidates", "interns"
+  ];
+  return metaLabels.includes(v);
+}
+
+const NAME_EXCLUSIONS = [
+  "college", "university", "institute", "institution", "company", "org",
+  "organization", "father", "mother", "parent", "guardian", "file",
+  "sheet", "domain", "track", "role", "position", "project", "guide", "mentor",
+  "first", "last", "fname", "lname", "surname"
+];
+
+const NON_NAME_METADATA_EXCLUSIONS = [
+  "college", "university", "institute", "institution", "company", "org",
+  "organization", "father", "mother", "parent", "guardian", "file", "sheet"
+];
+
+/**
+ * Normalizes keys and values extracted from raw Excel/CSV rows with strict exclusion guards.
+ */
+function findRowValue(
+  row: Record<string, any>,
+  possibleKeys: string[],
+  excludeSubstrings: string[] = []
+): string {
   const rowKeys = Object.keys(row);
+
   // Pass 1: Exact stripped match
   for (const target of possibleKeys) {
-    const cleanTarget = target.toLowerCase().replace(/[^a-z0-9]/g, "");
-    const matchedKey = rowKeys.find(
-      (k) => k.toLowerCase().trim().replace(/[^a-z0-9]/g, "") === cleanTarget
-    );
+    const cleanTarget = cleanHeaderKey(target);
+    const matchedKey = rowKeys.find((k) => cleanHeaderKey(k) === cleanTarget);
     if (matchedKey && row[matchedKey] !== undefined && row[matchedKey] !== null) {
       const val = String(row[matchedKey]).trim();
-      if (val) return val;
+      if (val && !isHeaderOrMetaLabel(val)) return val;
     }
   }
-  // Pass 2: Substring / contains match (handles e.g. "Technology / Track")
+
+  // Pass 2: Substring / contains match with exclusion guard
   for (const target of possibleKeys) {
-    const cleanTarget = target.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const cleanTarget = cleanHeaderKey(target);
     const matchedKey = rowKeys.find((k) => {
-      const cleanKey = k.toLowerCase().trim().replace(/[^a-z0-9]/g, "");
+      const cleanKey = cleanHeaderKey(k);
+      // Skip if contains any excluded keyword
+      if (excludeSubstrings.some((ex) => cleanKey.includes(ex))) return false;
       return cleanKey.includes(cleanTarget) || cleanTarget.includes(cleanKey);
     });
     if (matchedKey && row[matchedKey] !== undefined && row[matchedKey] !== null) {
       const val = String(row[matchedKey]).trim();
-      if (val) return val;
+      if (val && !isHeaderOrMetaLabel(val)) return val;
     }
   }
+
+  return "";
+}
+
+/**
+ * Robustly extracts the candidate's personal name from a row object.
+ * Supports direct names, single 'name' columns, and separate first/last name columns.
+ */
+function extractCandidateName(row: Record<string, any>): string {
+  // 1. Direct candidate name column targets (excluding first/last partials)
+  const candidateKeys = [
+    "candidatename",
+    "studentname",
+    "internname",
+    "fullname",
+    "candidatestudentname",
+    "candname",
+    "studentfullname",
+    "candidatefullname",
+    "internfullname",
+    "traineename",
+    "applicantname",
+    "participantname",
+    "employeename",
+    "membername",
+    "username",
+    "personname",
+    "nameofstudent",
+    "nameofcandidate",
+    "nameofintern",
+    "nameofapplicant",
+    "nameoftrainee",
+    "studentsname",
+    "candidatesname",
+    "internsname",
+    "traineesname",
+    "name",
+    "student",
+    "candidate",
+    "intern",
+    "trainee",
+    "participant",
+    "member",
+    "applicant",
+    "person",
+    "nominee",
+    "beneficiary"
+  ];
+
+  const direct = findRowValue(row, candidateKeys, NAME_EXCLUSIONS);
+  if (direct) return direct;
+
+  // 2. Check for separate First Name + Last Name columns
+  const first = findRowValue(row, ["firstname", "first_name", "fname", "first"], NON_NAME_METADATA_EXCLUSIONS);
+  const last = findRowValue(row, ["lastname", "last_name", "lname", "surname", "last"], NON_NAME_METADATA_EXCLUSIONS);
+  if (first) {
+    const combined = `${first} ${last}`.trim();
+    if (combined && !isHeaderOrMetaLabel(combined)) return combined;
+  }
+
   return "";
 }
 
@@ -108,63 +208,233 @@ function formatSpreadsheetDate(raw: any, fallback: string): string {
 
 /**
  * Parses an uploaded Excel (.xlsx, .xls) or CSV file into clean CandidateLetterRow records.
+ * Features smart multi-row header detection, flexible column mapping, and headerless fallback.
  */
-export function parseCandidateSpreadsheet(data: ArrayBuffer | Uint8Array): CandidateLetterRow[] {
-  const workbook = XLSX.read(data, { type: "array" });
-  const firstSheetName = workbook.SheetNames[0];
-  if (!firstSheetName) {
-    throw new Error("Spreadsheet contains no sheets.");
+/**
+ * Parses a single worksheet into CandidateLetterRow records.
+ * Uses smart header row detection, column index mapping, and headerless fallback.
+ */
+export function parseSingleWorksheet(worksheet: XLSX.WorkSheet): CandidateLetterRow[] {
+  // 1. Convert sheet to 2D row array for smart header row detection
+  const matrix: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+  if (!matrix || matrix.length === 0) return [];
+
+  // 2. Smart Header Row Detection: scan first 20 rows
+  let bestHeaderRowIndex = -1;
+  let bestScore = -999;
+
+  const candidateNameHeaderTokens = [
+    "candidatename", "studentname", "internname", "fullname", "candidatestudentname",
+    "candname", "studentfullname", "candidatefullname", "internfullname", "traineename",
+    "applicantname", "participantname", "employeename", "membername", "username",
+    "personname", "nameofstudent", "nameofcandidate", "nameofintern", "nameofapplicant",
+    "nameoftrainee", "studentsname", "candidatesname", "internsname", "traineesname",
+    "name", "student", "candidate", "intern", "trainee", "participant", "member",
+    "applicant", "person", "nominee", "beneficiary"
+  ];
+
+  const generalHeaderIndicators = [
+    "email", "mail", "position", "role", "designation", "technology", "track", "tech", "stream", "domain",
+    "date", "start", "commencement", "end", "completion", "college", "university", "salutation", "gender",
+    "stipend", "salary", "srno", "sr", "sno", "id", "roll", "enrollment"
+  ];
+
+  for (let r = 0; r < Math.min(20, matrix.length); r++) {
+    const rowCells = matrix[r];
+    if (!Array.isArray(rowCells) || rowCells.length === 0) continue;
+
+    const nonEmptyCells = rowCells.filter((c) => String(c ?? "").trim().length > 0);
+    if (nonEmptyCells.length === 0) continue;
+
+    // Single-cell rows are title banners unless the single cell is literally a column name
+    if (nonEmptyCells.length === 1) {
+      const cleanSingle = cleanHeaderKey(nonEmptyCells[0]);
+      if (candidateNameHeaderTokens.includes(cleanSingle)) {
+        if (15 > bestScore) {
+          bestScore = 15;
+          bestHeaderRowIndex = r;
+        }
+      }
+      continue;
+    }
+
+    let score = 0;
+    let hasNameCol = false;
+    let hasFirst = false;
+    let hasLast = false;
+
+    for (const cell of rowCells) {
+      const cellStr = String(cell ?? "").trim();
+      const clean = cleanHeaderKey(cell);
+      if (!clean || clean.length > 35) continue;
+
+      // Actual data values are never column headers
+      if (cellStr.includes("@")) continue; // email address
+      if (/^\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}$/.test(cellStr)) continue; // date string
+      if (/intern|developer|engineer|designer|analyst/i.test(cellStr) && cellStr.split(/\s+/).length >= 2) continue; // multi-word role value
+
+      const isExcluded = NON_NAME_METADATA_EXCLUSIONS.some((ex) => clean.includes(ex));
+      if (!isExcluded) {
+        if (
+          candidateNameHeaderTokens.includes(clean) ||
+          ((clean.endsWith("name") || clean.startsWith("name")) && clean.length <= 25)
+        ) {
+          score += 25;
+          hasNameCol = true;
+        } else if (["firstname", "first_name", "fname", "first"].includes(clean)) {
+          score += 15;
+          hasFirst = true;
+        } else if (["lastname", "last_name", "lname", "surname", "last"].includes(clean)) {
+          score += 15;
+          hasLast = true;
+        }
+      }
+
+      if (generalHeaderIndicators.some((gi) => clean === cleanHeaderKey(gi) || (clean.length <= 20 && clean.includes(cleanHeaderKey(gi))))) {
+        score += 5;
+      }
+    }
+
+    if (hasFirst && hasLast) {
+      hasNameCol = true;
+      score += 10;
+    }
+
+    // Give a bonus for multi-column rows
+    score += Math.min(nonEmptyCells.length, 10);
+
+    if (score > bestScore && (hasNameCol || score >= 20)) {
+      bestScore = score;
+      bestHeaderRowIndex = r;
+    }
   }
 
-  const worksheet = workbook.Sheets[firstSheetName];
-  const rawRows: Record<string, any>[] = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+  // Parse worksheet rows using detected header row index
+  let rawRows: Record<string, any>[] = [];
+  if (bestHeaderRowIndex >= 0) {
+    rawRows = XLSX.utils.sheet_to_json(worksheet, {
+      range: bestHeaderRowIndex,
+      defval: "",
+    });
+  }
 
-  if (rawRows.length === 0) {
-    throw new Error("No data rows found in the uploaded spreadsheet.");
+  // Map header column indices if available
+  let nameColIdx = -1;
+  let firstColIdx = -1;
+  let lastColIdx = -1;
+  let emailColIdx = -1;
+  let roleColIdx = -1;
+  let techColIdx = -1;
+  let startColIdx = -1;
+  let endColIdx = -1;
+  let collegeColIdx = -1;
+  let salutationColIdx = -1;
+  let stipendColIdx = -1;
+  let idColIdx = -1;
+
+  if (bestHeaderRowIndex >= 0 && Array.isArray(matrix[bestHeaderRowIndex])) {
+    matrix[bestHeaderRowIndex].forEach((hCell: any, cIdx: number) => {
+      const clean = cleanHeaderKey(hCell);
+      if (!clean) return;
+
+      const isExcluded = NON_NAME_METADATA_EXCLUSIONS.some((ex) => clean.includes(ex));
+      if (!isExcluded) {
+        if (candidateNameHeaderTokens.includes(clean) && nameColIdx < 0) {
+          nameColIdx = cIdx;
+        } else if (["firstname", "first_name", "fname", "first"].includes(clean) && firstColIdx < 0) {
+          firstColIdx = cIdx;
+        } else if (["lastname", "last_name", "lname", "surname", "last"].includes(clean) && lastColIdx < 0) {
+          lastColIdx = cIdx;
+        }
+      }
+
+      if (clean.includes("email") || clean.includes("mail")) emailColIdx = cIdx;
+      else if (clean.includes("role") || clean.includes("position") || clean.includes("designation")) roleColIdx = cIdx;
+      else if (clean.includes("tech") || clean.includes("track") || clean.includes("stream") || clean.includes("domain")) techColIdx = cIdx;
+      else if (clean.includes("start") || clean.includes("commence") || clean.includes("joining")) startColIdx = cIdx;
+      else if (clean.includes("end") || clean.includes("complete") || clean.includes("continueuntil")) endColIdx = cIdx;
+      else if (clean.includes("college") || clean.includes("university") || clean.includes("institute")) collegeColIdx = cIdx;
+      else if (clean.includes("salutation") || clean.includes("gender") || clean.includes("prefix")) salutationColIdx = cIdx;
+      else if (clean.includes("stipend") || clean.includes("salary")) stipendColIdx = cIdx;
+      else if (clean.includes("sr") || clean.includes("sno") || clean.includes("id") || clean.includes("roll")) idColIdx = cIdx;
+    });
   }
 
   const parsedCandidates: CandidateLetterRow[] = [];
 
   rawRows.forEach((row, idx) => {
-    const rawName = findRowValue(row, [
-      "studentname",
-      "candidatename",
-      "fullname",
-      "name",
-      "student",
-      "candidate",
-    ]);
+    let rawName = extractCandidateName(row);
+
+    // If extractCandidateName didn't find it, check matrix column
+    const matrixRowIdx = bestHeaderRowIndex >= 0 ? bestHeaderRowIndex + 1 + idx : idx;
+    const matrixRow = matrix[matrixRowIdx];
+
+    if (!rawName && Array.isArray(matrixRow)) {
+      if (nameColIdx >= 0 && matrixRow[nameColIdx]) {
+        const v = String(matrixRow[nameColIdx]).trim();
+        if (v && !isHeaderOrMetaLabel(v)) rawName = v;
+      } else if (firstColIdx >= 0 && matrixRow[firstColIdx]) {
+        const f = String(matrixRow[firstColIdx]).trim();
+        const l = lastColIdx >= 0 ? String(matrixRow[lastColIdx] || "").trim() : "";
+        const combined = `${f} ${l}`.trim();
+        if (combined && !isHeaderOrMetaLabel(combined)) rawName = combined;
+      }
+    }
 
     if (!rawName) return; // Skip empty rows
 
     const cleanName = rawName.replace(/^(Mr\.|Ms\.|Mrs\.|Miss)\s*/i, "").trim();
-    const explicitSalutation = findRowValue(row, ["salutation", "title", "prefix", "gender"]);
-    const isGirl = isFemaleCandidate(rawName, explicitSalutation);
+    if (!cleanName || cleanName.length < 2 || isHeaderOrMetaLabel(cleanName)) return;
+
+    const explicitSalutation =
+      findRowValue(row, ["salutation", "title", "prefix", "gender"]) ||
+      (salutationColIdx >= 0 && matrixRow ? String(matrixRow[salutationColIdx] || "").trim() : "");
+    const isGirl = isFemaleCandidate(cleanName, explicitSalutation);
     const salutation: "Mr." | "Ms." =
-      explicitSalutation.toLowerCase().includes("ms") || explicitSalutation.toLowerCase().includes("female") || isGirl
+      explicitSalutation.toLowerCase().includes("ms") ||
+      explicitSalutation.toLowerCase().includes("female") ||
+      explicitSalutation.toLowerCase().includes("girl") ||
+      isGirl
         ? "Ms."
         : "Mr.";
 
-    const email = findRowValue(row, ["email", "studentemail", "recipientemail", "emailaddress", "mail"]);
+    const email =
+      findRowValue(row, ["email", "studentemail", "recipientemail", "emailaddress", "mail"]) ||
+      (emailColIdx >= 0 && matrixRow ? String(matrixRow[emailColIdx] || "").trim() : "");
+
     const position =
-      findRowValue(row, ["internshipposition", "position", "role", "internrole", "jobtitle"]) || "Software Engineering Intern";
+      findRowValue(row, ["internshipposition", "position", "role", "internrole", "jobtitle", "designation"]) ||
+      (roleColIdx >= 0 && matrixRow ? String(matrixRow[roleColIdx] || "").trim() : "") ||
+      "Software Engineering Intern";
+
     const technology =
-      findRowValue(row, ["technology", "track", "tech", "specialization", "domain"]) ||
+      findRowValue(row, ["technology", "track", "tech", "specialization", "domain", "stream"]) ||
+      (techColIdx >= 0 && matrixRow ? String(matrixRow[techColIdx] || "").trim() : "") ||
       deriveTrackTechnology(position);
 
     const commencementDate = formatSpreadsheetDate(
-      findRowValue(row, ["commencementdate", "startdate", "joiningdate", "commencement", "start", "from"]),
+      findRowValue(row, ["commencementdate", "startdate", "joiningdate", "commencement", "start", "from", "dateofjoining"]) ||
+      (startColIdx >= 0 && matrixRow ? String(matrixRow[startColIdx] || "").trim() : ""),
       "1st June 2026"
     );
 
     const continueUntilDate = formatSpreadsheetDate(
-      findRowValue(row, ["continueuntildate", "enddate", "completiondate", "continueuntil", "end", "to"]),
+      findRowValue(row, ["continueuntildate", "enddate", "completiondate", "continueuntil", "end", "to", "dateofcompletion"]) ||
+      (endColIdx >= 0 && matrixRow ? String(matrixRow[endColIdx] || "").trim() : ""),
       "30th November 2026"
     );
 
-    const college = findRowValue(row, ["college", "university", "institute", "collegename", "institution"]);
-    const stipend = findRowValue(row, ["stipend", "salary", "compensation"]);
-    const documentNumber = findRowValue(row, ["documentnumber", "docnumber", "id", "refno"]);
+    const college =
+      findRowValue(row, ["college", "university", "institute", "collegename", "institution", "campus"]) ||
+      (collegeColIdx >= 0 && matrixRow ? String(matrixRow[collegeColIdx] || "").trim() : "");
+
+    const stipend =
+      findRowValue(row, ["stipend", "salary", "compensation"]) ||
+      (stipendColIdx >= 0 && matrixRow ? String(matrixRow[stipendColIdx] || "").trim() : "");
+
+    const documentNumber =
+      findRowValue(row, ["documentnumber", "docnumber", "id", "refno", "serialno", "srno"]) ||
+      (idColIdx >= 0 && matrixRow ? String(matrixRow[idColIdx] || "").trim() : "");
 
     parsedCandidates.push({
       id: `cand_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
@@ -182,13 +452,104 @@ export function parseCandidateSpreadsheet(data: ArrayBuffer | Uint8Array): Candi
     });
   });
 
-  if (parsedCandidates.length === 0) {
+  // Pass B: Fallback: If still 0 candidates, try extracting from 2D matrix directly (headerless CSV / unlabelled columns)
+  if (parsedCandidates.length === 0 && matrix.length > 0) {
+    const numCols = Math.max(...matrix.map((r) => (Array.isArray(r) ? r.length : 0)));
+    let bestMatrixNameCol = -1;
+    let bestNameCount = 0;
+
+    for (let c = 0; c < numCols; c++) {
+      let nameCount = 0;
+      for (let r = 0; r < matrix.length; r++) {
+        const val = String(matrix[r]?.[c] || "").trim();
+        if (
+          val.length >= 3 &&
+          val.length <= 40 &&
+          /^[A-Za-z\s.'-]+$/.test(val) &&
+          !isHeaderOrMetaLabel(val) &&
+          !/intern|engineer|developer|analyst|university|college|department/i.test(val) &&
+          val.split(/\s+/).length >= 1 &&
+          val.split(/\s+/).length <= 4
+        ) {
+          nameCount++;
+        }
+      }
+      if (nameCount > bestNameCount) {
+        bestNameCount = nameCount;
+        bestMatrixNameCol = c;
+      }
+    }
+
+    if (bestMatrixNameCol >= 0 && bestNameCount > 0) {
+      matrix.forEach((rowCells, rIdx) => {
+        const rawNameVal = String(rowCells?.[bestMatrixNameCol] || "").trim();
+        if (!rawNameVal || isHeaderOrMetaLabel(rawNameVal)) return;
+
+        const cleanName = rawNameVal.replace(/^(Mr\.|Ms\.|Mrs\.|Miss)\s*/i, "").trim();
+        if (!cleanName || cleanName.length < 2) return;
+
+        let emailVal = "";
+        let roleVal = "Software Engineering Intern";
+        let dateVal = "1st June 2026";
+
+        rowCells.forEach((cVal: any, cIdx: number) => {
+          if (cIdx === bestMatrixNameCol) return;
+          const s = String(cVal || "").trim();
+          if (s.includes("@") && s.includes(".")) emailVal = s;
+          else if (/intern|engineer|developer|analyst/i.test(s)) roleVal = s;
+          else if (/^\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}$/.test(s)) dateVal = formatSpreadsheetDate(s, dateVal);
+        });
+
+        parsedCandidates.push({
+          id: `cand_raw_${Date.now()}_${rIdx}`,
+          studentName: cleanName,
+          salutation: isFemaleCandidate(cleanName) ? "Ms." : "Mr.",
+          recipientEmail: emailVal || undefined,
+          internshipPosition: roleVal,
+          technology: deriveTrackTechnology(roleVal),
+          commencementDate: dateVal,
+          continueUntilDate: "30th November 2026",
+        });
+      });
+    }
+  }
+
+  return parsedCandidates;
+}
+
+/**
+ * Parses an uploaded Excel (.xlsx, .xls) or CSV file into clean CandidateLetterRow records.
+ * Iterates across all sheets in the workbook to reliably find candidate data.
+ */
+export function parseCandidateSpreadsheet(data: ArrayBuffer | Uint8Array): CandidateLetterRow[] {
+  const workbook = XLSX.read(data, { type: "array" });
+  if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+    throw new Error("Spreadsheet contains no sheets.");
+  }
+
+  let bestCandidates: CandidateLetterRow[] = [];
+
+  for (const sheetName of workbook.SheetNames) {
+    const worksheet = workbook.Sheets[sheetName];
+    if (!worksheet) continue;
+
+    try {
+      const candidates = parseSingleWorksheet(worksheet);
+      if (candidates.length > bestCandidates.length) {
+        bestCandidates = candidates;
+      }
+    } catch {
+      // Continue to next sheet
+    }
+  }
+
+  if (bestCandidates.length === 0) {
     throw new Error(
       "No valid candidate rows could be extracted. Please ensure column headers include 'Name' or 'Student Name'."
     );
   }
 
-  return parsedCandidates;
+  return bestCandidates;
 }
 
 /**

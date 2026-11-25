@@ -1,1 +1,59 @@
-[]
+[
+  {
+    "id": "att-1795607080011-34os",
+    "organization_id": "org-akash-01",
+    "assessment_id": "asm-1795607080009",
+    "assessment_title": "Full-Stack Web Engineering Assessment",
+    "student_email": "student.test@akashtechnolabs.com",
+    "student_name": "Test Candidate",
+    "score": 20,
+    "total_marks": 20,
+    "percentage": 100,
+    "passed": true,
+    "correct_count": 2,
+    "wrong_count": 0,
+    "unanswered_count": 0,
+    "pending_evaluation_count": 0,
+    "tab_switch_count": 0,
+    "fullscreen_exit_count": 0,
+    "proctoring_flag": "CLEAN",
+    "time_spent_seconds": 450,
+    "started_at": "2026-11-25T11:37:10.011Z",
+    "submitted_at": "2026-11-25T11:44:40.011Z",
+    "answers": {
+      "q_topic_1": "Attaching listeners to SSR HTML",
+      "q_topic_2": "Atomicity, Consistency, Isolation, Durability"
+    },
+    "evaluations": [
+      {
+        "question_id": "q_topic_1",
+        "question_text": "What is React Hydration?",
+        "type": "SINGLE_CHOICE",
+        "topic": "Frontend React Architecture",
+        "difficulty": "MEDIUM",
+        "selected_answer": "Attaching listeners to SSR HTML",
+        "correct_answer": "Attaching listeners to SSR HTML",
+        "is_correct": true,
+        "marks_awarded": 10,
+        "marks_possible": 10,
+        "explanation": "Hydration bridges server markup with client interactivity.",
+        "evaluation_status": "AUTO_EVALUATED"
+      },
+      {
+        "question_id": "q_topic_2",
+        "question_text": "What does ACID stand for in databases?",
+        "type": "SINGLE_CHOICE",
+        "topic": "Database Systems",
+        "difficulty": "EASY",
+        "selected_answer": "Atomicity, Consistency, Isolation, Durability",
+        "correct_answer": "Atomicity, Consistency, Isolation, Durability",
+        "is_correct": true,
+        "marks_awarded": 10,
+        "marks_possible": 10,
+        "explanation": "ACID properties ensure reliable database transactions.",
+        "evaluation_status": "AUTO_EVALUATED"
+      }
+    ],
+    "status": "EVALUATED"
+  }
+]

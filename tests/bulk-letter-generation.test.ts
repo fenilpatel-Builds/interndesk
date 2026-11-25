@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import * as XLSX from "xlsx";
 import {
   parseCandidateSpreadsheet,
   generateSampleCandidateSpreadsheet,
@@ -35,6 +36,60 @@ describe("Bulk Letter Generation & ZIP Packaging Suite", () => {
     expect(second.studentName).toContain("Priya Sharma");
     expect(second.salutation).toBe("Ms.");
     expect(second.technology).toContain("Full Stack");
+  });
+
+  it("should parse spreadsheets with title banners, empty rows, and separate First/Last Name columns", () => {
+    // Simulate real-world workbook where Row 0 is Title, Row 1 is empty, Row 2 is headers
+    const rawMatrix = [
+      ["Akash Technolabs - Official Candidate Roster 2026", "", "", ""],
+      ["", "", "", ""], // Empty row
+      ["Sr No", "First Name", "Last Name", "Email Address", "Designation", "Stream"],
+      ["1", "Fenil", "Patel", "fenil@test.com", "AI/ML Intern", "Python & Machine Learning"],
+      ["2", "Priya", "Sharma", "priya@test.com", "Full Stack Intern", "Next.js & Node.js"],
+      ["3", "Aarav", "Mehta", "aarav@test.com", "DevOps Intern", "Cloud Infrastructure"],
+    ];
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(rawMatrix);
+    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+    const buffer = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+
+    const parsed = parseCandidateSpreadsheet(buffer);
+    expect(parsed.length).toBe(3);
+    expect(parsed[0].studentName).toBe("Fenil Patel");
+    expect(parsed[0].salutation).toBe("Mr.");
+    expect(parsed[0].recipientEmail).toBe("fenil@test.com");
+    expect(parsed[0].internshipPosition).toBe("AI/ML Intern");
+
+    expect(parsed[1].studentName).toBe("Priya Sharma");
+    expect(parsed[1].salutation).toBe("Ms.");
+    expect(parsed[1].internshipPosition).toBe("Full Stack Intern");
+
+    expect(parsed[2].studentName).toBe("Aarav Mehta");
+    expect(parsed[2].salutation).toBe("Mr.");
+  });
+
+  it("should parse spreadsheets with alternate headers like 'Intern Name' and 'Domain'", () => {
+    const rawMatrix = [
+      ["Intern Name", "Domain", "Role", "College / Institute", "Start Date", "End Date"],
+      ["Ananya Joshi", "Data Science", "Data Science Intern", "Gujarat University", "01-07-2026", "31-12-2026"],
+      ["Rohan Verma", "Cyber Security", "Security Intern", "Parul University", "01-07-2026", "31-12-2026"],
+    ];
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(rawMatrix);
+    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+    const buffer = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+
+    const parsed = parseCandidateSpreadsheet(buffer);
+    expect(parsed.length).toBe(2);
+    expect(parsed[0].studentName).toBe("Ananya Joshi");
+    expect(parsed[0].salutation).toBe("Ms.");
+    expect(parsed[0].technology).toBe("Data Science");
+    expect(parsed[0].college).toBe("Gujarat University");
+
+    expect(parsed[1].studentName).toBe("Rohan Verma");
+    expect(parsed[1].salutation).toBe("Mr.");
   });
 
   it("should interpolate custom template placeholder tags with candidate fields", () => {
@@ -160,6 +215,54 @@ describe("Bulk Letter Generation & ZIP Packaging Suite", () => {
     expect(afterDocs.length).toBeGreaterThanOrEqual(initialCount + 2);
     expect(afterDocs.some((d) => d.recipient_name.includes("Bulk Test Candidate Alpha"))).toBe(true);
     expect(afterDocs.some((d) => d.recipient_name.includes("Bulk Test Candidate Beta"))).toBe(true);
+  });
+
+  it("should parse multi-sheet workbooks and select the sheet with valid candidate data", () => {
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1: Empty instructions
+    const wsInstructions = XLSX.utils.aoa_to_sheet([
+      ["Welcome to Candidate Importer"],
+      ["Please upload candidate list in sheet 2"],
+    ]);
+    XLSX.utils.book_append_sheet(wb, wsInstructions, "Instructions");
+
+    // Sheet 2: Real candidate data with title banner
+    const wsData = XLSX.utils.aoa_to_sheet([
+      ["Akash Technolabs - Student Roster 2026 Batch"],
+      [],
+      ["Sr No", "Student Name", "Email", "Internship Role", "Track"],
+      ["1", "Fenil Patel", "fenil@example.com", "AI/ML Intern", "AI & Machine Learning"],
+      ["2", "Priya Sharma", "priya@example.com", "Web Developer Intern", "Web Development"],
+      ["3", "Aarav Mehta", "aarav@example.com", "DevOps Intern", "Cloud"],
+    ]);
+    XLSX.utils.book_append_sheet(wb, wsData, "Students");
+
+    const buffer = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+    const parsed = parseCandidateSpreadsheet(buffer);
+
+    expect(parsed.length).toBe(3);
+    expect(parsed[0].studentName).toBe("Fenil Patel");
+    expect(parsed[0].salutation).toBe("Mr.");
+    expect(parsed[1].studentName).toBe("Priya Sharma");
+    expect(parsed[1].salutation).toBe("Ms.");
+    expect(parsed[2].studentName).toBe("Aarav Mehta");
+  });
+
+  it("should extract candidates from headerless 2D matrix directly", () => {
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([
+      ["1", "Fenil Patel", "fenil@example.com", "AI/ML Intern", "01-06-2026"],
+      ["2", "Priya Sharma", "priya@example.com", "Frontend Developer", "01-06-2026"],
+    ]);
+    XLSX.utils.book_append_sheet(wb, ws, "RawData");
+
+    const buffer = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+    const parsed = parseCandidateSpreadsheet(buffer);
+
+    expect(parsed.length).toBe(2);
+    expect(parsed[0].studentName).toBe("Fenil Patel");
+    expect(parsed[1].studentName).toBe("Priya Sharma");
   });
 
   it("should ensure all documents in documentStore have rich multi-paragraph descriptions", () => {

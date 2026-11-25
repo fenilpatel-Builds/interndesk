@@ -1,5 +1,106 @@
 [
   {
+    "id": "asm-1795607080009",
+    "organization_id": "org-akash-01",
+    "title": "Full-Stack Web Engineering Assessment",
+    "subject": "Full-Stack Development",
+    "topic": "Practicum",
+    "category": "Technical Practicum",
+    "description": "Exam testing frontend and backend competencies.",
+    "duration_minutes": 30,
+    "total_marks": 20,
+    "passing_threshold": 70,
+    "attempt_limit": 1,
+    "status": "PUBLISHED",
+    "shuffle_questions": false,
+    "shuffle_options": false,
+    "negative_marking_enabled": false,
+    "negative_mark_rate": 0,
+    "negative_marking_rate": 0,
+    "security_policy": {
+      "max_violations_allowed": 3,
+      "auto_submit_on_violation_limit": true,
+      "require_fullscreen": true,
+      "disable_copy_paste": true
+    },
+    "questions": [
+      {
+        "id": "q_topic_1",
+        "question": "What is React Hydration?",
+        "type": "SINGLE_CHOICE",
+        "topic": "Frontend React Architecture",
+        "difficulty": "MEDIUM",
+        "options": [
+          "Attaching listeners to SSR HTML",
+          "Downloading images",
+          "Database index",
+          "None"
+        ],
+        "correct_answer": "Attaching listeners to SSR HTML",
+        "explanation": "Hydration bridges server markup with client interactivity.",
+        "marks": 10
+      },
+      {
+        "id": "q_topic_2",
+        "question": "What does ACID stand for in databases?",
+        "type": "SINGLE_CHOICE",
+        "topic": "Database Systems",
+        "difficulty": "EASY",
+        "options": [
+          "Atomicity, Consistency, Isolation, Durability",
+          "None"
+        ],
+        "correct_answer": "Atomicity, Consistency, Isolation, Durability",
+        "explanation": "ACID properties ensure reliable database transactions.",
+        "marks": 10
+      }
+    ],
+    "created_at": "2026-11-25T11:44:40.009Z",
+    "updated_at": "2026-11-25T11:44:40.009Z"
+  },
+  {
+    "id": "asm-1795607080004",
+    "organization_id": "org-akash-01",
+    "title": "Secure Certification Exam",
+    "subject": "Cybersecurity",
+    "topic": "Practicum",
+    "category": "Technical Practicum",
+    "description": "",
+    "duration_minutes": 25,
+    "total_marks": 10,
+    "passing_threshold": 70,
+    "attempt_limit": 2,
+    "status": "PUBLISHED",
+    "access_code": "SECRET2026",
+    "shuffle_questions": true,
+    "shuffle_options": true,
+    "negative_marking_enabled": false,
+    "negative_mark_rate": 0,
+    "negative_marking_rate": 0,
+    "security_policy": {
+      "max_violations_allowed": 3,
+      "auto_submit_on_violation_limit": true,
+      "require_fullscreen": true,
+      "disable_copy_paste": true
+    },
+    "questions": [
+      {
+        "id": "q_sec_test",
+        "question": "Test Question?",
+        "type": "SINGLE_CHOICE",
+        "options": [
+          "A",
+          "B"
+        ],
+        "correct_answer": "A",
+        "explanation": "Explanation",
+        "marks": 10
+      }
+    ],
+    "created_at": "2026-11-25T11:44:40.004Z",
+    "updated_at": "2026-11-25T11:44:40.004Z"
+  },
+  {
     "id": "asm-1795597425057",
     "organization_id": "org-akash-01",
     "title": "Secure Certification Exam",
