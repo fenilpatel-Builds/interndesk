@@ -30,10 +30,15 @@
         "timestamp": "2026-11-25T08:54:51.966Z",
         "type": "RECONNECT",
         "details": "Proctor Alert: \"Proctor Notice: Tab switching detected. Maintain focus on the examination.\""
+      },
+      {
+        "timestamp": "2026-11-25T09:03:45.053Z",
+        "type": "RECONNECT",
+        "details": "Proctor Alert: \"Proctor Notice: Tab switching detected. Maintain focus on the examination.\""
       }
     ],
     "status": "ACTIVE",
-    "updated_at": "2026-11-25T08:54:51.966Z",
+    "updated_at": "2026-11-25T09:03:45.053Z",
     "proctor_message": "Proctor Notice: Tab switching detected. Maintain focus on the examination."
   },
   {

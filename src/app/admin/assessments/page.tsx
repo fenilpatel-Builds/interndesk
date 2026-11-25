@@ -140,6 +140,13 @@ export default function AdminAssessmentsPage() {
   const [proctorMessageInput, setProctorMessageInput] = useState("");
   const [isSendingMessage, setIsSendingMessage] = useState(false);
 
+  // Advanced Gradebook Export Modal
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportScope, setExportScope] = useState<"FILTERED" | "ALL">("FILTERED");
+  const [exportFormat, setExportFormat] = useState<"EXCEL" | "CSV">("EXCEL");
+  const [exportIncludeAnalytics, setExportIncludeAnalytics] = useState(true);
+  const [exportIncludeQuestions, setExportIncludeQuestions] = useState(true);
+
   // Question Bank Picker Modal in Exam Builder
   const [isBankPickerOpen, setIsBankPickerOpen] = useState(false);
 
@@ -421,10 +428,37 @@ const handleExportGradebook = (format: "excel" | "csv") => {
       : "All_Exams";
 
   if (format === "excel") {
-    exportGradebookToExcel(targetAttempts, examTitle);
+    exportGradebookToExcel(targetAttempts, examTitle, {
+      includeAnalytics: true,
+      includeQuestions: true,
+    });
   } else {
     exportGradebookToCsv(targetAttempts, examTitle);
   }
+};
+
+// Advanced Gradebook Export Execution
+const handleExecuteAdvancedExport = () => {
+  const targetAttempts = exportScope === "FILTERED" ? filteredAttempts : attempts;
+  if (targetAttempts.length === 0) {
+    alert("No candidate submission records available to export for the selected scope.");
+    return;
+  }
+
+  const examTitle =
+    subFilterExam !== "ALL"
+      ? assessments.find((a) => a.id === subFilterExam)?.title || "Selected_Exam"
+      : "All_Exams";
+
+  if (exportFormat === "EXCEL") {
+    exportGradebookToExcel(targetAttempts, examTitle, {
+      includeAnalytics: exportIncludeAnalytics,
+      includeQuestions: exportIncludeQuestions,
+    });
+  } else {
+    exportGradebookToCsv(targetAttempts, examTitle);
+  }
+  setIsExportModalOpen(false);
 };
 
 // Quick Append Question in Exam Builder
@@ -1387,6 +1421,7 @@ return (
                   size="sm"
                   onClick={() => handleExportGradebook("excel")}
                   className="text-xs font-bold text-emerald-700 border-emerald-300 hover:bg-emerald-50 flex items-center gap-1.5 shadow-xs"
+                  title="Instant download multi-sheet Excel workbook with executive analytics"
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
                   Export Excel (.xlsx)
@@ -1396,9 +1431,20 @@ return (
                   size="sm"
                   onClick={() => handleExportGradebook("csv")}
                   className="text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 shadow-xs"
+                  title="Instant download UTF-8 CSV gradebook"
                 >
                   <Download className="w-3.5 h-3.5 text-slate-600" />
                   Export CSV
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsExportModalOpen(true)}
+                  className="text-xs font-bold text-indigo-700 border-indigo-200 hover:bg-indigo-50 flex items-center gap-1.5 shadow-xs"
+                  title="Configure custom export scope and analytics sheets"
+                >
+                  <Filter className="w-3.5 h-3.5 text-indigo-600" />
+                  Advanced...
                 </Button>
                 <div className="text-xs font-bold text-slate-500 ml-2 hidden sm:block">
                   Total: <span className="text-indigo-600 font-extrabold">{filteredAttempts.length}</span>
@@ -2778,6 +2824,157 @@ return (
           >
             <Send className="w-3.5 h-3.5" />
             {isSendingMessage ? "Transmitting..." : "Send Alert"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+{/* ========================================================= */}
+{/* MODAL: ADVANCED GRADEBOOK EXPORT CONFIGURATION            */}
+{/* ========================================================= */}
+{
+  isExportModalOpen && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+      <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5 my-auto">
+        <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+          <div className="flex items-center gap-2">
+            <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
+            <h3 className="text-base font-bold text-slate-900">
+              Export Candidate Gradebook & Analytics
+            </h3>
+          </div>
+          <button onClick={() => setIsExportModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Export Scope Selector */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold text-slate-700">Records to Include</label>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setExportScope("FILTERED")}
+              className={`p-3 rounded-xl border text-left text-xs font-bold transition-all ${
+                exportScope === "FILTERED"
+                  ? "bg-indigo-50 border-indigo-300 text-indigo-700 shadow-xs"
+                  : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+              }`}
+            >
+              <div>Current Filtered View</div>
+              <div className="text-[11px] font-normal text-slate-500 mt-0.5">
+                {filteredAttempts.length} candidate submission(s)
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setExportScope("ALL")}
+              className={`p-3 rounded-xl border text-left text-xs font-bold transition-all ${
+                exportScope === "ALL"
+                  ? "bg-indigo-50 border-indigo-300 text-indigo-700 shadow-xs"
+                  : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+              }`}
+            >
+              <div>All Historical Submissions</div>
+              <div className="text-[11px] font-normal text-slate-500 mt-0.5">
+                {attempts.length} total candidate record(s)
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* File Format Selection */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold text-slate-700">Export Format</label>
+          <div className="grid grid-cols-2 gap-3">
+            <label
+              className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer text-xs font-bold transition-all ${
+                exportFormat === "EXCEL"
+                  ? "bg-emerald-50 border-emerald-300 text-emerald-800"
+                  : "bg-slate-50 border-slate-200 text-slate-600"
+              }`}
+            >
+              <input
+                type="radio"
+                name="exportFmt"
+                checked={exportFormat === "EXCEL"}
+                onChange={() => setExportFormat("EXCEL")}
+                className="text-emerald-600"
+              />
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+              <span>Microsoft Excel (.xlsx)</span>
+            </label>
+
+            <label
+              className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer text-xs font-bold transition-all ${
+                exportFormat === "CSV"
+                  ? "bg-slate-100 border-slate-300 text-slate-900"
+                  : "bg-slate-50 border-slate-200 text-slate-600"
+              }`}
+            >
+              <input
+                type="radio"
+                name="exportFmt"
+                checked={exportFormat === "CSV"}
+                onChange={() => setExportFormat("CSV")}
+                className="text-slate-600"
+              />
+              <Download className="w-4 h-4 text-slate-600" />
+              <span>Standard CSV (.csv)</span>
+            </label>
+          </div>
+        </div>
+
+        {/* Excel Multi-Sheet Additions */}
+        {exportFormat === "EXCEL" && (
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+            <div className="text-xs font-bold text-slate-700">Excel Additional Sheets</div>
+            <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-700">
+              <input
+                type="checkbox"
+                checked={exportIncludeAnalytics}
+                onChange={(e) => setExportIncludeAnalytics(e.target.checked)}
+                className="w-4 h-4 text-emerald-600 rounded border-slate-300"
+              />
+              <span>Include <strong>Executive Analytics Summary</strong> Sheet (Pass rates, Mean, Zero-Trust rates)</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-700">
+              <input
+                type="checkbox"
+                checked={exportIncludeQuestions}
+                onChange={(e) => setExportIncludeQuestions(e.target.checked)}
+                className="w-4 h-4 text-emerald-600 rounded border-slate-300"
+              />
+              <span>Include <strong>Question-Level Accuracy</strong> Breakdown Sheet</span>
+            </label>
+          </div>
+        )}
+
+        {/* Direct API Endpoint Link */}
+        <div className="text-[11px] text-slate-400 bg-slate-50 p-2.5 rounded-lg border border-slate-200 flex items-center justify-between">
+          <span>Automated API URL:</span>
+          <code className="text-indigo-600 font-mono font-bold">/api/admin/assessments/export?format=xlsx</code>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsExportModalOpen(false)}
+            className="text-xs"
+          >
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleExecuteAdvancedExport}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Download Gradebook Package
           </Button>
         </div>
       </div>

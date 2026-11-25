@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { generateExamCertificatePdf } from "../src/lib/assessments/certificate-pdf-generator";
-import { formatGradebookRows } from "../src/lib/assessments/gradebook-export";
+import {
+  formatGradebookRows,
+  generateAnalyticsSummary,
+  generateQuestionBreakdown,
+  buildGradebookWorkbook,
+  generateGradebookExcelBuffer,
+} from "../src/lib/assessments/gradebook-export";
 import { assessmentStore, AssessmentAttempt } from "../src/lib/assessments/assessment-store";
 
 describe("Official PDF Certificate & Gradebook Generation Suite", () => {
@@ -25,6 +31,26 @@ describe("Official PDF Certificate & Gradebook Generation Suite", () => {
     started_at: "2026-11-25T10:00:00Z",
     submitted_at: "2026-11-25T10:20:40Z",
     answers: {},
+    evaluations: [
+      {
+        question_id: "q_1",
+        question_text: "What is Backpropagation?",
+        marks_awarded: 10,
+        marks_possible: 10,
+        is_correct: true,
+        selected_answer: "Gradient calculation algorithm",
+        explanation: "Correct explanation",
+      },
+      {
+        question_id: "q_2",
+        question_text: "What is Cross-Entropy Loss?",
+        marks_awarded: 0,
+        marks_possible: 10,
+        is_correct: false,
+        selected_answer: "L2 norm",
+        explanation: "Incorrect",
+      },
+    ],
   };
 
   it("should generate a valid PDF byte array with official headers and security hash", async () => {
@@ -68,6 +94,43 @@ describe("Official PDF Certificate & Gradebook Generation Suite", () => {
     expect(rows[1]["Candidate Name"]).toBe("Helly Leuva");
     expect(rows[1]["Score"]).toBe(85);
     expect(rows[1]["Tab Switch Alerts"]).toBe(1);
+  });
+
+  it("should generate executive cohort analytics and question breakdown", () => {
+    const attemptsList: AssessmentAttempt[] = [sampleAttempt];
+
+    const analytics = generateAnalyticsSummary(attemptsList);
+    expect(analytics.length).toBeGreaterThan(5);
+
+    const totalSub = analytics.find((r) => r.Metric === "Total Candidate Submissions");
+    expect(totalSub?.Value).toBe(1);
+
+    const passRate = analytics.find((r) => r.Metric === "Passing Rate (%)");
+    expect(passRate?.Value).toBe("100%");
+
+    const questions = generateQuestionBreakdown(attemptsList);
+    expect(questions).toHaveLength(2);
+    expect(questions[0]["Correct Answers"]).toBe(1);
+    expect(questions[0]["Accuracy Rate"]).toBe("100%");
+    expect(questions[1]["Incorrect Answers"]).toBe(1);
+    expect(questions[1]["Accuracy Rate"]).toBe("0%");
+  });
+
+  it("should build a multi-sheet Excel workbook and binary Buffer", () => {
+    const attemptsList: AssessmentAttempt[] = [sampleAttempt];
+
+    const workbook = buildGradebookWorkbook(attemptsList, {
+      includeAnalytics: true,
+      includeQuestions: true,
+    });
+
+    expect(workbook.SheetNames).toContain("Candidate Gradebook");
+    expect(workbook.SheetNames).toContain("Executive Analytics");
+    expect(workbook.SheetNames).toContain("Question Breakdown");
+
+    const excelBuffer = generateGradebookExcelBuffer(attemptsList);
+    expect(excelBuffer).toBeInstanceOf(Buffer);
+    expect(excelBuffer.length).toBeGreaterThan(1000);
   });
 
   it("should record proctor alert messages in active session telemetry", () => {
