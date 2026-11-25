@@ -46,6 +46,7 @@ import {
   ChevronRight,
   Users,
   Loader2,
+  FileCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -173,6 +174,11 @@ function DualDateField({
 }
 
 export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalProps) {
+  // Modal Stages:
+  // "UPLOAD" = Dedicated Drag & Drop / File Select screen
+  // "STUDIO" = Full Letter Studio (Split Studio, Editor Only, Full Letterhead, Candidate Roster)
+  const [modalStage, setModalStage] = useState<"UPLOAD" | "STUDIO">("UPLOAD");
+
   // Studio View Modes:
   // "SPLIT"   = Left: Form Editor, Right: Live A4 Letterhead Preview
   // "FORM"    = Wide 2-Column Editor (Left: Templates & Presets, Right: Variables & Body)
@@ -186,6 +192,7 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
   const [selectedFileName, setSelectedFileName] = useState<string>("");
   const [fileError, setFileError] = useState<string | null>(null);
   const [isParsing, setIsParsing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Template & University Format Selection
   const [templateKey, setTemplateKey] = useState<LetterTemplateKey>("INTERNSHIP_OFFER");
@@ -246,20 +253,16 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
   // Active candidate object
   const activeCandidate: CandidateLetterRow | undefined = candidates[activeCandidateIndex];
 
-  // Initialize sample candidates on first open if empty
+  // Reset stage to UPLOAD whenever modal opens fresh
   useEffect(() => {
-    if (isOpen && candidates.length === 0) {
-      try {
-        const sampleBuffer = generateSampleCandidateSpreadsheet();
-        const sampleRows = parseCandidateSpreadsheet(sampleBuffer);
-        setCandidates(sampleRows);
-        setSelectedFileName("Akash_Sample_Roster.xlsx");
-        setActiveCandidateIndex(0);
-      } catch (err) {
-        console.warn("Failed to load sample roster:", err);
+    if (isOpen) {
+      if (candidates.length === 0) {
+        setModalStage("UPLOAD");
       }
+      setIsDragging(false);
+      setFileError(null);
     }
-  }, [isOpen, candidates.length]);
+  }, [isOpen]);
 
   // Sync active candidate fields into form state when active candidate changes
   useEffect(() => {
@@ -365,11 +368,8 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
     );
   };
 
-  // Spreadsheet File Parsing Handler
-  const handleSpreadsheetUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  // Process File Buffer for parsing
+  const processSpreadsheetFile = async (file: File) => {
     setIsParsing(true);
     setFileError(null);
     setSelectedFileName(file.name);
@@ -378,11 +378,13 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
       const buffer = await file.arrayBuffer();
       const parsedRows = parseCandidateSpreadsheet(buffer);
       if (parsedRows.length === 0) {
-        throw new Error("No candidate rows found in the uploaded file.");
+        throw new Error("No candidate records found in the uploaded file.");
       }
       setCandidates(parsedRows);
       setActiveCandidateIndex(0);
       setIsCustomEdited(false);
+      setModalStage("STUDIO");
+      setViewMode("SPLIT");
       setStatusMessage({
         type: "success",
         text: `Successfully imported ${parsedRows.length} candidates from "${file.name}"!`,
@@ -395,7 +397,37 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
       });
     } finally {
       setIsParsing(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       if (replaceFileInputRef.current) replaceFileInputRef.current.value = "";
+    }
+  };
+
+  // Drag & Drop Handlers
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      await processSpreadsheetFile(file);
     }
   };
 
@@ -413,6 +445,26 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  // Load Demo / Sample Candidates Roster
+  const handleLoadSampleRoster = () => {
+    try {
+      const sampleBuffer = generateSampleCandidateSpreadsheet();
+      const sampleRows = parseCandidateSpreadsheet(sampleBuffer);
+      setCandidates(sampleRows);
+      setSelectedFileName("Akash_Sample_Roster.xlsx");
+      setActiveCandidateIndex(0);
+      setIsCustomEdited(false);
+      setModalStage("STUDIO");
+      setViewMode("SPLIT");
+      setStatusMessage({
+        type: "success",
+        text: "Loaded 5 demo candidates for instant testing & letterhead preview!",
+      });
+    } catch (err: any) {
+      setFileError(err.message || "Failed to load sample roster.");
+    }
   };
 
   // Paste & Sanitize Draft Handler
@@ -657,13 +709,16 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
   ].filter(Boolean);
 
   // Render the authentic A4 Letterhead sheet (used in Split Studio and Full Preview)
+  // FIXED: No overflow-hidden on outer card, ample bottom padding so the footer banner is 100% visible and NEVER clipped
   const renderLetterheadSheet = (isSplitView: boolean = false) => (
     <div
       id="akash-bulk-letterhead-sheet"
       className={`relative bg-white mx-auto w-full ${
-        isSplitView ? "max-w-[720px] p-5 sm:p-9" : "max-w-[800px] p-8 sm:p-14"
-      } shadow-xl border border-slate-300 rounded-sm text-slate-900 select-text overflow-hidden transition-all`}
-      style={{ minHeight: isSplitView ? "960px" : "1050px" }}
+        isSplitView
+          ? "max-w-[720px] px-6 sm:px-10 pt-6 sm:pt-10 pb-8 sm:pb-12"
+          : "max-w-[800px] px-8 sm:px-14 pt-8 sm:pt-14 pb-10 sm:pb-16"
+      } shadow-xl border border-slate-300 rounded-sm text-slate-900 select-text transition-all`}
+      style={{ minHeight: isSplitView ? "1060px" : "1140px" }}
     >
       {/* Center Dual-Tone Translucent Watermark matching authentic PDF */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
@@ -675,14 +730,17 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
         />
       </div>
 
-      <div className="relative z-10 flex flex-col justify-between" style={{ minHeight: isSplitView ? "890px" : "960px" }}>
+      <div
+        className="relative z-10 flex flex-col justify-between"
+        style={{ minHeight: isSplitView ? "980px" : "1040px" }}
+      >
         <div>
           {/* Header with Official Akash Technolabs Banner */}
           <div className="pb-3">
             <img
               src={AKASH_HEADER_BASE64}
               alt="Akash Technolabs Official Banner"
-              className="w-full object-contain select-none"
+              className="w-full object-contain select-none block"
             />
           </div>
 
@@ -850,7 +908,7 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
               <img
                 src={AKASH_STAMP_BASE64}
                 alt="Akash Padhiyar CEO Signature & Stamp"
-                className="h-16 w-auto object-contain select-none"
+                className="h-16 w-auto object-contain select-none block"
               />
             </div>
             <p className="font-bold text-slate-900 text-sm">{signatoryName}</p>
@@ -858,12 +916,12 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
           </div>
         </div>
 
-        {/* Official Footer Banner */}
-        <div className="pt-8 mt-auto">
+        {/* Official Footer Banner - Fully padded and never cut off */}
+        <div className="pt-8 mt-auto shrink-0 pb-1">
           <img
             src={AKASH_FOOTER_BASE64}
             alt="Akash Technolabs Official Footer"
-            className="w-full object-contain select-none"
+            className="w-full object-contain select-none block"
           />
         </div>
       </div>
@@ -1035,18 +1093,21 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
           </div>
         )}
 
-        {/* Upload / Replace Spreadsheet Dropzone */}
+        {/* Upload / Replace Spreadsheet Actions with Working Drag-and-Drop */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
           <input
             ref={replaceFileInputRef}
             type="file"
-            onChange={handleSpreadsheetUpload}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) processSpreadsheetFile(file);
+            }}
             accept=".xlsx,.xls,.csv"
             className="hidden"
           />
           <button
             type="button"
-            onClick={() => replaceFileInputRef.current?.click()}
+            onClick={() => setModalStage("UPLOAD")}
             disabled={isParsing}
             className="p-3 rounded-xl border border-dashed border-blue-400 bg-blue-50/50 hover:bg-blue-100/60 text-slate-800 transition-all cursor-pointer flex items-center justify-center gap-2 text-xs font-bold"
           >
@@ -1600,6 +1661,16 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
           <Button
             type="button"
             variant="outline"
+            onClick={() => setViewMode("PREVIEW")}
+            className="text-xs font-bold rounded-xl cursor-pointer bg-white"
+          >
+            <Eye className="w-3.5 h-3.5 mr-1 text-blue-600" />
+            <span>Preview Active Letter</span>
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
             onClick={handleDownloadSinglePdf}
             disabled={isDownloadingSinglePdf}
             className="text-xs font-bold rounded-xl cursor-pointer bg-white"
@@ -1675,11 +1746,11 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
             type="button"
             size="sm"
             variant="outline"
-            onClick={() => replaceFileInputRef.current?.click()}
+            onClick={() => setModalStage("UPLOAD")}
             className="text-xs font-bold rounded-xl cursor-pointer"
           >
             <UploadCloud className="w-3.5 h-3.5 mr-1 text-blue-600" />
-            Replace File
+            Upload / Replace File
           </Button>
 
           <Button
@@ -1940,6 +2011,150 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
     </div>
   );
 
+  // Dedicated Drag & Drop / File Select Screen (Step 1)
+  const renderUploadScreen = () => (
+    <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-50/70 flex flex-col justify-center max-w-4xl mx-auto w-full space-y-6">
+      {/* Upload Screen Banner */}
+      <div className="text-center space-y-2">
+        <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-[#0F4C81] to-[#00A8CC] flex items-center justify-center text-white mx-auto shadow-lg">
+          <FileSpreadsheet className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+          Select or Drag &amp; Drop Candidate Spreadsheet
+        </h2>
+        <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto">
+          Upload your Excel (.xlsx, .xls) or CSV (.csv) file to generate authentic corporate letters in bulk with live letterhead preview and 1-click ZIP export.
+        </p>
+      </div>
+
+      {/* Error message banner */}
+      {fileError && (
+        <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-xs text-red-800 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+          <span>{fileError}</span>
+        </div>
+      )}
+
+      {/* Main Drag & Drop Zone */}
+      <div
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onClick={() => fileInputRef.current?.click()}
+        className={`border-3 border-dashed rounded-3xl p-8 sm:p-12 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-4 ${
+          isDragging
+            ? "border-blue-600 bg-blue-100/70 scale-[1.01] shadow-xl ring-4 ring-blue-400/30"
+            : "border-blue-300 hover:border-blue-500 bg-white hover:bg-blue-50/40 shadow-xs"
+        }`}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) processSpreadsheetFile(file);
+          }}
+          accept=".xlsx,.xls,.csv"
+          className="hidden"
+        />
+
+        <div className="w-16 h-16 rounded-2xl bg-blue-50 text-[#0F4C81] flex items-center justify-center shadow-inner">
+          {isParsing ? (
+            <Loader2 className="w-8 h-8 animate-spin" />
+          ) : (
+            <UploadCloud className="w-8 h-8" />
+          )}
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-base font-bold text-slate-900">
+            {isParsing
+              ? "Parsing spreadsheet data..."
+              : isDragging
+              ? "Drop candidate spreadsheet here..."
+              : "Click to Browse or Drag & Drop File Here"}
+          </p>
+          <p className="text-xs text-slate-500">
+            Supports Microsoft Excel (.xlsx, .xls) and CSV (.csv) spreadsheets
+          </p>
+        </div>
+
+        <Button
+          type="button"
+          disabled={isParsing}
+          className="bg-[#0F4C81] hover:bg-[#0C3D68] text-white font-bold text-xs rounded-xl px-5 py-2.5 shadow-md pointer-events-none mt-1"
+        >
+          <FileUp className="w-4 h-4 mr-1.5" />
+          Select File from Device
+        </Button>
+      </div>
+
+      {/* Action Cards Below Dropzone */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Card 1: Sample Template */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3 flex flex-col justify-between">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+              <Download className="w-4 h-4 text-emerald-600" />
+              <span>Need a Ready-Made Template?</span>
+            </div>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Download our official sample spreadsheet pre-populated with standard columns: Candidate Name, Salutation, Email, Role, Technology, Commencement Date, Continue Until Date, and College.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleDownloadSample}
+            className="w-full text-xs font-bold rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100"
+          >
+            <Download className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
+            Download Sample Excel (.xlsx)
+          </Button>
+        </div>
+
+        {/* Card 2: Demo Roster */}
+        <div className="bg-white p-5 rounded-2xl border border-blue-200 shadow-2xs space-y-3 flex flex-col justify-between">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+              <Sparkles className="w-4 h-4 text-amber-500" />
+              <span>Explore Instant Demo Roster (5 Candidates)</span>
+            </div>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Test &amp; preview the letter studio immediately using 5 pre-configured demo candidates (Fenil Patel, Aarav Mehta, Ananya Joshi, Priya Sharma, Rohan Verma) without preparing a file.
+            </p>
+          </div>
+          <Button
+            type="button"
+            onClick={handleLoadSampleRoster}
+            className="w-full text-xs font-bold rounded-xl cursor-pointer bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-xs"
+          >
+            <Sparkles className="w-3.5 h-3.5 mr-1.5 text-amber-300" />
+            Open Studio with Sample Roster
+          </Button>
+        </div>
+      </div>
+
+      {/* If Candidates were already loaded in session, option to jump back to studio */}
+      {candidates.length > 0 && (
+        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-emerald-900 font-semibold">
+            <FileCheck className="w-4 h-4 text-emerald-600" />
+            <span>Currently loaded: <strong>{selectedFileName || "Active Roster"}</strong> ({candidates.length} candidates)</span>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => setModalStage("STUDIO")}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs px-4"
+          >
+            Return to Studio ➔
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+
   if (!isOpen) return null;
 
   return (
@@ -1948,7 +2163,7 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
         {/* Top brand line: Cyan, Navy, Red */}
         <div className="h-1.5 w-full bg-gradient-to-r from-[#00A8CC] via-[#0F4C81] to-[#E52329] shrink-0" />
 
-        {/* Studio Top Navigation Bar (Screenshot 2) */}
+        {/* Top Navigation Bar */}
         <div className="px-4 sm:px-6 py-2.5 sm:py-3 border-b border-slate-200 bg-slate-50/90 flex flex-wrap items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-2.5 sm:gap-3">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#0F4C81] to-[#00A8CC] flex items-center justify-center text-white shadow-xs">
@@ -1964,125 +2179,134 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
                 </span>
               </div>
               <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium">
-                Full-screen studio with live A4 letterhead sync, spreadsheet roster binding, university presets &amp; bulk ZIP package
+                {modalStage === "UPLOAD"
+                  ? "Select or drag & drop Excel / CSV candidate spreadsheet to initialize letter dispatch"
+                  : "Full-screen studio with live A4 letterhead sync, spreadsheet roster binding, university presets & bulk ZIP package"}
               </p>
             </div>
           </div>
 
-          {/* Mode Switcher Tabs */}
-          <div className="flex items-center bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
-            <button
-              type="button"
-              onClick={() => setViewMode("SPLIT")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                viewMode === "SPLIT"
-                  ? "bg-[#0F4C81] text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-              }`}
-            >
-              <Columns className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">⚡ Split Studio</span>
-              <span className="sm:hidden">Split</span>
-            </button>
+          {/* Mode Switcher Tabs (Only shown when in STUDIO stage) */}
+          {modalStage === "STUDIO" && (
+            <div className="flex items-center bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setViewMode("SPLIT")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  viewMode === "SPLIT"
+                    ? "bg-[#0F4C81] text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                }`}
+              >
+                <Columns className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">⚡ Split Studio</span>
+                <span className="sm:hidden">Split</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setViewMode("FORM")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                viewMode === "FORM"
-                  ? "bg-[#0F4C81] text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-              }`}
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">📝 Editor Only</span>
-              <span className="sm:hidden">Edit</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("FORM")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  viewMode === "FORM"
+                    ? "bg-[#0F4C81] text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">📝 Editor Only</span>
+                <span className="sm:hidden">Edit</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setViewMode("PREVIEW")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                viewMode === "PREVIEW"
-                  ? "bg-[#0F4C81] text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-              }`}
-            >
-              <Eye className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">📄 Full Letterhead</span>
-              <span className="sm:hidden">Letterhead</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("PREVIEW")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  viewMode === "PREVIEW"
+                    ? "bg-[#0F4C81] text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">📄 Full Letterhead</span>
+                <span className="sm:hidden">Letterhead</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setViewMode("ROSTER")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                viewMode === "ROSTER"
-                  ? "bg-[#0F4C81] text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-              }`}
-            >
-              <Users className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">👥 Candidate Roster ({candidates.length})</span>
-              <span className="sm:hidden">Roster ({candidates.length})</span>
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => setViewMode("ROSTER")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  viewMode === "ROSTER"
+                    ? "bg-[#0F4C81] text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">👥 Candidate Roster ({candidates.length})</span>
+                <span className="sm:hidden">Roster ({candidates.length})</span>
+              </button>
+            </div>
+          )}
 
           {/* Action buttons on top bar */}
           <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={handleDownloadSample}
-              className="hidden lg:flex items-center gap-1.5 text-xs font-bold rounded-xl cursor-pointer bg-white"
-            >
-              <Download className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Sample Excel</span>
-            </Button>
+            {modalStage === "STUDIO" && (
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setModalStage("UPLOAD")}
+                  className="text-xs font-bold rounded-xl cursor-pointer bg-white text-slate-700 hover:bg-slate-100 flex items-center gap-1.5"
+                  title="Upload or drop another candidate spreadsheet"
+                >
+                  <UploadCloud className="w-3.5 h-3.5 text-blue-600" />
+                  <span className="hidden md:inline">Change Spreadsheet</span>
+                </Button>
 
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => setViewMode("PREVIEW")}
-              className="bg-blue-50/90 hover:bg-blue-100 text-[#0F4C81] border border-blue-200 font-bold text-xs rounded-xl shadow-2xs cursor-pointer flex items-center gap-1.5 px-3 py-1.5"
-              title="Preview active candidate's A4 letterhead on screen (no download)"
-            >
-              <Eye className="w-3.5 h-3.5 text-blue-600" />
-              <span className="hidden sm:inline">Preview Letter</span>
-              <span className="sm:hidden">Preview</span>
-            </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setViewMode("PREVIEW")}
+                  className="bg-blue-50/90 hover:bg-blue-100 text-[#0F4C81] border border-blue-200 font-bold text-xs rounded-xl shadow-2xs cursor-pointer flex items-center gap-1.5 px-3 py-1.5"
+                  title="Preview active candidate's A4 letterhead on screen (no download)"
+                >
+                  <Eye className="w-3.5 h-3.5 text-blue-600" />
+                  <span className="hidden sm:inline">Preview Letter</span>
+                  <span className="sm:hidden">Preview</span>
+                </Button>
 
-            <Button
-              type="button"
-              size="sm"
-              disabled={isDownloadingSinglePdf}
-              onClick={handleDownloadSinglePdf}
-              className="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 font-bold text-xs rounded-xl shadow-2xs cursor-pointer flex items-center gap-1.5 px-3 py-1.5"
-            >
-              {isDownloadingSinglePdf ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span className="hidden md:inline">Generating PDF...</span>
-                </>
-              ) : (
-                <>
-                  <Download className="w-3.5 h-3.5 text-[#0F4C81]" />
-                  <span className="hidden md:inline">Download Single PDF</span>
-                </>
-              )}
-            </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={isDownloadingSinglePdf}
+                  onClick={handleDownloadSinglePdf}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 font-bold text-xs rounded-xl shadow-2xs cursor-pointer flex items-center gap-1.5 px-3 py-1.5"
+                >
+                  {isDownloadingSinglePdf ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span className="hidden md:inline">Generating PDF...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-3.5 h-3.5 text-[#0F4C81]" />
+                      <span className="hidden md:inline">Download Single PDF</span>
+                    </>
+                  )}
+                </Button>
 
-            <Button
-              type="button"
-              onClick={handleExecuteBulkGeneration}
-              disabled={candidates.length === 0}
-              className="bg-[#0F4C81] hover:bg-[#0C3D68] text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5 px-3.5 py-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>Generate All ({candidates.length}) &amp; ZIP</span>
-            </Button>
+                <Button
+                  type="button"
+                  onClick={handleExecuteBulkGeneration}
+                  disabled={candidates.length === 0}
+                  className="bg-[#0F4C81] hover:bg-[#0C3D68] text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5 px-3.5 py-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Generate All ({candidates.length}) &amp; ZIP</span>
+                </Button>
+              </>
+            )}
 
             <button
               type="button"
@@ -2122,161 +2346,166 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
           </div>
         )}
 
-        {/* Main Studio Body Workspace */}
-        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-          {viewMode === "SPLIT" && (
-            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-0 overflow-hidden">
-              {/* Left Column: Form Editor (Scrollable) */}
-              <div className="lg:col-span-6 xl:col-span-6 h-full overflow-y-auto p-4 sm:p-6 bg-slate-50/60 border-r border-slate-200">
-                {renderEditorForm(false)}
-              </div>
+        {/* STAGE 1: DEDICATED DRAG & DROP SPREADSHEET SCREEN */}
+        {modalStage === "UPLOAD" && renderUploadScreen()}
 
-              {/* Right Column: Live Letterhead Sheet Preview (Scrollable) */}
-              <div className="lg:col-span-6 xl:col-span-6 h-full overflow-y-auto p-4 sm:p-6 bg-slate-200/70 flex flex-col items-center">
-                <div className="w-full max-w-[720px] flex items-center justify-between pb-3 text-xs font-bold text-slate-700">
-                  <div className="flex items-center gap-1.5 text-slate-800">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                    <span>Live A4 Letterhead Preview</span>
-                    {activeCandidate && (
-                      <span className="text-[10px] font-normal text-slate-500">
-                        (Active: {activeCandidate.studentName})
-                      </span>
-                    )}
+        {/* STAGE 2: FULL LETTER STUDIO (MATCHING SINGLE LETTER STUDIO LAYOUT) */}
+        {modalStage === "STUDIO" && (
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+            {viewMode === "SPLIT" && (
+              <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-0 overflow-hidden">
+                {/* Left Column: Form Editor (Scrollable) */}
+                <div className="lg:col-span-6 xl:col-span-6 h-full overflow-y-auto p-4 sm:p-6 bg-slate-50/60 border-r border-slate-200">
+                  {renderEditorForm(false)}
+                </div>
+
+                {/* Right Column: Live Letterhead Sheet Preview (Scrollable with ample bottom space) */}
+                <div className="lg:col-span-6 xl:col-span-6 h-full overflow-y-auto p-4 sm:p-6 pb-24 bg-slate-200/70 flex flex-col items-center">
+                  <div className="w-full max-w-[720px] flex items-center justify-between pb-3 text-xs font-bold text-slate-700">
+                    <div className="flex items-center gap-1.5 text-slate-800">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                      <span>Live A4 Letterhead Preview</span>
+                      {activeCandidate && (
+                        <span className="text-[10px] font-normal text-slate-500">
+                          (Active: {activeCandidate.studentName})
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setViewMode("PREVIEW")}
+                        className="h-7 text-[11px] font-bold bg-white text-blue-700 hover:bg-blue-50 border-blue-200 cursor-pointer"
+                        title="View full A4 letterhead on screen"
+                      >
+                        <Eye className="w-3 h-3 mr-1 text-blue-600" />
+                        Fullscreen
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={isDownloadingSinglePdf}
+                        onClick={handleDownloadSinglePdf}
+                        className="h-7 text-[11px] font-bold bg-white text-slate-700 hover:bg-slate-50 cursor-pointer"
+                        title="Download PDF file for this candidate"
+                      >
+                        <Download className="w-3 h-3 mr-1 text-[#0F4C81]" />
+                        PDF
+                      </Button>
+                    </div>
                   </div>
+                  {renderLetterheadSheet(true)}
+                </div>
+              </div>
+            )}
+
+            {viewMode === "FORM" && (
+              <div className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-6 bg-slate-50/60">
+                <div className="w-full max-w-[1750px] mx-auto px-1 sm:px-2">
+                  {renderEditorForm(true)}
+                </div>
+              </div>
+            )}
+
+            {viewMode === "PREVIEW" && (
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24 bg-slate-200/80 flex flex-col items-center">
+                {/* Candidate Navigation & Action Bar for Preview Mode */}
+                <div className="w-full max-w-[800px] mb-3 bg-white p-3 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <Button
-                      type="button"
                       size="sm"
                       variant="outline"
-                      onClick={() => setViewMode("PREVIEW")}
-                      className="h-7 text-[11px] font-bold bg-white text-blue-700 hover:bg-blue-50 border-blue-200 cursor-pointer"
-                      title="View full A4 letterhead on screen"
+                      disabled={activeCandidateIndex <= 0}
+                      onClick={() => setActiveCandidateIndex((prev) => Math.max(0, prev - 1))}
+                      className="h-8 text-xs font-bold cursor-pointer"
                     >
-                      <Eye className="w-3 h-3 mr-1 text-blue-600" />
-                      Fullscreen
+                      <ChevronLeft className="w-4 h-4 mr-0.5" /> Prev
+                    </Button>
+                    <div className="text-center sm:text-left px-2">
+                      <span className="text-xs font-black text-slate-900 block">
+                        #{activeCandidateIndex + 1} of {candidates.length}: {activeCandidate?.salutation} {activeCandidate?.studentName}
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-medium">
+                        {activeCandidate?.internshipPosition} • {activeCandidate?.technology}
+                      </span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={activeCandidateIndex >= candidates.length - 1}
+                      onClick={() => setActiveCandidateIndex((prev) => Math.min(candidates.length - 1, prev + 1))}
+                      className="h-8 text-xs font-bold cursor-pointer"
+                    >
+                      Next <ChevronRight className="w-4 h-4 ml-0.5" />
+                    </Button>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <select
+                      value={activeCandidateIndex}
+                      onChange={(e) => setActiveCandidateIndex(Number(e.target.value))}
+                      className="text-xs font-semibold text-slate-800 bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 focus:outline-hidden"
+                    >
+                      {candidates.map((c, idx) => (
+                        <option key={c.id || idx} value={idx}>
+                          #{idx + 1}: {c.studentName} ({c.internshipPosition})
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setViewMode("ROSTER")}
+                      className="h-8 text-xs font-bold bg-white text-slate-700 hover:bg-slate-50 rounded-xl cursor-pointer"
+                    >
+                      <Users className="w-3.5 h-3.5 mr-1" />
+                      Roster
                     </Button>
                     <Button
-                      type="button"
                       size="sm"
                       variant="outline"
+                      onClick={() => setViewMode("SPLIT")}
+                      className="h-8 text-xs font-bold bg-white text-slate-700 hover:bg-slate-50 rounded-xl cursor-pointer"
+                    >
+                      <Columns className="w-3.5 h-3.5 mr-1" />
+                      Split Studio
+                    </Button>
+                    <Button
+                      size="sm"
                       disabled={isDownloadingSinglePdf}
                       onClick={handleDownloadSinglePdf}
-                      className="h-7 text-[11px] font-bold bg-white text-slate-700 hover:bg-slate-50 cursor-pointer"
-                      title="Download PDF file for this candidate"
+                      className="h-8 bg-[#0F4C81] hover:bg-[#0C3D68] text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
                     >
-                      <Download className="w-3 h-3 mr-1 text-[#0F4C81]" />
-                      PDF
+                      {isDownloadingSinglePdf ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Generating...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-3.5 h-3.5" />
+                          <span>Download PDF</span>
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>
-                {renderLetterheadSheet(true)}
+                {renderLetterheadSheet(false)}
               </div>
-            </div>
-          )}
+            )}
 
-          {viewMode === "FORM" && (
-            <div className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-6 bg-slate-50/60">
-              <div className="w-full max-w-[1750px] mx-auto px-1 sm:px-2">
-                {renderEditorForm(true)}
-              </div>
-            </div>
-          )}
-
-          {viewMode === "PREVIEW" && (
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-200/80 flex flex-col items-center">
-              {/* Candidate Navigation & Action Bar for Preview Mode */}
-              <div className="w-full max-w-[800px] mb-3 bg-white p-3 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={activeCandidateIndex <= 0}
-                    onClick={() => setActiveCandidateIndex((prev) => Math.max(0, prev - 1))}
-                    className="h-8 text-xs font-bold cursor-pointer"
-                  >
-                    <ChevronLeft className="w-4 h-4 mr-0.5" /> Prev
-                  </Button>
-                  <div className="text-center sm:text-left px-2">
-                    <span className="text-xs font-black text-slate-900 block">
-                      #{activeCandidateIndex + 1} of {candidates.length}: {activeCandidate?.salutation} {activeCandidate?.studentName}
-                    </span>
-                    <span className="text-[10px] text-slate-500 font-medium">
-                      {activeCandidate?.internshipPosition} • {activeCandidate?.technology}
-                    </span>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={activeCandidateIndex >= candidates.length - 1}
-                    onClick={() => setActiveCandidateIndex((prev) => Math.min(candidates.length - 1, prev + 1))}
-                    className="h-8 text-xs font-bold cursor-pointer"
-                  >
-                    Next <ChevronRight className="w-4 h-4 ml-0.5" />
-                  </Button>
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap">
-                  <select
-                    value={activeCandidateIndex}
-                    onChange={(e) => setActiveCandidateIndex(Number(e.target.value))}
-                    className="text-xs font-semibold text-slate-800 bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 focus:outline-hidden"
-                  >
-                    {candidates.map((c, idx) => (
-                      <option key={c.id || idx} value={idx}>
-                        #{idx + 1}: {c.studentName} ({c.internshipPosition})
-                      </option>
-                    ))}
-                  </select>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setViewMode("ROSTER")}
-                    className="h-8 text-xs font-bold bg-white text-slate-700 hover:bg-slate-50 rounded-xl cursor-pointer"
-                  >
-                    <Users className="w-3.5 h-3.5 mr-1" />
-                    Roster
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setViewMode("SPLIT")}
-                    className="h-8 text-xs font-bold bg-white text-slate-700 hover:bg-slate-50 rounded-xl cursor-pointer"
-                  >
-                    <Columns className="w-3.5 h-3.5 mr-1" />
-                    Split Studio
-                  </Button>
-                  <Button
-                    size="sm"
-                    disabled={isDownloadingSinglePdf}
-                    onClick={handleDownloadSinglePdf}
-                    className="h-8 bg-[#0F4C81] hover:bg-[#0C3D68] text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
-                  >
-                    {isDownloadingSinglePdf ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>Generating...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Download className="w-3.5 h-3.5" />
-                        <span>Download PDF</span>
-                      </>
-                    )}
-                  </Button>
+            {viewMode === "ROSTER" && (
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/70">
+                <div className="max-w-[1600px] mx-auto">
+                  {renderCandidateRoster()}
                 </div>
               </div>
-              {renderLetterheadSheet(false)}
-            </div>
-          )}
-
-          {viewMode === "ROSTER" && (
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/70">
-              <div className="max-w-[1600px] mx-auto">
-                {renderCandidateRoster()}
-              </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Generation Progress Modal / Overlay */}

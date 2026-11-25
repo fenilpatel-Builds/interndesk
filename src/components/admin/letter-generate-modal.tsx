@@ -867,9 +867,9 @@ export function LetterGenerateModal({
     <div
       id="akash-official-offer-letter-sheet"
       className={`relative bg-white mx-auto w-full ${
-        isSplitView ? "max-w-[720px] p-5 sm:p-9" : "max-w-[800px] p-8 sm:p-14"
-      } shadow-xl border border-slate-300 rounded-sm text-slate-900 select-text overflow-hidden transition-all`}
-      style={{ minHeight: isSplitView ? "960px" : "1050px" }}
+        isSplitView ? "max-w-[720px] px-6 sm:px-10 pt-6 sm:pt-10 pb-8 sm:pb-12" : "max-w-[800px] px-8 sm:px-14 pt-8 sm:pt-14 pb-10 sm:pb-16"
+      } shadow-xl border border-slate-300 rounded-sm text-slate-900 select-text transition-all`}
+      style={{ minHeight: isSplitView ? "1060px" : "1140px" }}
     >
       {/* Center Dual-Tone Translucent Watermark matching authentic PDF */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
@@ -881,14 +881,14 @@ export function LetterGenerateModal({
         />
       </div>
 
-      <div className="relative z-10 flex flex-col justify-between" style={{ minHeight: isSplitView ? "890px" : "960px" }}>
+      <div className="relative z-10 flex flex-col justify-between" style={{ minHeight: isSplitView ? "980px" : "1040px" }}>
         <div>
           {/* Header with Official Akash Technolabs Banner matching authentic PDF */}
           <div className="pb-3">
             <img
               src={AKASH_HEADER_BASE64}
               alt="Akash Technolabs Official Banner"
-              className="w-full object-contain select-none"
+              className="w-full object-contain select-none block"
             />
           </div>
 
@@ -1068,11 +1068,11 @@ export function LetterGenerateModal({
         </div>
 
         {/* Official Footer Banner matching authentic PDF */}
-        <div className="pt-8 mt-auto">
+        <div className="pt-8 mt-auto shrink-0 pb-1">
           <img
             src={AKASH_FOOTER_BASE64}
             alt="Akash Technolabs Official Footer"
-            className="w-full object-contain select-none"
+            className="w-full object-contain select-none block"
           />
         </div>
       </div>
@@ -1912,7 +1912,7 @@ export function LetterGenerateModal({
               </div>
 
               {/* Right Column: Live Letterhead Sheet Preview (Scrollable) */}
-              <div className="lg:col-span-6 xl:col-span-6 h-full overflow-y-auto p-4 sm:p-6 bg-slate-200/70 flex flex-col items-center">
+              <div className="lg:col-span-6 xl:col-span-6 h-full overflow-y-auto p-4 sm:p-6 pb-24 bg-slate-200/70 flex flex-col items-center">
                 <div className="w-full max-w-[720px] flex items-center justify-between pb-3 text-xs font-bold text-slate-700">
                   <div className="flex items-center gap-1.5 text-slate-800">
                     <ShieldCheck className="w-4 h-4 text-emerald-600" />
@@ -1945,7 +1945,7 @@ export function LetterGenerateModal({
           )}
 
           {viewMode === "PREVIEW" && (
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-200/80 flex flex-col items-center">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24 bg-slate-200/80 flex flex-col items-center">
               <div className="w-full max-w-[800px] flex items-center justify-between pb-3 text-xs font-bold">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-5 h-5 text-emerald-600" />
