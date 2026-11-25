@@ -20,9 +20,11 @@ import {
   Edit3,
   Trash2,
   FileUp,
+  FileSpreadsheet,
 } from "lucide-react";
 import { DocumentStudioModal } from "@/components/documents/document-studio-modal";
 import { LetterGenerateModal } from "@/components/admin/letter-generate-modal";
+import { BulkLetterModal } from "@/components/admin/bulk-letter-modal";
 import { IssuedDocument, DocumentType } from "@/types/multitenant";
 import {
   downloadAkashOfferLetterPdf,
@@ -52,6 +54,7 @@ export default function AdminDocumentsPage() {
   const [isLetterGenerateOpen, setIsLetterGenerateOpen] = useState(false);
   const [selectedDocForEdit, setSelectedDocForEdit] = useState<any | null>(null);
   const [customDraftTab, setCustomDraftTab] = useState<"PASTE" | "ATTACH" | undefined>(undefined);
+  const [isBulkLetterModalOpen, setIsBulkLetterModalOpen] = useState(false);
 
   // Admin Approval Modal State
   const [selectedPendingDoc, setSelectedPendingDoc] = useState<any | null>(null);
@@ -397,6 +400,14 @@ export default function AdminDocumentsPage() {
           <div className="flex flex-wrap items-center gap-2.5">
             <Button
               size="sm"
+              onClick={() => setIsBulkLetterModalOpen(true)}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md text-xs flex items-center gap-1.5 transition-transform hover:scale-[1.02] cursor-pointer"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Bulk Letters (Excel / CSV)</span>
+            </Button>
+            <Button
+              size="sm"
               onClick={() => {
                 setSelectedDocForEdit(null);
                 setCustomDraftTab(undefined);
@@ -687,6 +698,15 @@ export default function AdminDocumentsPage() {
           setIsLetterGenerateOpen(false);
           setSelectedDocForEdit(null);
           setCustomDraftTab(undefined);
+          fetchDocs();
+        }}
+      />
+
+      {/* Bulk Letter Generation Studio Modal (Excel / CSV -> ZIP) */}
+      <BulkLetterModal
+        isOpen={isBulkLetterModalOpen}
+        onClose={() => setIsBulkLetterModalOpen(false)}
+        onSuccess={() => {
           fetchDocs();
         }}
       />
