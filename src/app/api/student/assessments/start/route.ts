@@ -33,6 +33,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: check.error || "Cannot start assessment." }, { status: 403 });
     }
 
+    const realAsm = assessmentStore.getById(assessmentId, true); // Internal check for access code
+    if (!realAsm) {
+      return NextResponse.json({ error: "Assessment not found." }, { status: 404 });
+    }
+
+    // Verify Invigilator Access Code / Exam Passcode if configured
+    if (realAsm.access_code && realAsm.access_code.trim()) {
+      const enteredCode = String(body.accessCode || "").trim().toLowerCase();
+      const requiredCode = realAsm.access_code.trim().toLowerCase();
+      if (enteredCode !== requiredCode) {
+        return NextResponse.json(
+          {
+            error: "Invigilator Passcode Required: Please obtain and enter the authorized access code from your examination invigilator.",
+            requiresAccessCode: true,
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     const asm = assessmentStore.getById(assessmentId, false); // Sanitized: answers stripped
     if (!asm) {
       return NextResponse.json({ error: "Assessment not found." }, { status: 404 });

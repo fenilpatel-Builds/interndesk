@@ -37,9 +37,12 @@ import {
   ChevronRight,
   Sparkles,
   Lock,
+  Shuffle,
+  Download,
 } from "lucide-react";
 import { Assessment, AssessmentQuestion, AssessmentAttempt, QuestionType } from "@/lib/assessments/assessment-store";
 import { SandboxedCodeEditor } from "@/components/assessments/sandboxed-code-editor";
+import { downloadExamCertificatePdf } from "@/lib/assessments/certificate-pdf-generator";
 
 export default function StudentAssessmentsPage() {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
@@ -80,7 +83,9 @@ export default function StudentAssessmentsPage() {
   // Pre-exam instruction dialog state
   const [pendingStartAssessment, setPendingStartAssessment] = useState<Assessment | null>(null);
   const [rulesAccepted, setRulesAccepted] = useState<boolean>(false);
+  const [accessPasscodeInput, setAccessPasscodeInput] = useState<string>("");
   const [startError, setStartError] = useState<string | null>(null);
+  const [proctorAlertMessage, setProctorAlertMessage] = useState<string | null>(null);
 
   // Filter tab in catalog view
   const [catalogFilter, setCatalogFilter] = useState<"ALL" | "AVAILABLE" | "COMPLETED">("ALL");
@@ -225,10 +230,17 @@ export default function StudentAssessmentsPage() {
             }),
           });
           if (res.ok) {
+            const data = await res.json().catch(() => ({}));
             setSyncStatus("SAVED");
             setLastSavedTime(
               new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
             );
+            if (data.isForceSubmitted) {
+              handleSubmitAssessment(true);
+            }
+            if (data.proctorMessage) {
+              setProctorAlertMessage(data.proctorMessage);
+            }
           } else {
             setSyncStatus("OFFLINE");
           }
@@ -322,6 +334,7 @@ export default function StudentAssessmentsPage() {
   const handleRequestStartExam = (asm: Assessment) => {
     setStartError(null);
     setRulesAccepted(false);
+    setAccessPasscodeInput("");
     setPendingStartAssessment(asm);
   };
 
@@ -338,6 +351,7 @@ export default function StudentAssessmentsPage() {
           assessmentId: pendingStartAssessment.id,
           email: studentEmail,
           studentName: studentName,
+          accessCode: accessPasscodeInput.trim(),
         }),
       });
 
@@ -347,14 +361,29 @@ export default function StudentAssessmentsPage() {
         return;
       }
 
-      // Initialize session state
-      setActiveAssessment(data.assessment || pendingStartAssessment);
+      // Initialize session state with anti-cheat question & option shuffling if enabled
+      let loadedAsm: Assessment = data.assessment || pendingStartAssessment;
+      if (loadedAsm.shuffle_questions && Array.isArray(loadedAsm.questions)) {
+        const shuffledQs = [...loadedAsm.questions].sort(() => Math.random() - 0.5);
+        loadedAsm = { ...loadedAsm, questions: shuffledQs };
+      }
+      if (loadedAsm.shuffle_options && Array.isArray(loadedAsm.questions)) {
+        const shuffledQs = loadedAsm.questions.map((q) => {
+          if (q.options && q.options.length > 1) {
+            return { ...q, options: [...q.options].sort(() => Math.random() - 0.5) };
+          }
+          return q;
+        });
+        loadedAsm = { ...loadedAsm, questions: shuffledQs };
+      }
+
+      setActiveAssessment(loadedAsm);
       setSessionId(data.sessionId);
       setExpiresAt(data.expiresAt);
       setSelectedAnswers(data.savedAnswers || {});
       setMarkedForReview(new Set(data.markedForReview || []));
 
-      const firstQId = data.assessment?.questions?.[0]?.id;
+      const firstQId = loadedAsm.questions?.[0]?.id;
       const initialVisited = new Set<string>(data.visitedQuestions || (firstQId ? [firstQId] : []));
       setVisitedQuestions(initialVisited);
 
@@ -362,6 +391,7 @@ export default function StudentAssessmentsPage() {
       setTabSwitchCount(data.tabSwitchCount || 0);
       setFullscreenExitCount(data.fullscreenExitCount || 0);
       setShowTabSwitchWarning(false);
+      setProctorAlertMessage(null);
       setExamResult(null);
 
       const durationSec = (data.durationMinutes || pendingStartAssessment.duration_minutes || 25) * 60;
@@ -817,7 +847,7 @@ export default function StudentAssessmentsPage() {
                               {att.proctoring_flag} ({att.tab_switch_count} tab switches)
                             </span>
                           </td>
-                          <td className="py-3 px-4 text-right">
+                          <td className="py-3 px-4 text-right space-x-1 whitespace-nowrap">
                             <Button
                               variant="ghost"
                               size="sm"
@@ -828,6 +858,16 @@ export default function StudentAssessmentsPage() {
                               className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 font-semibold text-xs"
                             >
                               Review
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => downloadExamCertificatePdf(att)}
+                              className="text-emerald-700 border-emerald-200 hover:bg-emerald-50 font-semibold text-xs"
+                              title="Download Official PDF Transcript"
+                            >
+                              <FileText className="w-3.5 h-3.5 mr-1" />
+                              PDF
                             </Button>
                           </td>
                         </tr>
@@ -929,6 +969,25 @@ export default function StudentAssessmentsPage() {
             {startError && (
               <div className="p-3 rounded-lg bg-red-50 text-red-700 border border-red-200 text-xs font-semibold">
                 {startError}
+              </div>
+            )}
+
+            {pendingStartAssessment.has_access_code && (
+              <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-xl space-y-2">
+                <label className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
+                  <Lock className="w-4 h-4 text-indigo-600" />
+                  Invigilator Exam Access Passcode Required
+                </label>
+                <p className="text-[11px] text-indigo-700">
+                  This examination requires supervisor authorization. Please enter the invigilator passcode to unlock.
+                </p>
+                <input
+                  type="password"
+                  value={accessPasscodeInput}
+                  onChange={(e) => setAccessPasscodeInput(e.target.value)}
+                  placeholder="Enter authorized exam passcode..."
+                  className="w-full bg-white border border-indigo-300 rounded-lg p-2.5 text-xs font-mono font-bold tracking-wider outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                />
               </div>
             )}
 
@@ -1103,6 +1162,22 @@ export default function StudentAssessmentsPage() {
             <div className="flex-shrink-0 bg-amber-500/20 border-b border-amber-500/40 text-amber-200 px-4 py-1.5 text-xs text-center font-bold flex items-center justify-center gap-2">
               <AlertTriangle className="w-4 h-4 text-amber-400" />
               Notice: Under 5 minutes remaining! Review all answers before final submission.
+            </div>
+          )}
+
+          {/* Live Proctor Broadcast Alert */}
+          {proctorAlertMessage && (
+            <div className="flex-shrink-0 bg-red-600 border-b border-red-500 text-white px-4 py-2 text-xs font-bold flex items-center justify-between shadow-lg animate-pulse">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-300 shrink-0" />
+                <span>⚠️ LIVE PROCTOR NOTICE: {proctorAlertMessage}</span>
+              </div>
+              <button
+                onClick={() => setProctorAlertMessage(null)}
+                className="text-[11px] bg-red-800 hover:bg-red-900 text-white px-2 py-0.5 rounded font-bold"
+              >
+                Acknowledge
+              </button>
             </div>
           )}
 
@@ -1938,22 +2013,32 @@ export default function StudentAssessmentsPage() {
             </div>
 
             {/* Footer Buttons */}
-            <div className="p-6 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+            <div className="p-6 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
               <Button
                 variant="outline"
                 onClick={() => setExamState("LIST")}
-                className="text-xs font-semibold"
+                className="text-xs font-semibold w-full sm:w-auto"
               >
                 ← Back to Assessments Catalog
               </Button>
 
-              <Button
-                onClick={() => window.print()}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-2"
-              >
-                <Printer className="w-4 h-4" />
-                Print / Save Scorecard
-              </Button>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Button
+                  onClick={() => downloadExamCertificatePdf(examResult)}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-2 flex-1 sm:flex-initial"
+                >
+                  <Download className="w-4 h-4" />
+                  Download PDF Transcript
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => window.print()}
+                  className="border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-semibold flex items-center gap-2"
+                >
+                  <Printer className="w-4 h-4" />
+                  Print
+                </Button>
+              </div>
             </div>
           </div>
         </div>

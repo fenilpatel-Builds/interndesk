@@ -1,5 +1,42 @@
 [
   {
+    "session_id": "ses_1795596880039_f8g68",
+    "assessment_id": "asm-uiux-04",
+    "assessment_title": "UI/UX Design Systems & Human-Centered Design Exam",
+    "student_email": "hellyleuva.29@gmail.com",
+    "student_name": "Helly Leuva",
+    "started_at": "2026-11-25T08:54:40.039Z",
+    "expires_at": "2026-11-25T09:14:40.038Z",
+    "duration_minutes": 20,
+    "saved_answers": {},
+    "marked_for_review": [],
+    "visited_questions": [
+      "q_ui_1"
+    ],
+    "tab_switch_count": 0,
+    "fullscreen_exit_count": 0,
+    "activity_logs": [
+      {
+        "timestamp": "2026-11-25T08:54:40.039Z",
+        "type": "START",
+        "details": "Secure examination started. Server timer scheduled until 2026-11-25T09:14:40.038Z"
+      },
+      {
+        "timestamp": "2026-11-25T08:54:40.042Z",
+        "type": "RECONNECT",
+        "details": "Proctor Alert: \"Proctor Notice: Tab switching detected. Maintain focus on the examination.\""
+      },
+      {
+        "timestamp": "2026-11-25T08:54:51.966Z",
+        "type": "RECONNECT",
+        "details": "Proctor Alert: \"Proctor Notice: Tab switching detected. Maintain focus on the examination.\""
+      }
+    ],
+    "status": "ACTIVE",
+    "updated_at": "2026-11-25T08:54:51.966Z",
+    "proctor_message": "Proctor Notice: Tab switching detected. Maintain focus on the examination."
+  },
+  {
     "session_id": "ses_live_helly_uiux_01",
     "assessment_id": "asm-uiux-04",
     "assessment_title": "UI/UX Design Systems & Human-Centered Design Exam",
@@ -22,7 +59,7 @@
         "details": "Secure examination session started with Zero-Trust proctoring active."
       }
     ],
-    "status": "ACTIVE",
+    "status": "EXPIRED",
     "updated_at": "2026-11-23T10:32:00.000Z"
   }
 ]

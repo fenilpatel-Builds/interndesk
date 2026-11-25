@@ -100,6 +100,22 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    if (action === "SEND_MESSAGE") {
+      const message = String(body.message || "").trim();
+      if (!message) {
+        return NextResponse.json({ error: "Proctor message cannot be empty." }, { status: 400 });
+      }
+      const updated = assessmentStore.sendProctorMessage(sessionId, message);
+      if (!updated) {
+        return NextResponse.json({ error: "Session not found." }, { status: 404 });
+      }
+      return NextResponse.json({
+        success: true,
+        message: "Proctor broadcast sent to candidate.",
+        session: updated,
+      });
+    }
+
     return NextResponse.json({ error: "Unknown action specified." }, { status: 400 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Monitoring action failed";

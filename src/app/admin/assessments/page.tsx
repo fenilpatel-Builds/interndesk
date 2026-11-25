@@ -42,6 +42,9 @@ import {
   UploadCloud,
   FileSpreadsheet,
   Bot,
+  Lock,
+  Shuffle,
+  Send,
 } from "lucide-react";
 import {
   Assessment,
@@ -54,6 +57,8 @@ import {
 import { BankQuestion, SEED_BANK_QUESTIONS } from "@/lib/assessments/question-bank-store";
 import { ExamFileDropzone } from "@/components/assessments/exam-file-dropzone";
 import { AIQuestionGeneratorModal } from "@/components/assessments/ai-question-generator-modal";
+import { downloadExamCertificatePdf } from "@/lib/assessments/certificate-pdf-generator";
+import { exportGradebookToExcel, exportGradebookToCsv } from "@/lib/assessments/gradebook-export";
 
 export default function AdminAssessmentsPage() {
   const [activeTab, setActiveTab] = useState<"EXAMS" | "QUESTION_BANK" | "MONITORING" | "SUBMISSIONS" | "EVALUATION">("EXAMS");
@@ -120,12 +125,20 @@ export default function AdminAssessmentsPage() {
   const [formAttemptLimit, setFormAttemptLimit] = useState(2);
   const [formNegativeMarkRate, setFormNegativeMarkRate] = useState<number>(0);
   const [formStatus, setFormStatus] = useState<"PUBLISHED" | "DRAFT">("PUBLISHED");
+  const [formAccessCode, setFormAccessCode] = useState("");
+  const [formShuffleQuestions, setFormShuffleQuestions] = useState(false);
+  const [formShuffleOptions, setFormShuffleOptions] = useState(false);
   const [formRequireFullscreen, setFormRequireFullscreen] = useState(true);
   const [formBlockCopyPaste, setFormBlockCopyPaste] = useState(true);
   const [formMaxViolations, setFormMaxViolations] = useState(3);
   const [formQuestions, setFormQuestions] = useState<AssessmentQuestion[]>([]);
   const [isSavingExam, setIsSavingExam] = useState(false);
   const [examFormError, setExamFormError] = useState<string | null>(null);
+
+  // Proctor Broadcast Message Modal
+  const [messageSessionTarget, setMessageSessionTarget] = useState<ActiveExamSession | null>(null);
+  const [proctorMessageInput, setProctorMessageInput] = useState("");
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
 
   // Question Bank Picker Modal in Exam Builder
   const [isBankPickerOpen, setIsBankPickerOpen] = useState(false);
@@ -206,6 +219,9 @@ const handleOpenCreateExam = () => {
   setFormAttemptLimit(2);
   setFormNegativeMarkRate(0);
   setFormStatus("PUBLISHED");
+  setFormAccessCode("");
+  setFormShuffleQuestions(false);
+  setFormShuffleOptions(false);
   setFormRequireFullscreen(true);
   setFormBlockCopyPaste(true);
   setFormMaxViolations(3);
@@ -225,6 +241,9 @@ const handleOpenEditExam = (asm: Assessment) => {
   setFormAttemptLimit(asm.attempt_limit);
   setFormNegativeMarkRate(asm.negative_mark_rate || asm.negative_marking_rate || 0);
   setFormStatus(asm.status === "CLOSED" ? "DRAFT" : asm.status);
+  setFormAccessCode(asm.access_code || "");
+  setFormShuffleQuestions(Boolean(asm.shuffle_questions));
+  setFormShuffleOptions(Boolean(asm.shuffle_options));
   setFormRequireFullscreen(asm.security_policy?.require_fullscreen ?? true);
   setFormBlockCopyPaste(asm.security_policy?.disable_copy_paste ?? true);
   setFormMaxViolations(asm.security_policy?.max_violations_allowed ?? 3);
@@ -255,6 +274,9 @@ const handleSaveExam = async () => {
     passing_threshold: formPassingThreshold,
     attempt_limit: formAttemptLimit,
     negative_marking_rate: formNegativeMarkRate,
+    access_code: formAccessCode.trim() || undefined,
+    shuffle_questions: formShuffleQuestions,
+    shuffle_options: formShuffleOptions,
     security_policy: {
       require_fullscreen: formRequireFullscreen,
       disable_copy_paste: formBlockCopyPaste,
@@ -320,6 +342,9 @@ const handleDuplicateExam = async (asm: Assessment) => {
       passing_threshold: asm.passing_threshold,
       attempt_limit: asm.attempt_limit,
       negative_marking_rate: asm.negative_mark_rate || asm.negative_marking_rate || 0,
+      access_code: asm.access_code,
+      shuffle_questions: asm.shuffle_questions,
+      shuffle_options: asm.shuffle_options,
       security_policy: asm.security_policy,
       status: "DRAFT" as const,
       questions: asm.questions || [],
@@ -340,6 +365,65 @@ const handleDuplicateExam = async (asm: Assessment) => {
     }
   } catch {
     alert("Network error duplicating assessment.");
+  }
+};
+
+// Send Proctor Message / Warning to Student Session
+const handleSendProctorMessage = async () => {
+  if (!messageSessionTarget || !proctorMessageInput.trim()) return;
+  setIsSendingMessage(true);
+  try {
+    const res = await fetch("/api/admin/assessments/monitoring", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "SEND_MESSAGE",
+        sessionId: messageSessionTarget.session_id,
+        message: proctorMessageInput.trim(),
+      }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert(`Proctor notice successfully transmitted to ${messageSessionTarget.student_name}.`);
+      setMessageSessionTarget(null);
+      setProctorMessageInput("");
+      loadData();
+    } else {
+      alert(data.error || "Failed to send message.");
+    }
+  } catch {
+    alert("Network error transmitting proctor message.");
+  } finally {
+    setIsSendingMessage(false);
+  }
+};
+
+// 1-Click Official PDF Certificate / Transcript Download
+const handleDownloadCertificate = async (att: AssessmentAttempt) => {
+  try {
+    await downloadExamCertificatePdf(att);
+  } catch (err) {
+    console.error("PDF download error:", err);
+    alert("Failed to generate PDF certificate.");
+  }
+};
+
+// 1-Click Gradebook Export (Excel & CSV)
+const handleExportGradebook = (format: "excel" | "csv") => {
+  const targetAttempts = filteredAttempts.length > 0 ? filteredAttempts : attempts;
+  if (targetAttempts.length === 0) {
+    alert("No candidate submission records available to export.");
+    return;
+  }
+  const examTitle =
+    subFilterExam !== "ALL"
+      ? assessments.find((a) => a.id === subFilterExam)?.title || "Selected_Exam"
+      : "All_Exams";
+
+  if (format === "excel") {
+    exportGradebookToExcel(targetAttempts, examTitle);
+  } else {
+    exportGradebookToCsv(targetAttempts, examTitle);
   }
 };
 
@@ -1093,6 +1177,10 @@ return (
               </div>
 
               <div className="flex items-center gap-2">
+                <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold shadow-2xs">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Live Auto-Sync (4s)</span>
+                </div>
                 <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs">
                   <button
                     onClick={() => setMonitorShowAll(false)}
@@ -1225,21 +1313,36 @@ return (
                         </div>
 
                         {/* Proctor Quick Controls */}
-                        <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                        <div className="grid grid-cols-4 gap-1.5 pt-2 border-t border-slate-100">
                           <Button
                             variant="outline"
                             size="sm"
                             disabled={!isActive}
                             onClick={() => handleExtendSessionTime(session.session_id, 5)}
-                            className="flex-1 text-xs font-bold text-indigo-600 hover:bg-indigo-50"
+                            className="text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-2"
+                            title="Grant candidate +5 min extension"
                           >
                             +5 Min
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={!isActive}
+                            onClick={() => {
+                              setMessageSessionTarget(session);
+                              setProctorMessageInput("Proctor Warning: Tab switching detected. Maintain focus on the examination.");
+                            }}
+                            className="text-xs font-semibold text-amber-600 hover:bg-amber-50 px-2"
+                            title="Transmit live alert message to candidate"
+                          >
+                            <Send className="w-3 h-3 mr-1" />
+                            Alert
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => setSelectedSessionForAudit(session)}
-                            className="text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                            className="text-xs font-semibold text-slate-600 hover:bg-slate-100 px-2"
                           >
                             Audit
                           </Button>
@@ -1248,9 +1351,9 @@ return (
                             size="sm"
                             disabled={!isActive}
                             onClick={() => handleForceSubmitSession(session.session_id)}
-                            className="text-xs font-bold px-2.5"
+                            className="text-xs font-bold px-2"
                           >
-                            Force Submit
+                            Submit
                           </Button>
                         </div>
                       </CardContent>
@@ -1278,8 +1381,28 @@ return (
                 </p>
               </div>
 
-              <div className="text-xs font-bold text-slate-500">
-                Total Submissions: <span className="text-indigo-600 font-extrabold">{filteredAttempts.length}</span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleExportGradebook("excel")}
+                  className="text-xs font-bold text-emerald-700 border-emerald-300 hover:bg-emerald-50 flex items-center gap-1.5 shadow-xs"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                  Export Excel (.xlsx)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleExportGradebook("csv")}
+                  className="text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 shadow-xs"
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-600" />
+                  Export CSV
+                </Button>
+                <div className="text-xs font-bold text-slate-500 ml-2 hidden sm:block">
+                  Total: <span className="text-indigo-600 font-extrabold">{filteredAttempts.length}</span>
+                </div>
               </div>
             </div>
 
@@ -1457,6 +1580,16 @@ return (
                             className="text-indigo-600 hover:text-indigo-700 text-xs font-semibold"
                           >
                             Scorecard
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDownloadCertificate(att)}
+                            className="text-emerald-700 border-emerald-200 hover:bg-emerald-50 text-xs font-semibold"
+                            title="Download Official PDF Transcript"
+                          >
+                            <FileText className="w-3.5 h-3.5 mr-1" />
+                            PDF
                           </Button>
                           <Button
                             variant="ghost"
@@ -1808,6 +1941,43 @@ return (
               <option value="PUBLISHED">PUBLISHED (Active for students)</option>
               <option value="DRAFT">DRAFT (Hidden from students)</option>
             </select>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+              <Lock className="w-3.5 h-3.5 text-indigo-600" />
+              Access Passcode (Optional)
+            </label>
+            <input
+              type="text"
+              value={formAccessCode}
+              onChange={(e) => setFormAccessCode(e.target.value)}
+              placeholder="e.g. EXAM2026 (Leave blank for open)"
+              className="w-full mt-1 bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-xs outline-none"
+            />
+          </div>
+
+          <div className="sm:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
+              <input
+                type="checkbox"
+                checked={formShuffleQuestions}
+                onChange={(e) => setFormShuffleQuestions(e.target.checked)}
+                className="w-4 h-4 text-indigo-600 rounded border-slate-300"
+              />
+              <Shuffle className="w-4 h-4 text-indigo-600" />
+              <span>Shuffle Question Order for Candidates</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
+              <input
+                type="checkbox"
+                checked={formShuffleOptions}
+                onChange={(e) => setFormShuffleOptions(e.target.checked)}
+                className="w-4 h-4 text-indigo-600 rounded border-slate-300"
+              />
+              <Shuffle className="w-4 h-4 text-indigo-600" />
+              <span>Shuffle Multiple-Choice Options</span>
+            </label>
           </div>
         </div>
 
@@ -2511,9 +2681,103 @@ return (
           ))}
         </div>
 
-        <div className="flex justify-end pt-3 border-t border-slate-200">
+        <div className="flex justify-between items-center pt-3 border-t border-slate-200">
+          <Button
+            variant="outline"
+            onClick={() => handleDownloadCertificate(selectedAttemptForReview)}
+            className="text-xs font-bold text-indigo-700 border-indigo-200 hover:bg-indigo-50 flex items-center gap-1.5"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Download Official PDF Transcript
+          </Button>
           <Button onClick={() => setSelectedAttemptForReview(null)} className="text-xs font-bold">
             Close
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+{/* ========================================================= */}
+{/* MODAL: SEND PROCTOR WARNING / MESSAGE TO CANDIDATE        */}
+{/* ========================================================= */}
+{
+  messageSessionTarget && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+      <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 my-auto">
+        <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+          <div className="flex items-center gap-2">
+            <Send className="w-4 h-4 text-amber-600" />
+            <h3 className="text-base font-bold text-slate-900">
+              Transmit Proctor Alert
+            </h3>
+          </div>
+          <button onClick={() => setMessageSessionTarget(null)} className="text-slate-400 hover:text-slate-600">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="space-y-1">
+          <div className="text-xs text-slate-500">
+            Recipient: <strong className="text-slate-900">{messageSessionTarget.student_name}</strong> ({messageSessionTarget.student_email})
+          </div>
+          <div className="text-xs text-slate-500">
+            Exam: <strong className="text-slate-900">{messageSessionTarget.assessment_title}</strong>
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold text-slate-700">Warning / Alert Notice</label>
+          <textarea
+            rows={4}
+            value={proctorMessageInput}
+            onChange={(e) => setProctorMessageInput(e.target.value)}
+            placeholder="Type official warning or guidance to display on candidate's examination screen..."
+            className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-xs outline-none focus:border-indigo-600"
+          />
+          <div className="flex flex-wrap gap-1 text-[11px]">
+            <button
+              type="button"
+              onClick={() => setProctorMessageInput("Proctor Notice: Tab switching detected. Maintain focus on the examination.")}
+              className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px]"
+            >
+              Tab Switch Warning
+            </button>
+            <button
+              type="button"
+              onClick={() => setProctorMessageInput("Proctor Notice: Please re-enter full screen mode immediately.")}
+              className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px]"
+            >
+              Fullscreen Warning
+            </button>
+            <button
+              type="button"
+              onClick={() => setProctorMessageInput("Proctor Notice: You have 5 minutes remaining to finalize and submit.")}
+              className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px]"
+            >
+              Time Warning
+            </button>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setMessageSessionTarget(null)}
+            className="text-xs"
+          >
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            disabled={isSendingMessage || !proctorMessageInput.trim()}
+            onClick={handleSendProctorMessage}
+            className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center gap-1.5"
+          >
+            <Send className="w-3.5 h-3.5" />
+            {isSendingMessage ? "Transmitting..." : "Send Alert"}
           </Button>
         </div>
       </div>

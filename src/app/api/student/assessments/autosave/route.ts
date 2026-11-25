@@ -33,6 +33,8 @@ export async function POST(req: NextRequest) {
       savedAt: updated.updated_at,
       remainingSeconds,
       isExpired: remainingSeconds <= 0,
+      isForceSubmitted: updated.status === "SUBMITTED",
+      proctorMessage: updated.proctor_message || null,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to autosave progress";

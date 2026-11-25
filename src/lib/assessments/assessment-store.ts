@@ -92,6 +92,10 @@ export interface Assessment {
   passing_threshold: number; // percentage, e.g. 70
   attempt_limit: number;
   status: "PUBLISHED" | "DRAFT" | "CLOSED";
+  access_code?: string;
+  has_access_code?: boolean;
+  shuffle_questions?: boolean;
+  shuffle_options?: boolean;
   negative_marking_enabled?: boolean;
   negative_mark_rate?: number; // e.g. 0.25
   negative_marking_rate?: number;
@@ -124,6 +128,7 @@ export interface ActiveExamSession {
     type: "START" | "TAB_SWITCH" | "BLUR" | "FULLSCREEN_EXIT" | "COPY_PASTE" | "AUTOSAVE" | "DISCONNECT" | "RECONNECT";
     details?: string;
   }>;
+  proctor_message?: string;
   status: "ACTIVE" | "SUBMITTED" | "EXPIRED";
   updated_at: string;
 }
@@ -1155,6 +1160,8 @@ export class AssessmentStore {
       .filter((a) => a.status === "PUBLISHED")
       .map((a) => ({
         ...a,
+        has_access_code: Boolean(a.access_code && a.access_code.trim()),
+        access_code: undefined, // Redacted for anti-cheat
         questions: a.questions.map((q) => ({
           ...q,
           correct_answer: "", // Redacted for anti-cheat
@@ -1176,6 +1183,8 @@ export class AssessmentStore {
 
     return {
       ...found,
+      has_access_code: Boolean(found.access_code && found.access_code.trim()),
+      access_code: undefined, // Redacted for anti-cheat
       questions: found.questions.map((q) => ({
         ...q,
         correct_answer: "",
@@ -1195,6 +1204,9 @@ export class AssessmentStore {
     passing_threshold?: number;
     attempt_limit?: number;
     status?: "PUBLISHED" | "DRAFT" | "CLOSED";
+    access_code?: string;
+    shuffle_questions?: boolean;
+    shuffle_options?: boolean;
     negative_marking_enabled?: boolean;
     negative_mark_rate?: number;
     negative_marking_rate?: number;
@@ -1230,6 +1242,9 @@ export class AssessmentStore {
       passing_threshold: Number(data.passing_threshold) || 70,
       attempt_limit: Number(data.attempt_limit) || 2,
       status: data.status || "PUBLISHED",
+      access_code: data.access_code?.trim() || undefined,
+      shuffle_questions: Boolean(data.shuffle_questions),
+      shuffle_options: Boolean(data.shuffle_options),
       negative_marking_enabled: Boolean(data.negative_marking_enabled || negativeRate > 0),
       negative_mark_rate: negativeRate,
       negative_marking_rate: negativeRate,
@@ -1549,6 +1564,23 @@ export class AssessmentStore {
       console.error("Error auto-grading force-submitted session:", e);
     }
 
+    return s;
+  }
+
+  public sendProctorMessage(sessionId: string, message: string): ActiveExamSession | null {
+    this.sessions = loadSessionsFromDisk();
+    const idx = this.sessions.findIndex((s) => s.session_id === sessionId);
+    if (idx === -1) return null;
+    const s = this.sessions[idx];
+    s.proctor_message = message;
+    s.activity_logs.push({
+      timestamp: new Date().toISOString(),
+      type: "RECONNECT",
+      details: `Proctor Alert: "${message}"`,
+    });
+    s.updated_at = new Date().toISOString();
+    this.sessions[idx] = s;
+    saveSessionsToDisk(this.sessions);
     return s;
   }
 

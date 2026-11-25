@@ -1,5 +1,89 @@
 [
   {
+    "id": "asm-1795596891969",
+    "organization_id": "org-akash-01",
+    "title": "Secure Certification Exam",
+    "subject": "Cybersecurity",
+    "topic": "Practicum",
+    "category": "Technical Practicum",
+    "description": "",
+    "duration_minutes": 25,
+    "total_marks": 10,
+    "passing_threshold": 70,
+    "attempt_limit": 2,
+    "status": "PUBLISHED",
+    "access_code": "SECRET2026",
+    "shuffle_questions": true,
+    "shuffle_options": true,
+    "negative_marking_enabled": false,
+    "negative_mark_rate": 0,
+    "negative_marking_rate": 0,
+    "security_policy": {
+      "max_violations_allowed": 3,
+      "auto_submit_on_violation_limit": true,
+      "require_fullscreen": true,
+      "disable_copy_paste": true
+    },
+    "questions": [
+      {
+        "id": "q_sec_test",
+        "question": "Test Question?",
+        "type": "SINGLE_CHOICE",
+        "options": [
+          "A",
+          "B"
+        ],
+        "correct_answer": "A",
+        "explanation": "Explanation",
+        "marks": 10
+      }
+    ],
+    "created_at": "2026-11-25T08:54:51.969Z",
+    "updated_at": "2026-11-25T08:54:51.969Z"
+  },
+  {
+    "id": "asm-1795596880045",
+    "organization_id": "org-akash-01",
+    "title": "Secure Certification Exam",
+    "subject": "Cybersecurity",
+    "topic": "Practicum",
+    "category": "Technical Practicum",
+    "description": "",
+    "duration_minutes": 25,
+    "total_marks": 10,
+    "passing_threshold": 70,
+    "attempt_limit": 2,
+    "status": "PUBLISHED",
+    "access_code": "SECRET2026",
+    "shuffle_questions": true,
+    "shuffle_options": true,
+    "negative_marking_enabled": false,
+    "negative_mark_rate": 0,
+    "negative_marking_rate": 0,
+    "security_policy": {
+      "max_violations_allowed": 3,
+      "auto_submit_on_violation_limit": true,
+      "require_fullscreen": true,
+      "disable_copy_paste": true
+    },
+    "questions": [
+      {
+        "id": "q_sec_test",
+        "question": "Test Question?",
+        "type": "SINGLE_CHOICE",
+        "options": [
+          "A",
+          "B"
+        ],
+        "correct_answer": "A",
+        "explanation": "Explanation",
+        "marks": 10
+      }
+    ],
+    "created_at": "2026-11-25T08:54:40.045Z",
+    "updated_at": "2026-11-25T08:54:40.045Z"
+  },
+  {
     "id": "asm-aiml-01",
     "organization_id": "org-akash-01",
     "title": "AI & Machine Learning Engineering Practicum Exam",
