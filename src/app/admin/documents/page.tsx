@@ -31,6 +31,7 @@ import {
   isFemaleCandidate,
   deriveTrackTechnology,
 } from "@/lib/documents/akash-pdf-generator";
+import { generateLetterContent, LetterTemplateKey } from "@/lib/documents/letter-templates";
 
 export default function AdminDocumentsPage() {
   const [documents, setDocuments] = useState<any[]>(() => {
@@ -231,6 +232,66 @@ export default function AdminDocumentsPage() {
     }
   };
 
+  const resolveDocumentContentAndTemplate = (
+    doc: any,
+    cleanTech: string,
+    isFemale: boolean
+  ): { fullContent: string; templateType: LetterTemplateKey } => {
+    const raw = doc.rawDoc || doc;
+    const rawDesc = raw?.description_content || doc.description_content;
+    const isStub =
+      !rawDesc ||
+      typeof rawDesc !== "string" ||
+      rawDesc.trim().length < 150 ||
+      rawDesc.trim().endsWith("...") ||
+      !rawDesc.includes("\n") ||
+      rawDesc.includes("completed an internship...");
+
+    let tmplKey: LetterTemplateKey = "INTERNSHIP_OFFER";
+    const titleUpper = (doc.title || raw?.title || "").toUpperCase();
+    const rawTmpl = (raw?.template_type || doc.template_type || doc.document_type || "").toUpperCase();
+
+    if (titleUpper.includes("EXPERIENCE") || rawTmpl.includes("EXPERIENCE")) {
+      tmplKey = "EXPERIENCE_LETTER";
+    } else if (titleUpper.includes("COMPLETION") || rawTmpl.includes("COMPLETION")) {
+      tmplKey = "INTERNSHIP_COMPLETION";
+    } else if (titleUpper.includes("JOINING") || rawTmpl.includes("JOINING")) {
+      tmplKey = "JOINING_CONFIRMATION";
+    } else if (titleUpper.includes("CONFIRMATION") || rawTmpl.includes("CONFIRMATION")) {
+      tmplKey = "INTERNSHIP_CONFIRMATION";
+    } else if (titleUpper.includes("NOC") || titleUpper.includes("OBJECTION") || rawTmpl.includes("NOC")) {
+      tmplKey = "NOC_LETTER";
+    } else if (titleUpper.includes("RELIEVING") || rawTmpl.includes("RELIEVING")) {
+      tmplKey = "RELIEVING_LETTER";
+    } else if (titleUpper.includes("RECOMMENDATION") || titleUpper.includes("LOR") || rawTmpl.includes("RECOMMENDATION")) {
+      tmplKey = "RECOMMENDATION_LETTER";
+    }
+
+    if (isStub) {
+      const rawName = (doc.student || raw?.recipient_name || "").replace(/^(Mr\.|Ms\.)\s*/i, "").trim();
+      const pos = doc.role || raw?.recipient_role || `${cleanTech} Intern`;
+      const startDate = raw?.template_data?.commencement_date || "3rd July 2026";
+      const endDate = raw?.template_data?.continue_until_date || "30th April 2027";
+      const generated = generateLetterContent({
+        templateKey: tmplKey,
+        salutation: isFemale ? "Ms." : "Mr.",
+        studentName: rawName,
+        internshipPosition: pos,
+        technology: cleanTech,
+        commencementDate: startDate,
+        continueUntilDate: endDate,
+        letterDate: doc.appliedAt || raw?.issued_date || "04-11-2026",
+        universityId: raw?.template_data?.university || "STANDARD",
+        purpose: "Academic Project & Practicum Training",
+        signatoryName: "Akash Padhiyar",
+        signatoryRole: "CEO",
+      });
+      return { fullContent: generated.fullText, templateType: tmplKey };
+    }
+
+    return { fullContent: rawDesc, templateType: tmplKey };
+  };
+
   const handlePreviewDoc = (doc: (typeof documents)[0]) => {
     const docType: DocumentType =
       doc.type === "OFFER_LETTER" ? "OFFER_LETTER" : "COMPLETION_CERTIFICATE";
@@ -245,6 +306,8 @@ export default function AdminDocumentsPage() {
           ? rawDocData?.template_data?.program_or_track
           : "")
     );
+
+    const { fullContent, templateType } = resolveDocumentContentAndTemplate(doc, cleanTech, isFemale);
 
     const studioDoc: IssuedDocument = {
       id: doc.id,
@@ -282,8 +345,8 @@ export default function AdminDocumentsPage() {
       },
       created_at: `${doc.appliedAt}T09:00:00Z`,
     };
-    (studioDoc as any).description_content = rawDocData?.description_content;
-    (studioDoc as any).template_type = rawDocData?.template_type;
+    (studioDoc as any).description_content = fullContent;
+    (studioDoc as any).template_type = templateType;
     (studioDoc as any).attached_file = rawDocData?.attached_file || rawDocData?.template_data?.attached_file;
 
     setSelectedStudioDoc(studioDoc);
@@ -300,6 +363,8 @@ export default function AdminDocumentsPage() {
           ? raw?.template_data?.program_or_track
           : "")
     );
+    const { fullContent, templateType } = resolveDocumentContentAndTemplate(doc, cleanTech, isFemale);
+
     await downloadAkashOfferLetterPdf({
       salutation: isFemale ? "Ms." : "Mr.",
       studentName: doc.student || raw.recipient_name,
@@ -309,9 +374,9 @@ export default function AdminDocumentsPage() {
       continueUntilDate: raw?.template_data?.continue_until_date || "30th April 2027",
       letterDate: doc.appliedAt || raw.issued_date,
       title: doc.title || raw.title,
-      customDescription: raw?.description_content,
-      isCustomEdited: !!raw?.description_content,
-      templateType: raw?.template_type,
+      customDescription: fullContent,
+      isCustomEdited: true,
+      templateType: templateType,
       attachedFile: raw?.attached_file || raw?.template_data?.attached_file,
     });
   };
@@ -843,6 +908,7 @@ export default function AdminDocumentsPage() {
           onClose={() => setSelectedStudioDoc(null)}
           document={selectedStudioDoc}
           organizationName="Akash Technolabs"
+          isAdmin={true}
         />
       )}
     </div>

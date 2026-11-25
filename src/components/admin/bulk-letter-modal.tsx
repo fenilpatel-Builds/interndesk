@@ -247,21 +247,43 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
   const [generatedZipFilename, setGeneratedZipFilename] = useState<string>("");
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const replaceFileInputRef = useRef<HTMLInputElement>(null);
+  // Dedicated separated refs to prevent any conflicting input clicks
+  const spreadsheetInputRef = useRef<HTMLInputElement>(null);
+  const spreadsheetReplaceRef = useRef<HTMLInputElement>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
+  const prevIsOpenRef = useRef(false);
 
   // Active candidate object
   const activeCandidate: CandidateLetterRow | undefined = candidates[activeCandidateIndex];
 
-  // Reset stage to UPLOAD whenever modal opens fresh
+  // Completely reset bulk modal state to fresh upload/drag & drop screen
+  const handleResetToUpload = () => {
+    setModalStage("UPLOAD");
+    setCandidates([]);
+    setSelectedFileName("");
+    setActiveCandidateIndex(0);
+    setStatusMessage(null);
+    setFileError(null);
+    setIsParsing(false);
+    setIsDragging(false);
+    setIsCustomEdited(false);
+    setAttachedFile(null);
+    setPastedRawText("");
+    if (spreadsheetInputRef.current) spreadsheetInputRef.current.value = "";
+    if (spreadsheetReplaceRef.current) spreadsheetReplaceRef.current.value = "";
+  };
+
+  const handleClose = () => {
+    handleResetToUpload();
+    onClose();
+  };
+
+  // Reset stage to fresh UPLOAD screen whenever modal opens fresh
   useEffect(() => {
-    if (isOpen) {
-      if (candidates.length === 0) {
-        setModalStage("UPLOAD");
-      }
-      setIsDragging(false);
-      setFileError(null);
+    if (isOpen && !prevIsOpenRef.current) {
+      handleResetToUpload();
     }
+    prevIsOpenRef.current = isOpen;
   }, [isOpen]);
 
   // Sync active candidate fields into form state when active candidate changes
@@ -397,8 +419,8 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
       });
     } finally {
       setIsParsing(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      if (replaceFileInputRef.current) replaceFileInputRef.current.value = "";
+      if (spreadsheetInputRef.current) spreadsheetInputRef.current.value = "";
+      if (spreadsheetReplaceRef.current) spreadsheetReplaceRef.current.value = "";
     }
   };
 
@@ -1096,7 +1118,7 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
         {/* Upload / Replace Spreadsheet Actions with Working Drag-and-Drop */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
           <input
-            ref={replaceFileInputRef}
+            ref={spreadsheetReplaceRef}
             type="file"
             onChange={(e) => {
               const file = e.target.files?.[0];
@@ -1107,7 +1129,7 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
           />
           <button
             type="button"
-            onClick={() => setModalStage("UPLOAD")}
+            onClick={() => spreadsheetReplaceRef.current?.click()}
             disabled={isParsing}
             className="p-3 rounded-xl border border-dashed border-blue-400 bg-blue-50/50 hover:bg-blue-100/60 text-slate-800 transition-all cursor-pointer flex items-center justify-center gap-2 text-xs font-bold"
           >
@@ -1512,7 +1534,7 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
           {contentAssistantTab === "ATTACH" && (
             <div className="space-y-3 pt-1">
               <input
-                ref={fileInputRef}
+                ref={attachmentInputRef}
                 type="file"
                 onChange={handleFileUpload}
                 accept=".txt,.md,.doc,.docx,.pdf,image/*"
@@ -1520,7 +1542,7 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
               />
 
               <div
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => attachmentInputRef.current?.click()}
                 className="border-2 border-dashed border-blue-300 hover:border-blue-500 bg-white hover:bg-blue-50/50 rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2"
               >
                 <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shadow-2xs">
@@ -1746,7 +1768,7 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
             type="button"
             size="sm"
             variant="outline"
-            onClick={() => setModalStage("UPLOAD")}
+            onClick={handleResetToUpload}
             className="text-xs font-bold rounded-xl cursor-pointer"
           >
             <UploadCloud className="w-3.5 h-3.5 mr-1 text-blue-600" />
@@ -2041,7 +2063,7 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
+        onClick={() => spreadsheetInputRef.current?.click()}
         className={`border-3 border-dashed rounded-3xl p-8 sm:p-12 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-4 ${
           isDragging
             ? "border-blue-600 bg-blue-100/70 scale-[1.01] shadow-xl ring-4 ring-blue-400/30"
@@ -2049,11 +2071,14 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
         }`}
       >
         <input
-          ref={fileInputRef}
+          ref={spreadsheetInputRef}
           type="file"
           onChange={(e) => {
             const file = e.target.files?.[0];
-            if (file) processSpreadsheetFile(file);
+            if (file) {
+              processSpreadsheetFile(file);
+              e.target.value = "";
+            }
           }}
           accept=".xlsx,.xls,.csv"
           className="hidden"
@@ -2083,7 +2108,11 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
         <Button
           type="button"
           disabled={isParsing}
-          className="bg-[#0F4C81] hover:bg-[#0C3D68] text-white font-bold text-xs rounded-xl px-5 py-2.5 shadow-md pointer-events-none mt-1"
+          onClick={(e) => {
+            e.stopPropagation();
+            spreadsheetInputRef.current?.click();
+          }}
+          className="bg-[#0F4C81] hover:bg-[#0C3D68] text-white font-bold text-xs rounded-xl px-5 py-2.5 shadow-md mt-1 cursor-pointer"
         >
           <FileUp className="w-4 h-4 mr-1.5" />
           Select File from Device
@@ -2255,7 +2284,7 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => setModalStage("UPLOAD")}
+                  onClick={handleResetToUpload}
                   className="text-xs font-bold rounded-xl cursor-pointer bg-white text-slate-700 hover:bg-slate-100 flex items-center gap-1.5"
                   title="Upload or drop another candidate spreadsheet"
                 >
@@ -2310,7 +2339,7 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
 
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer ml-1"
               title="Close (Esc)"
             >

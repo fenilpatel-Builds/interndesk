@@ -36,7 +36,7 @@ import {
   isFemaleCandidate,
   deriveTrackTechnology,
 } from "@/lib/documents/akash-pdf-generator";
-import { tokenizeMarkdown } from "@/lib/documents/letter-templates";
+import { tokenizeMarkdown, generateLetterContent, LetterTemplateKey } from "@/lib/documents/letter-templates";
 import {
   AKASH_HEADER_BASE64,
   AKASH_FOOTER_BASE64,
@@ -50,6 +50,7 @@ interface DocumentStudioModalProps {
   onClose: () => void;
   document: IssuedDocument | null;
   organizationName?: string;
+  isAdmin?: boolean;
 }
 
 // Deterministic cryptographic SHA-256 generator (zero external dependencies)
@@ -267,6 +268,7 @@ export function DocumentStudioModal({
   onClose,
   document: doc,
   organizationName = "Akash Technolabs",
+  isAdmin = false,
 }: DocumentStudioModalProps) {
   const [copied, setCopied] = useState(false);
   const [showEmbedModal, setShowEmbedModal] = useState(false);
@@ -366,22 +368,75 @@ export function DocumentStudioModal({
     try {
       if (isOfferLetter) {
         const isFemale = isFemaleCandidate(doc.recipient_name, (doc.template_data as any)?.salutation);
+        const sal = (doc.template_data as any)?.salutation || (isFemale ? "Ms." : "Mr.");
+        const cleanName = (doc.recipient_name || "").replace(/^(Mr\.|Ms\.)\s*/i, "").trim();
         const cleanTech = deriveTrackTechnology(
           doc.recipient_role,
           (doc.template_data as any)?.technology || doc.template_data?.program_or_track
         );
+        const startDate = (doc.template_data as any)?.commencement_date || "3rd July 2026";
+        const endDate = (doc.template_data as any)?.continue_until_date || "30th April 2027";
+        const pos = doc.recipient_role || `${cleanTech} Intern`;
+
+        let descContent = (doc as any).description_content;
+        const isStub =
+          !descContent ||
+          typeof descContent !== "string" ||
+          descContent.trim().length < 150 ||
+          descContent.trim().endsWith("...") ||
+          !descContent.includes("\n") ||
+          descContent.includes("completed an internship...");
+
+        let tmplKey: LetterTemplateKey = "INTERNSHIP_OFFER";
+        const titleUpper = (doc.title || "").toUpperCase();
+        const rawTmpl = ((doc as any).template_type || doc.document_type || "").toUpperCase();
+
+        if (titleUpper.includes("EXPERIENCE") || rawTmpl.includes("EXPERIENCE")) {
+          tmplKey = "EXPERIENCE_LETTER";
+        } else if (titleUpper.includes("COMPLETION") || rawTmpl.includes("COMPLETION")) {
+          tmplKey = "INTERNSHIP_COMPLETION";
+        } else if (titleUpper.includes("JOINING") || rawTmpl.includes("JOINING")) {
+          tmplKey = "JOINING_CONFIRMATION";
+        } else if (titleUpper.includes("CONFIRMATION") || rawTmpl.includes("CONFIRMATION")) {
+          tmplKey = "INTERNSHIP_CONFIRMATION";
+        } else if (titleUpper.includes("NOC") || titleUpper.includes("OBJECTION") || rawTmpl.includes("NOC")) {
+          tmplKey = "NOC_LETTER";
+        } else if (titleUpper.includes("RELIEVING") || rawTmpl.includes("RELIEVING")) {
+          tmplKey = "RELIEVING_LETTER";
+        } else if (titleUpper.includes("RECOMMENDATION") || titleUpper.includes("LOR") || rawTmpl.includes("RECOMMENDATION")) {
+          tmplKey = "RECOMMENDATION_LETTER";
+        }
+
+        if (isStub) {
+          const generated = generateLetterContent({
+            templateKey: tmplKey,
+            salutation: sal,
+            studentName: cleanName,
+            internshipPosition: pos,
+            technology: cleanTech,
+            commencementDate: startDate,
+            continueUntilDate: endDate,
+            letterDate: doc.issued_date || "04-11-2026",
+            universityId: (doc.template_data as any)?.university || "STANDARD",
+            purpose: "Academic Project & Practicum Training",
+            signatoryName: "Akash Padhiyar",
+            signatoryRole: "CEO",
+          });
+          descContent = generated.fullText;
+        }
+
         await downloadAkashOfferLetterPdf({
-          salutation: isFemale ? "Ms." : "Mr.",
-          studentName: doc.recipient_name,
-          internshipPosition: doc.recipient_role,
+          salutation: sal,
+          studentName: cleanName,
+          internshipPosition: pos,
           technology: cleanTech,
-          commencementDate: (doc.template_data as any)?.commencement_date || "3rd July 2026",
-          continueUntilDate: (doc.template_data as any)?.continue_until_date || "30th April 2027",
+          commencementDate: startDate,
+          continueUntilDate: endDate,
           letterDate: doc.issued_date,
           title: doc.title || "INTERNSHIP OFFER LETTER",
-          customDescription: (doc as any).description_content,
-          isCustomEdited: !!(doc as any).description_content,
-          templateType: (doc as any).template_type,
+          customDescription: descContent,
+          isCustomEdited: true,
+          templateType: tmplKey,
           attachedFile: (doc as any).attached_file || (doc as any).template_data?.attached_file,
         });
       } else {
@@ -521,8 +576,8 @@ export function DocumentStudioModal({
               </a>
             )}
 
-            {/* Offer Letter Candidate Acceptance Button in Top Bar */}
-            {isOfferLetter && !isAccepted && (
+            {/* Offer Letter Candidate Acceptance Button in Top Bar (Only shown to students, NOT admins!) */}
+            {!isAdmin && isOfferLetter && !isAccepted && (
               <Button
                 id="studio-accept-offer-btn"
                 size="sm"
@@ -533,10 +588,16 @@ export function DocumentStudioModal({
                 <span>Accept &amp; Sign Offer</span>
               </Button>
             )}
-            {isOfferLetter && isAccepted && (
+            {!isAdmin && isOfferLetter && isAccepted && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 text-xs font-bold font-mono">
                 <Check className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Offer Accepted</span>
+              </span>
+            )}
+            {isAdmin && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-950/80 text-blue-300 border border-blue-500/40 text-xs font-bold font-mono">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Admin Verified Preview</span>
               </span>
             )}
 
@@ -1268,7 +1329,7 @@ export function DocumentStudioModal({
 
                   {/* Formatted Letter Body */}
                   {(() => {
-                    const descContent = (doc as any).description_content;
+                    let descContent = (doc as any).description_content;
                     const isFemaleDoc = isFemaleCandidate(doc.recipient_name, (doc.template_data as any)?.salutation);
                     const sal = (doc.template_data as any)?.salutation || (isFemaleDoc ? "Ms." : "Mr.");
                     const rawName = (doc.recipient_name || "").replace(/^(Mr\.|Ms\.)\s*/i, "").trim();
@@ -1279,6 +1340,58 @@ export function DocumentStudioModal({
                     const startDate = (doc.template_data as any)?.commencement_date || "3rd July 2026";
                     const endDate = (doc.template_data as any)?.continue_until_date || "30th April 2027";
                     const pos = doc.recipient_role || `${tech} Intern`;
+                    const universityId = (doc.template_data as any)?.university || "STANDARD";
+
+                    // If descContent is absent, or is a 1-line stub (e.g. "This is to certify that Mr. Fenil Patel has completed an internship..."),
+                    // generate the authentic, rich multi-paragraph letter content using generateLetterContent!
+                    const isStub =
+                      !descContent ||
+                      typeof descContent !== "string" ||
+                      descContent.trim().length < 150 ||
+                      descContent.trim().endsWith("...") ||
+                      !descContent.includes("\n") ||
+                      descContent.includes("completed an internship...");
+
+                    if (isStub) {
+                      let tmplKey: LetterTemplateKey = "INTERNSHIP_OFFER";
+                      const titleUpper = (doc.title || "").toUpperCase();
+                      const rawTmpl = ((doc as any).template_type || doc.document_type || "").toUpperCase();
+
+                      if (titleUpper.includes("EXPERIENCE") || rawTmpl.includes("EXPERIENCE")) {
+                        tmplKey = "EXPERIENCE_LETTER";
+                      } else if (titleUpper.includes("COMPLETION") || rawTmpl.includes("COMPLETION")) {
+                        tmplKey = "INTERNSHIP_COMPLETION";
+                      } else if (titleUpper.includes("JOINING") || rawTmpl.includes("JOINING")) {
+                        tmplKey = "JOINING_CONFIRMATION";
+                      } else if (titleUpper.includes("CONFIRMATION") || rawTmpl.includes("CONFIRMATION")) {
+                        tmplKey = "INTERNSHIP_CONFIRMATION";
+                      } else if (titleUpper.includes("NOC") || titleUpper.includes("OBJECTION") || rawTmpl.includes("NOC")) {
+                        tmplKey = "NOC_LETTER";
+                      } else if (titleUpper.includes("RELIEVING") || rawTmpl.includes("RELIEVING")) {
+                        tmplKey = "RELIEVING_LETTER";
+                      } else if (titleUpper.includes("RECOMMENDATION") || titleUpper.includes("LOR") || rawTmpl.includes("RECOMMENDATION")) {
+                        tmplKey = "RECOMMENDATION_LETTER";
+                      } else {
+                        tmplKey = "INTERNSHIP_OFFER";
+                      }
+
+                      const generated = generateLetterContent({
+                        templateKey: tmplKey,
+                        salutation: sal,
+                        studentName: rawName,
+                        internshipPosition: pos,
+                        technology: tech,
+                        commencementDate: startDate,
+                        continueUntilDate: endDate,
+                        letterDate: doc.issued_date || "04-11-2026",
+                        universityId: universityId,
+                        purpose: "Academic Project & Practicum Training",
+                        signatoryName: "Akash Padhiyar",
+                        signatoryRole: "CEO",
+                      });
+
+                      descContent = generated.fullText;
+                    }
 
                     const previewKeywords = [
                       `${sal} ${rawName}`.trim(),
@@ -1576,7 +1689,7 @@ export function DocumentStudioModal({
                 </div>
 
                 {/* For Offer Letters: Candidate Acceptance Status Banner */}
-                {isOfferLetter && (
+                {!isAdmin && isOfferLetter && (
                   <div className="my-2">
                     {isAccepted ? (
                       <div className="p-4 rounded-2xl bg-emerald-50/90 border border-emerald-300 flex items-center justify-between gap-3 shadow-2xs">
@@ -1792,7 +1905,7 @@ export function DocumentStudioModal({
           </div>
 
           <div className="flex items-center gap-2">
-            {isOfferLetter && !isAccepted && (
+            {!isAdmin && isOfferLetter && !isAccepted && (
               <Button
                 size="sm"
                 onClick={() => setIsSignModalOpen(true)}

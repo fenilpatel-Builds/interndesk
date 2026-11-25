@@ -300,6 +300,77 @@ function loadFromDisk(): OfficialOfferLetter[] {
       }
     }
 
+    // Auto-upgrade any historical stub documents to authentic, rich multi-paragraph letter content
+    let needsDiskSave = false;
+    for (const d of deduplicated) {
+      const desc = d.description_content;
+      const isStub =
+        !desc ||
+        typeof desc !== "string" ||
+        desc.trim().length < 150 ||
+        desc.trim().endsWith("...") ||
+        !desc.includes("\n") ||
+        desc.includes("completed an internship...");
+
+      if (isStub) {
+        let tmplKey: LetterTemplateKey = "INTERNSHIP_OFFER";
+        const titleUpper = (d.title || "").toUpperCase();
+        const rawTmpl = ((d.template_type as string) || (d.document_type as string) || "").toUpperCase();
+
+        if (titleUpper.includes("EXPERIENCE") || rawTmpl.includes("EXPERIENCE")) {
+          tmplKey = "EXPERIENCE_LETTER";
+        } else if (titleUpper.includes("COMPLETION") || rawTmpl.includes("COMPLETION")) {
+          tmplKey = "INTERNSHIP_COMPLETION";
+        } else if (titleUpper.includes("JOINING") || rawTmpl.includes("JOINING")) {
+          tmplKey = "JOINING_CONFIRMATION";
+        } else if (titleUpper.includes("CONFIRMATION") || rawTmpl.includes("CONFIRMATION")) {
+          tmplKey = "INTERNSHIP_CONFIRMATION";
+        } else if (titleUpper.includes("NOC") || titleUpper.includes("OBJECTION") || rawTmpl.includes("NOC")) {
+          tmplKey = "NOC_LETTER";
+        } else if (titleUpper.includes("RELIEVING") || rawTmpl.includes("RELIEVING")) {
+          tmplKey = "RELIEVING_LETTER";
+        } else if (titleUpper.includes("RECOMMENDATION") || titleUpper.includes("LOR") || rawTmpl.includes("RECOMMENDATION")) {
+          tmplKey = "RECOMMENDATION_LETTER";
+        }
+
+        const rawName = (d.recipient_name || "").replace(/^(Mr\.|Ms\.)\s*/i, "").trim();
+        const sal =
+          d.template_data?.salutation ||
+          (rawName.toLowerCase().includes("priya") ||
+          rawName.toLowerCase().includes("helly") ||
+          rawName.toLowerCase().includes("ananya")
+            ? "Ms."
+            : "Mr.");
+        const pos = d.recipient_role || `${d.template_data?.technology || "Software Engineering"} Intern`;
+        const tech = d.template_data?.technology || d.template_data?.program_or_track || "Full Stack Web Development";
+        const startDate = d.template_data?.commencement_date || "3rd July 2026";
+        const endDate = d.template_data?.continue_until_date || "30th April 2027";
+
+        const generated = generateLetterContent({
+          templateKey: tmplKey,
+          salutation: sal,
+          studentName: rawName,
+          internshipPosition: pos,
+          technology: tech,
+          commencementDate: startDate,
+          continueUntilDate: endDate,
+          letterDate: d.issued_date || "04-11-2026",
+          universityId: (d.template_data?.university as any) || "STANDARD",
+          purpose: "Academic Project & Practicum Training",
+          signatoryName: "Akash Padhiyar",
+          signatoryRole: "CEO",
+        });
+
+        d.description_content = generated.fullText;
+        d.template_type = tmplKey;
+        needsDiskSave = true;
+      }
+    }
+
+    if (needsDiskSave) {
+      saveToDisk(deduplicated);
+    }
+
     memoryCache = deduplicated;
     return deduplicated;
   } catch {

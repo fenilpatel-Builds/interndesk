@@ -161,4 +161,20 @@ describe("Bulk Letter Generation & ZIP Packaging Suite", () => {
     expect(afterDocs.some((d) => d.recipient_name.includes("Bulk Test Candidate Alpha"))).toBe(true);
     expect(afterDocs.some((d) => d.recipient_name.includes("Bulk Test Candidate Beta"))).toBe(true);
   });
+
+  it("should ensure all documents in documentStore have rich multi-paragraph descriptions", () => {
+    const allDocs = documentStore.getAll();
+    expect(allDocs.length).toBeGreaterThan(0);
+
+    for (const d of allDocs) {
+      if (d.title.includes("EXPERIENCE") || d.document_type === "EXPERIENCE_LETTER") {
+        expect(d.description_content).toBeDefined();
+        expect(d.description_content!.length).toBeGreaterThan(200);
+        expect(d.description_content).toContain("TO WHOMSOEVER IT MAY CONCERN");
+        expect(d.description_content).toContain("Akash Technolabs");
+        expect(d.description_content).toContain("practical experience");
+        expect(d.description_content).not.toContain("completed an internship...");
+      }
+    }
+  });
 });
