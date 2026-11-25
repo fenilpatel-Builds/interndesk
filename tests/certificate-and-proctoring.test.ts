@@ -190,4 +190,76 @@ describe("Official PDF Certificate & Gradebook Generation Suite", () => {
     expect(adminAsm?.access_code).toBe("SECRET2026");
     expect(adminAsm?.questions[0].correct_answer).toBe("A");
   });
+
+  it("should look up an assessment attempt by raw ID or generated verification hash", () => {
+    const allAttempts = assessmentStore.getAllAttempts();
+    if (allAttempts.length > 0) {
+      const first = allAttempts[0];
+      const foundById = assessmentStore.findAttemptByVerificationCode(first.id);
+      expect(foundById).not.toBeNull();
+      expect(foundById?.id).toBe(first.id);
+
+      const verifCode = `VERIF-${Buffer.from(`${first.id}-${first.student_email}`).toString("hex").substring(0, 16).toUpperCase()}`;
+      const foundByHash = assessmentStore.findAttemptByVerificationCode(verifCode);
+      expect(foundByHash).not.toBeNull();
+      expect(foundByHash?.id).toBe(first.id);
+    }
+  });
+
+  it("should preserve topic field in assessment questions and attempts for Topic Mastery Breakdown", () => {
+    const testAsm = assessmentStore.createAssessment({
+      title: "Full-Stack Web Engineering Assessment",
+      subject: "Full-Stack Development",
+      description: "Exam testing frontend and backend competencies.",
+      duration_minutes: 30,
+      passing_threshold: 70,
+      attempt_limit: 1,
+      questions: [
+        {
+          id: "q_topic_1",
+          question: "What is React Hydration?",
+          type: "SINGLE_CHOICE",
+          topic: "Frontend React Architecture",
+          difficulty: "MEDIUM",
+          options: ["Attaching listeners to SSR HTML", "Downloading images", "Database index", "None"],
+          correct_answer: "Attaching listeners to SSR HTML",
+          explanation: "Hydration bridges server markup with client interactivity.",
+          marks: 10,
+        },
+        {
+          id: "q_topic_2",
+          question: "What does ACID stand for in databases?",
+          type: "SINGLE_CHOICE",
+          topic: "Database Systems",
+          difficulty: "EASY",
+          options: ["Atomicity, Consistency, Isolation, Durability", "None"],
+          correct_answer: "Atomicity, Consistency, Isolation, Durability",
+          explanation: "ACID properties ensure reliable database transactions.",
+          marks: 10,
+        },
+      ],
+    });
+
+    expect(testAsm.questions[0].topic).toBe("Frontend React Architecture");
+    expect(testAsm.questions[1].topic).toBe("Database Systems");
+
+    // Grade attempt
+    const attempt = assessmentStore.submitAttempt({
+      assessmentId: testAsm.id,
+      studentEmail: "student.test@akashtechnolabs.com",
+      studentName: "Test Candidate",
+      timeSpentSeconds: 450,
+      tabSwitchCount: 0,
+      answers: {
+        q_topic_1: "Attaching listeners to SSR HTML",
+        q_topic_2: "Atomicity, Consistency, Isolation, Durability",
+      },
+    });
+
+    expect(attempt.evaluations).toBeDefined();
+    expect(attempt.evaluations?.[0].topic).toBe("Frontend React Architecture");
+    expect(attempt.evaluations?.[1].topic).toBe("Database Systems");
+    expect(attempt.score).toBe(20);
+    expect(attempt.passed).toBe(true);
+  });
 });

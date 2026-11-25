@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -23,12 +23,16 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { AnimatedLogo } from "@/components/ui/animated-logo";
 import { multiTenantStore } from "@/lib/multitenant/store";
+import type { AssessmentAttempt } from "@/lib/assessments/assessment-store";
+import { downloadExamCertificatePdf } from "@/lib/assessments/certificate-pdf-generator";
 
 function DocumentVerificationContent() {
   const params = useParams();
   const rawDocNumber = (params?.documentNumber as string) || "";
   const documentNumber = decodeURIComponent(rawDocNumber);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [examAttempt, setExamAttempt] = useState<AssessmentAttempt | null>(null);
+  const [isVerifyingExam, setIsVerifyingExam] = useState<boolean>(false);
 
   const handleCopyLink = () => {
     if (typeof window !== "undefined") {
@@ -48,6 +52,23 @@ function DocumentVerificationContent() {
   const org = doc ? multiTenantStore.getOrganizationById(doc.organization_id) : null;
   const isPending = doc?.status === "PENDING_APPROVAL" || doc?.approval_status === "PENDING";
   const isIssued = doc?.status === "ISSUED";
+
+  useEffect(() => {
+    if (!doc && documentNumber) {
+      setIsVerifyingExam(true);
+      fetch(`/api/assessments/verify?code=${encodeURIComponent(documentNumber)}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.success && data.attempt) {
+            setExamAttempt(data.attempt);
+          } else {
+            setExamAttempt(null);
+          }
+        })
+        .catch(() => setExamAttempt(null))
+        .finally(() => setIsVerifyingExam(false));
+    }
+  }, [doc, documentNumber]);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-between">
@@ -451,6 +472,159 @@ function DocumentVerificationContent() {
               </div>
             </div>
           </Card>
+        ) : isVerifyingExam ? (
+          <Card className="border-indigo-100 bg-white rounded-2xl p-12 text-center space-y-4 shadow-md">
+            <div className="w-10 h-10 mx-auto border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+            <h3 className="text-sm font-bold text-slate-800">Verifying Examination Credential...</h3>
+            <p className="text-xs text-slate-500 font-mono">Querying cryptographic ledger for &quot;{documentNumber}&quot;</p>
+          </Card>
+        ) : examAttempt ? (
+          <Card className="border-indigo-200 bg-white rounded-2xl shadow-xl overflow-hidden animate-fadeIn space-y-0">
+            {/* Top Verification Status Banner */}
+            <div className="bg-gradient-to-r from-indigo-600 via-indigo-700 to-slate-900 text-white px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+                <div>
+                  <h3 className="text-sm font-bold tracking-wide">VERIFIED EXAMINATION CREDENTIAL</h3>
+                  <p className="text-[11px] text-indigo-200">Akash Technolabs Academic Assessment Registry</p>
+                </div>
+              </div>
+              <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded border ${
+                examAttempt.passed
+                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-400/50"
+                  : "bg-red-500/20 text-red-300 border-red-400/50"
+              }`}>
+                RESULT: {examAttempt.passed ? (examAttempt.percentage >= 85 ? "DISTINCTION" : "PASSED") : "FAILED"}
+              </span>
+            </div>
+
+            {/* Credential Details */}
+            <div className="p-6 sm:p-8 space-y-6">
+              <div className="flex items-start justify-between pb-5 border-b border-slate-100">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Candidate Intern
+                  </span>
+                  <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-0.5">
+                    {examAttempt.student_name}
+                  </h2>
+                  <p className="text-xs text-indigo-600 font-semibold mt-0.5">{examAttempt.student_email}</p>
+                </div>
+
+                <div className="text-right">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Verification ID
+                  </span>
+                  <div className="font-mono text-xs font-bold text-slate-800 mt-0.5">
+                    {documentNumber.toUpperCase()}
+                  </div>
+                </div>
+              </div>
+
+              {/* Assessment Title & Performance Metrics */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Examination Undertaken</div>
+                  <div className="text-base font-bold text-slate-900 mt-0.5">{examAttempt.assessment_title}</div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-200 text-center">
+                  <div className="p-2.5 bg-white rounded-lg border border-slate-200">
+                    <div className="text-[11px] text-slate-400 font-medium">Score</div>
+                    <div className="text-base font-bold text-slate-900">{examAttempt.score} / {examAttempt.total_marks}</div>
+                  </div>
+                  <div className="p-2.5 bg-white rounded-lg border border-slate-200">
+                    <div className="text-[11px] text-slate-400 font-medium">Percentage</div>
+                    <div className="text-base font-bold text-indigo-600">{examAttempt.percentage}%</div>
+                  </div>
+                  <div className="p-2.5 bg-white rounded-lg border border-slate-200">
+                    <div className="text-[11px] text-slate-400 font-medium">Proctor Audit</div>
+                    <div className="text-base font-bold text-emerald-600">{examAttempt.proctoring_flag}</div>
+                  </div>
+                  <div className="p-2.5 bg-white rounded-lg border border-slate-200">
+                    <div className="text-[11px] text-slate-400 font-medium">Tab Switches</div>
+                    <div className="text-base font-bold text-slate-700">{examAttempt.tab_switch_count}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Examination Metadata */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-600">
+                <div className="flex justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+                  <span className="text-slate-400">Completion Date:</span>
+                  <strong className="text-slate-800">
+                    {new Date(examAttempt.submitted_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+                  </strong>
+                </div>
+                <div className="flex justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+                  <span className="text-slate-400">Duration Spent:</span>
+                  <strong className="text-slate-800">
+                    {Math.round((examAttempt.time_spent_seconds || 60) / 60)} Minutes
+                  </strong>
+                </div>
+              </div>
+
+              {/* Cryptographic Ledger & Signatory Block */}
+              <div className="p-3.5 rounded-xl bg-slate-900 text-slate-200 text-[11px] font-mono space-y-2">
+                <div className="flex items-center justify-between text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
+                  <span className="flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    Cryptographic Ledger Integrity Proof
+                  </span>
+                  <span className="px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-700/60">
+                    AUTHENTICATED
+                  </span>
+                </div>
+                <div className="space-y-1 text-[10px] text-slate-300">
+                  <div className="flex justify-between border-b border-slate-800 pb-1">
+                    <span className="text-slate-500">Issuing Institution:</span>
+                    <span className="text-slate-200 font-bold">Akash Technolabs Examination Board</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-800 pb-1">
+                    <span className="text-slate-500">Authorized Signatory:</span>
+                    <span className="text-blue-300 font-bold">Prof. Akash Padhiyar (Dean of Academics)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Record Hash:</span>
+                    <span className="text-emerald-400 font-mono break-all">{examAttempt.id}:{examAttempt.student_email}:{examAttempt.score}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <Button
+                  onClick={handleCopyLink}
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto text-xs font-semibold"
+                >
+                  {copiedLink ? <Check className="w-3.5 h-3.5 mr-1 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
+                  {copiedLink ? "Verification Link Copied!" : "Copy Verification URL"}
+                </Button>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <Button
+                    onClick={() => downloadExamCertificatePdf(examAttempt)}
+                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 flex-1 sm:flex-initial"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Download Official PDF Transcript
+                  </Button>
+                  <Button
+                    onClick={handlePrint}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                  >
+                    <Printer className="w-3.5 h-3.5 mr-1" />
+                    Print
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Card>
         ) : (
           <Card className="border-red-200 bg-white rounded-2xl p-8 text-center space-y-4 shadow-md">
             <div className="w-16 h-16 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto">
@@ -464,6 +638,11 @@ function DocumentVerificationContent() {
               Please verify the document number printed on the credential.
             </p>
             <div className="pt-2 flex flex-wrap justify-center gap-2">
+              <Link href="/verify/att-seed-fenil-01">
+                <Button size="sm" variant="outline" className="text-xs font-mono bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100">
+                  Try Demo: Exam Transcript (att-seed-fenil-01)
+                </Button>
+              </Link>
               <Link href="/verify/ID-TRSC-2026-9812">
                 <Button size="sm" variant="outline" className="text-xs font-mono bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100">
                   Try Demo: Performance Transcript (ID-TRSC-2026-9812)

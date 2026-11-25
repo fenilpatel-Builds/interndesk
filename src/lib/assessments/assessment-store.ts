@@ -137,6 +137,8 @@ export interface QuestionEvaluation {
   question_id: string;
   question_text: string;
   type?: QuestionType;
+  topic?: string;
+  difficulty?: QuestionDifficulty;
   selected_answer: any;
   correct_answer?: string | string[];
   is_correct: boolean | null;
@@ -1331,6 +1333,27 @@ export class AssessmentStore {
     return this.attempts;
   }
 
+  public findAttemptByVerificationCode(code: string): AssessmentAttempt | null {
+    this.attempts = loadAttemptsFromDisk();
+    const cleanCode = (code || "").trim().toUpperCase();
+    if (!cleanCode) return null;
+
+    return (
+      this.attempts.find((att) => {
+        const rawId = (att.id || "").toUpperCase();
+        const verif1 = `VERIF-${Buffer.from(`${att.id}-${att.student_email}`).toString("hex").substring(0, 16).toUpperCase()}`;
+        const verif2 = `VERIF-${Buffer.from(`${att.id}-${att.student_email}-${att.score}`).toString("hex").substring(0, 24).toUpperCase()}`;
+        return (
+          rawId === cleanCode ||
+          verif1 === cleanCode ||
+          verif2 === cleanCode ||
+          cleanCode.includes(verif1) ||
+          cleanCode.includes(rawId)
+        );
+      }) || null
+    );
+  }
+
   public canStudentStartExam(
     assessmentId: string,
     studentEmail: string
@@ -1875,6 +1898,8 @@ export class AssessmentStore {
         question_id: q.id,
         question_text: q.question,
         type: q.type,
+        topic: q.topic || "Core Concepts",
+        difficulty: q.difficulty || "MEDIUM",
         selected_answer: hasAnswered ? studentRawAns : null,
         correct_answer: q.correct_answer,
         is_correct: isCorrect,

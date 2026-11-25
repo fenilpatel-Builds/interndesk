@@ -39,6 +39,7 @@ import {
   Lock,
   Shuffle,
   Download,
+  Layers,
 } from "lucide-react";
 import { Assessment, AssessmentQuestion, AssessmentAttempt, QuestionType } from "@/lib/assessments/assessment-store";
 import { SandboxedCodeEditor } from "@/components/assessments/sandboxed-code-editor";
@@ -1906,6 +1907,80 @@ export default function StudentAssessmentsPage() {
                 </span>
               </div>
             ) : null}
+
+            {/* Topic & Domain Mastery Breakdown */}
+            {examResult.evaluations && examResult.evaluations.length > 0 && (() => {
+              const topicMap: Record<string, { awarded: number; possible: number; totalQ: number; correctQ: number }> = {};
+              examResult.evaluations.forEach((ev) => {
+                const topicName = ev.topic || "Core Concepts";
+                if (!topicMap[topicName]) {
+                  topicMap[topicName] = { awarded: 0, possible: 0, totalQ: 0, correctQ: 0 };
+                }
+                topicMap[topicName].awarded += (ev.marks_awarded || 0);
+                topicMap[topicName].possible += (ev.marks_possible || 10);
+                topicMap[topicName].totalQ += 1;
+                if (ev.is_correct) topicMap[topicName].correctQ += 1;
+              });
+
+              const topics = Object.entries(topicMap);
+              if (topics.length === 0) return null;
+
+              return (
+                <div className="p-6 border-b border-slate-200 bg-slate-50/70 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                        <Layers className="w-4 h-4 text-indigo-600" />
+                        Topic & Domain Mastery Breakdown
+                      </h4>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Visual diagnostic of your proficiency across tested competencies
+                      </p>
+                    </div>
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      {topics.length} Competencies Assessed
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {topics.map(([topic, stats]) => {
+                      const pct = stats.possible > 0 ? Math.round((stats.awarded / stats.possible) * 100) : 0;
+                      const badgeColor =
+                        pct >= 80
+                          ? "text-emerald-700 bg-emerald-50 border-emerald-300"
+                          : pct >= 50
+                          ? "text-amber-700 bg-amber-50 border-amber-300"
+                          : "text-rose-700 bg-rose-50 border-rose-300";
+                      const barColor = pct >= 80 ? "bg-emerald-500" : pct >= 50 ? "bg-amber-500" : "bg-rose-500";
+                      const masteryLabel = pct >= 85 ? "Mastered" : pct >= 65 ? "Proficient" : pct >= 50 ? "Developing" : "Needs Review";
+
+                      return (
+                        <div key={topic} className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-xs space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-800 truncate mr-2">{topic}</span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${badgeColor}`}>
+                                {masteryLabel} • {pct}%
+                              </span>
+                            </div>
+                          </div>
+                          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full ${barColor} transition-all duration-700 rounded-full`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <div className="flex justify-between items-center text-[10px] text-slate-400 font-medium">
+                            <span>{stats.correctQ} of {stats.totalQ} questions correct</span>
+                            <span>{stats.awarded}/{stats.possible} marks earned</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Detailed Question Review Breakdown */}
             <div className="p-6 space-y-6">

@@ -147,6 +147,20 @@ export default function AdminAssessmentsPage() {
   const [exportIncludeAnalytics, setExportIncludeAnalytics] = useState(true);
   const [exportIncludeQuestions, setExportIncludeQuestions] = useState(true);
 
+  // Smart Exam Auto-Composer
+  const [isComposerModalOpen, setIsComposerModalOpen] = useState(false);
+  const [composerSubject, setComposerSubject] = useState("ALL");
+  const [composerTitle, setComposerTitle] = useState("");
+  const [composerCount, setComposerCount] = useState(10);
+  const [composerDuration, setComposerDuration] = useState(30);
+  const [composerPassingThreshold, setComposerPassingThreshold] = useState(70);
+  const [composerAccessCode, setComposerAccessCode] = useState("");
+  const [composerDifficultyStrategy, setComposerDifficultyStrategy] = useState<"BALANCED" | "BEGINNER" | "RIGOROUS" | "RANDOM">("BALANCED");
+  const [composerShuffleQuestions, setComposerShuffleQuestions] = useState(true);
+  const [composerShuffleOptions, setComposerShuffleOptions] = useState(true);
+  const [isComposingExam, setIsComposingExam] = useState(false);
+  const [composerError, setComposerError] = useState<string | null>(null);
+
   // Question Bank Picker Modal in Exam Builder
   const [isBankPickerOpen, setIsBankPickerOpen] = useState(false);
 
@@ -711,6 +725,143 @@ const filteredBankQuestions = bankQuestions.filter((q) => {
   return true;
 });
 
+// Smart Exam Composer helpers and stats
+const availableBankSubjects = Array.from(
+  new Set(bankQuestions.map((q) => q.subject).filter(Boolean))
+);
+
+const matchingComposerQuestions = composerSubject === "ALL"
+  ? bankQuestions
+  : bankQuestions.filter((q) => q.subject.toLowerCase() === composerSubject.toLowerCase());
+
+const matchingEasyCount = matchingComposerQuestions.filter((q) => q.difficulty === "EASY").length;
+const matchingMedCount = matchingComposerQuestions.filter((q) => q.difficulty === "MEDIUM").length;
+const matchingHardCount = matchingComposerQuestions.filter((q) => q.difficulty === "HARD" || q.difficulty === "ADVANCED").length;
+
+const handleAutoComposeExam = async () => {
+  setIsComposingExam(true);
+  setComposerError(null);
+  try {
+    let pool = composerSubject === "ALL"
+      ? [...bankQuestions]
+      : bankQuestions.filter((q) => q.subject.toLowerCase() === composerSubject.toLowerCase());
+
+    if (pool.length === 0) {
+      setComposerError(`No questions available in the Question Bank matching "${composerSubject}".`);
+      setIsComposingExam(false);
+      return;
+    }
+
+    const count = Math.min(composerCount, pool.length);
+    const shuffle = <T,>(arr: T[]): T[] => [...arr].sort(() => 0.5 - Math.random());
+
+    const easyList = pool.filter((q) => q.difficulty === "EASY");
+    const medList = pool.filter((q) => q.difficulty === "MEDIUM");
+    const hardList = pool.filter((q) => q.difficulty === "HARD" || q.difficulty === "ADVANCED");
+
+    let chosen: BankQuestion[] = [];
+
+    if (composerDifficultyStrategy === "BALANCED") {
+      const targetEasy = Math.max(1, Math.round(count * 0.3));
+      const targetHard = Math.max(1, Math.round(count * 0.2));
+      const targetMed = Math.max(1, count - targetEasy - targetHard);
+
+      const pickedEasy = shuffle(easyList).slice(0, targetEasy);
+      const pickedMed = shuffle(medList).slice(0, targetMed);
+      const pickedHard = shuffle(hardList).slice(0, targetHard);
+
+      chosen = [...pickedEasy, ...pickedMed, ...pickedHard];
+    } else if (composerDifficultyStrategy === "BEGINNER") {
+      const targetEasy = Math.max(1, Math.round(count * 0.7));
+      const targetMed = Math.max(1, count - targetEasy);
+
+      const pickedEasy = shuffle(easyList).slice(0, targetEasy);
+      const pickedMed = shuffle(medList).slice(0, targetMed);
+
+      chosen = [...pickedEasy, ...pickedMed];
+    } else if (composerDifficultyStrategy === "RIGOROUS") {
+      const targetHard = Math.max(1, Math.round(count * 0.6));
+      const targetMed = Math.max(1, Math.round(count * 0.3));
+      const targetEasy = Math.max(0, count - targetHard - targetMed);
+
+      const pickedHard = shuffle(hardList).slice(0, targetHard);
+      const pickedMed = shuffle(medList).slice(0, targetMed);
+      const pickedEasy = shuffle(easyList).slice(0, targetEasy);
+
+      chosen = [...pickedHard, ...pickedMed, ...pickedEasy];
+    } else {
+      // RANDOM
+      chosen = shuffle(pool).slice(0, count);
+    }
+
+    // If shortage in specified buckets, fill with remaining pool
+    if (chosen.length < count) {
+      const chosenIds = new Set(chosen.map((q) => q.id));
+      const remaining = shuffle(pool.filter((q) => !chosenIds.has(q.id)));
+      chosen.push(...remaining.slice(0, count - chosen.length));
+    }
+
+    // Deduplicate
+    const finalUniqueChosen = Array.from(new Map(chosen.map((q) => [q.id, q])).values()).slice(0, count);
+
+    const formattedQuestions: AssessmentQuestion[] = finalUniqueChosen.map((bq, idx) => ({
+      id: `q_comp_${Date.now()}_${idx}`,
+      question: bq.question,
+      type: bq.type || "SINGLE_CHOICE",
+      difficulty: bq.difficulty || "MEDIUM",
+      topic: bq.topic || bq.subject || "Technical Domain",
+      options: bq.options || [],
+      correct_answer: bq.correct_answer,
+      correct_answers: bq.correct_answers,
+      explanation: bq.explanation || "",
+      marks: bq.marks || 10,
+      negative_marks: bq.negative_marks || 0,
+      code_language: bq.code_language,
+      starter_code: bq.starter_code,
+      test_cases: bq.test_cases,
+      matching_pairs: bq.matching_pairs,
+      rubric: bq.rubric,
+    }));
+
+    const finalTitle =
+      composerTitle.trim() ||
+      `${composerSubject === "ALL" ? "Comprehensive Practicum" : composerSubject} Assessment`;
+
+    const payload = {
+      title: finalTitle,
+      subject: composerSubject === "ALL" ? "Multi-Disciplinary" : composerSubject,
+      description: `Auto-composed examination incorporating ${formattedQuestions.length} curated questions from the Question Bank (${composerDifficultyStrategy} distribution).`,
+      duration_minutes: Number(composerDuration) || 30,
+      passing_threshold: Number(composerPassingThreshold) || 70,
+      attempt_limit: 2,
+      access_code: composerAccessCode.trim() || undefined,
+      shuffle_questions: Boolean(composerShuffleQuestions),
+      shuffle_options: Boolean(composerShuffleOptions),
+      status: "PUBLISHED",
+      questions: formattedQuestions,
+    };
+
+    const res = await fetch("/api/admin/assessments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    if (data.success && data.assessment) {
+      setAssessments((prev) => [data.assessment, ...prev]);
+      setIsComposerModalOpen(false);
+      setActiveTab("EXAMS");
+    } else {
+      setComposerError(data.error || "Failed to create assessment.");
+    }
+  } catch (err: any) {
+    setComposerError(err.message || "Failed to auto-compose exam.");
+  } finally {
+    setIsComposingExam(false);
+  }
+};
+
 // Filter Assessments
 const filteredAssessments = assessments.filter((asm) => {
   const matchesSearch =
@@ -865,6 +1016,13 @@ return (
           {activeTab === "EXAMS" && (
             <div className="flex items-center gap-2 flex-wrap">
               <Button
+                onClick={() => setIsComposerModalOpen(true)}
+                className="bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold py-2 px-3.5 rounded-lg flex items-center gap-1.5 shadow-sm"
+              >
+                <Layers className="w-4 h-4 text-indigo-300" />
+                Smart Auto-Compose Exam
+              </Button>
+              <Button
                 onClick={() => setIsAIGeneratorModalOpen(true)}
                 className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-bold py-2 px-3.5 rounded-lg flex items-center gap-1.5 shadow-sm"
               >
@@ -890,6 +1048,13 @@ return (
 
           {activeTab === "QUESTION_BANK" && (
             <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                onClick={() => setIsComposerModalOpen(true)}
+                className="bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold py-2 px-3.5 rounded-lg flex items-center gap-1.5 shadow-sm"
+              >
+                <Layers className="w-4 h-4 text-indigo-300" />
+                Auto-Compose Exam from Bank
+              </Button>
               <Button
                 onClick={() => setIsAIGeneratorModalOpen(true)}
                 className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-bold py-2 px-3.5 rounded-lg flex items-center gap-1.5 shadow-sm"
@@ -2701,6 +2866,63 @@ return (
           </div>
         </div>
 
+        {/* Topic Mastery Breakdown */}
+        {selectedAttemptForReview.evaluations && selectedAttemptForReview.evaluations.length > 0 && (() => {
+          const topicMap: Record<string, { awarded: number; possible: number; totalQ: number; correctQ: number }> = {};
+          selectedAttemptForReview.evaluations.forEach((ev) => {
+            const topicName = ev.topic || (assessments.find(a => a.id === selectedAttemptForReview.assessment_id)?.subject) || "Core Concepts";
+            if (!topicMap[topicName]) {
+              topicMap[topicName] = { awarded: 0, possible: 0, totalQ: 0, correctQ: 0 };
+            }
+            topicMap[topicName].awarded += (ev.marks_awarded || 0);
+            topicMap[topicName].possible += (ev.marks_possible || 10);
+            topicMap[topicName].totalQ += 1;
+            if (ev.is_correct) topicMap[topicName].correctQ += 1;
+          });
+
+          const topics = Object.entries(topicMap);
+          if (topics.length === 0) return null;
+
+          return (
+            <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                  Topic & Domain Mastery Breakdown
+                </h4>
+                <span className="text-[11px] text-slate-500 font-medium">{topics.length} Competencies Evaluated</span>
+              </div>
+              <div className="space-y-2.5">
+                {topics.map(([topic, stats]) => {
+                  const pct = stats.possible > 0 ? Math.round((stats.awarded / stats.possible) * 100) : 0;
+                  const badgeColor = pct >= 80 ? "text-emerald-700 bg-emerald-50 border-emerald-300" : pct >= 50 ? "text-amber-700 bg-amber-50 border-amber-300" : "text-rose-700 bg-rose-50 border-rose-300";
+                  const barColor = pct >= 80 ? "bg-emerald-500" : pct >= 50 ? "bg-amber-500" : "bg-rose-500";
+                  const label = pct >= 85 ? "Mastered" : pct >= 65 ? "Proficient" : pct >= 50 ? "Developing" : "Needs Review";
+
+                  return (
+                    <div key={topic} className="space-y-1">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-semibold text-slate-800">{topic}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] text-slate-500">
+                            {stats.awarded}/{stats.possible} pts ({stats.correctQ}/{stats.totalQ} correct)
+                          </span>
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${badgeColor}`}>
+                            {label} • {pct}%
+                          </span>
+                        </div>
+                      </div>
+                      <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+                        <div className={`h-full ${barColor} transition-all duration-500 rounded-full`} style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Detailed Evaluations List */}
         <div className="space-y-3">
           <h4 className="text-xs font-bold uppercase text-slate-600">Question Evaluations</h4>
@@ -2981,6 +3203,300 @@ return (
     </div>
   )
 }
+
+{/* ========================================================= */}
+{/* MODAL: SMART EXAM AUTO-COMPOSER FROM QUESTION BANK       */}
+{/* ========================================================= */}
+{isComposerModalOpen && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+    <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 space-y-5 max-h-[90vh] overflow-y-auto my-auto">
+      <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
+            <Layers className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-900">
+              Smart Exam Auto-Composer
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Instantly curate and assemble balanced examinations from your Question Bank ({bankQuestions.length} questions available).
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => setIsComposerModalOpen(false)}
+          className="text-slate-400 hover:text-slate-600 transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      {composerError && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700">
+          <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+          <span>{composerError}</span>
+        </div>
+      )}
+
+      {/* Form Grid */}
+      <div className="space-y-4 text-xs">
+        {/* Subject & Title */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-slate-700 font-bold mb-1">
+              Target Subject / Specialization
+            </label>
+            <select
+              value={composerSubject}
+              onChange={(e) => {
+                const sub = e.target.value;
+                setComposerSubject(sub);
+                if (sub !== "ALL") {
+                  setComposerTitle(`${sub} Practicum & Assessment`);
+                } else {
+                  setComposerTitle("Comprehensive Technical Assessment");
+                }
+              }}
+              className="w-full p-2.5 rounded-lg border border-slate-200 bg-white font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="ALL">All Subjects (Multi-Disciplinary)</option>
+              {availableBankSubjects.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-slate-700 font-bold mb-1">
+              Examination Title
+            </label>
+            <input
+              type="text"
+              value={composerTitle}
+              onChange={(e) => setComposerTitle(e.target.value)}
+              placeholder="e.g. AI & Machine Learning Midterm Exam"
+              className="w-full p-2.5 rounded-lg border border-slate-200 bg-white font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+        </div>
+
+        {/* Difficulty Distribution Strategy */}
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="block text-slate-700 font-bold">
+              Difficulty Distribution Strategy
+            </label>
+            <span className="text-[11px] text-slate-500">
+              Questions will be sampled to match criteria
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            {[
+              {
+                id: "BALANCED",
+                title: "Balanced",
+                desc: "30% Easy, 50% Med, 20% Hard",
+                badge: "Standard",
+              },
+              {
+                id: "BEGINNER",
+                title: "Foundational",
+                desc: "70% Easy, 30% Medium",
+                badge: "Introductory",
+              },
+              {
+                id: "RIGOROUS",
+                title: "Advanced",
+                desc: "60% Hard/Adv, 30% Med, 10% Easy",
+                badge: "Rigorous",
+              },
+              {
+                id: "RANDOM",
+                title: "Randomized",
+                desc: "Uniform random selection",
+                badge: "Unbiased",
+              },
+            ].map((strat) => (
+              <button
+                key={strat.id}
+                type="button"
+                onClick={() => setComposerDifficultyStrategy(strat.id as any)}
+                className={`p-3 rounded-xl border text-left transition-all ${
+                  composerDifficultyStrategy === strat.id
+                    ? "border-indigo-600 bg-indigo-50/60 ring-2 ring-indigo-500/20 text-indigo-950"
+                    : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                }`}
+              >
+                <div className="flex items-center justify-between font-bold text-xs mb-1">
+                  <span>{strat.title}</span>
+                  <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${
+                    composerDifficultyStrategy === strat.id ? "bg-indigo-600 text-white border-indigo-600" : "bg-slate-100 text-slate-600 border-slate-200"
+                  }`}>
+                    {strat.badge}
+                  </span>
+                </div>
+                <div className="text-[10px] text-slate-500 leading-snug">
+                  {strat.desc}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Question Count & Duration & Passcode */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-slate-700 font-bold mb-1">
+              Number of Questions
+            </label>
+            <div className="flex items-center gap-1.5">
+              {[5, 10, 15, 20].map((num) => (
+                <button
+                  key={num}
+                  type="button"
+                  onClick={() => setComposerCount(num)}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
+                    composerCount === num
+                      ? "bg-indigo-600 text-white border-indigo-600"
+                      : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                  }`}
+                >
+                  {num}
+                </button>
+              ))}
+              <input
+                type="number"
+                min={1}
+                max={50}
+                value={composerCount}
+                onChange={(e) => setComposerCount(Math.max(1, Number(e.target.value) || 1))}
+                className="w-16 p-1.5 rounded-lg border border-slate-200 text-center font-bold text-slate-800"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-slate-700 font-bold mb-1">
+              Duration (Minutes)
+            </label>
+            <input
+              type="number"
+              min={5}
+              max={180}
+              value={composerDuration}
+              onChange={(e) => setComposerDuration(Number(e.target.value) || 25)}
+              className="w-full p-2 rounded-lg border border-slate-200 bg-white font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-slate-700 font-bold mb-1">
+              Passcode Protection (Optional)
+            </label>
+            <input
+              type="text"
+              value={composerAccessCode}
+              onChange={(e) => setComposerAccessCode(e.target.value.toUpperCase())}
+              placeholder="e.g. MIDTERM2026"
+              className="w-full p-2 rounded-lg border border-slate-200 bg-white font-mono uppercase font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+        </div>
+
+        {/* Anti-Cheat Toggles */}
+        <div className="flex items-center gap-6 p-3 rounded-xl bg-slate-50 border border-slate-200">
+          <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700">
+            <input
+              type="checkbox"
+              checked={composerShuffleQuestions}
+              onChange={(e) => setComposerShuffleQuestions(e.target.checked)}
+              className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300"
+            />
+            <Shuffle className="w-3.5 h-3.5 text-indigo-600" />
+            Shuffle Questions per Candidate
+          </label>
+
+          <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700">
+            <input
+              type="checkbox"
+              checked={composerShuffleOptions}
+              onChange={(e) => setComposerShuffleOptions(e.target.checked)}
+              className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300"
+            />
+            <Shuffle className="w-3.5 h-3.5 text-indigo-600" />
+            Shuffle Multiple-Choice Options
+          </label>
+        </div>
+
+        {/* Live Question Bank Inventory Card */}
+        <div className="p-3.5 rounded-xl bg-indigo-50/50 border border-indigo-200 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-slate-900 flex items-center gap-1.5">
+              <Database className="w-3.5 h-3.5 text-indigo-600" />
+              Available Question Pool
+            </span>
+            <span className="text-[11px] font-bold text-indigo-700">
+              {matchingComposerQuestions.length} Questions Available
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3 text-[11px] text-slate-600">
+            <span className="px-2 py-0.5 rounded bg-emerald-100/80 text-emerald-800 font-semibold border border-emerald-200">
+              Easy: {matchingEasyCount}
+            </span>
+            <span className="px-2 py-0.5 rounded bg-amber-100/80 text-amber-800 font-semibold border border-amber-200">
+              Medium: {matchingMedCount}
+            </span>
+            <span className="px-2 py-0.5 rounded bg-purple-100/80 text-purple-800 font-semibold border border-purple-200">
+              Hard/Adv: {matchingHardCount}
+            </span>
+          </div>
+
+          {matchingComposerQuestions.length < composerCount && (
+            <div className="text-[11px] text-amber-700 font-medium">
+              Note: The requested {composerCount} questions exceeds the {matchingComposerQuestions.length} matching questions in the bank. All {matchingComposerQuestions.length} available questions will be included.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Footer Actions */}
+      <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setIsComposerModalOpen(false)}
+          className="text-xs font-semibold"
+        >
+          Cancel
+        </Button>
+
+        <Button
+          type="button"
+          onClick={handleAutoComposeExam}
+          disabled={isComposingExam || matchingComposerQuestions.length === 0}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-2 shadow-sm"
+        >
+          {isComposingExam ? (
+            <>
+              <RotateCcw className="w-3.5 h-3.5 animate-spin" />
+              Composing & Assembling Exam...
+            </>
+          ) : (
+            <>
+              <Layers className="w-3.5 h-3.5" />
+              Compose & Publish Exam
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
+  </div>
+)}
 
 {/* ========================================================= */ }
 {/* MODAL: LIVE AUDIT LOGS MODAL                              */ }

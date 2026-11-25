@@ -83,6 +83,7 @@ export async function POST(req: NextRequest) {
       question: (q.question || "").trim(),
       type: q.type || "SINGLE_CHOICE",
       difficulty: q.difficulty || "MEDIUM",
+      topic: q.topic || q.subject || undefined,
       options: Array.isArray(q.options) ? q.options.map((o: string) => String(o).trim()) : [],
       correct_answer: Array.isArray(q.correct_answer)
         ? q.correct_answer
@@ -106,6 +107,9 @@ export async function POST(req: NextRequest) {
       passing_threshold: Number(passing_threshold) || 70,
       attempt_limit: Number(attempt_limit) || 2,
       negative_marking_rate: typeof negative_marking_rate === "number" ? negative_marking_rate : 0,
+      access_code: body.access_code?.trim() || undefined,
+      shuffle_questions: Boolean(body.shuffle_questions),
+      shuffle_options: Boolean(body.shuffle_options),
       security_policy: security_policy || {
         fullscreen_required: true,
         block_copy_paste: true,
