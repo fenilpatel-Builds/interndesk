@@ -1844,6 +1844,24 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
                         <Button
                           type="button"
                           size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const realIdx = candidates.findIndex((c) => c.id === cand.id);
+                            if (realIdx !== -1) {
+                              setActiveCandidateIndex(realIdx);
+                              setViewMode("PREVIEW");
+                            }
+                          }}
+                          className="h-7 text-xs bg-blue-50/80 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold px-2.5 rounded-lg flex items-center gap-1 cursor-pointer"
+                          title="Preview live A4 letterhead on screen"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Preview</span>
+                        </Button>
+
+                        <Button
+                          type="button"
+                          size="sm"
                           variant="ghost"
                           onClick={() => {
                             const realIdx = candidates.findIndex((c) => c.id === cand.id);
@@ -1852,10 +1870,45 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
                               setViewMode("SPLIT");
                             }
                           }}
-                          className="h-7 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 font-bold px-2"
+                          className="h-7 text-xs text-slate-700 hover:text-slate-900 hover:bg-slate-100 font-semibold px-2 rounded-lg flex items-center gap-1 cursor-pointer"
+                          title="Open in split studio editor"
                         >
-                          <Eye className="w-3.5 h-3.5 mr-1" />
-                          Studio
+                          <Columns className="w-3.5 h-3.5" />
+                          <span>Studio</span>
+                        </Button>
+
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={async () => {
+                            const realIdx = candidates.findIndex((c) => c.id === cand.id);
+                            if (realIdx !== -1) {
+                              setActiveCandidateIndex(realIdx);
+                              await downloadAkashOfferLetterPdf({
+                                salutation: cand.salutation,
+                                studentName: cand.studentName,
+                                internshipPosition: cand.internshipPosition,
+                                technology: cand.technology,
+                                commencementDate: cand.commencementDate,
+                                continueUntilDate: cand.continueUntilDate,
+                                letterDate,
+                                title: letterTitle,
+                                customDescription: isCustomEdited ? description : undefined,
+                                isCustomEdited,
+                                templateType: templateKey,
+                                universityId,
+                                customUniversity: cand.college || cand.university,
+                                signatoryName,
+                                signatoryRole,
+                              });
+                            }
+                          }}
+                          className="h-7 text-xs text-slate-500 hover:text-[#0F4C81] hover:bg-blue-50 font-semibold px-2 rounded-lg flex items-center gap-1 cursor-pointer"
+                          title="Download this candidate's PDF file"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>PDF</span>
                         </Button>
 
                         <button
@@ -1991,6 +2044,19 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
             <Button
               type="button"
               size="sm"
+              variant="outline"
+              onClick={() => setViewMode("PREVIEW")}
+              className="bg-blue-50/90 hover:bg-blue-100 text-[#0F4C81] border border-blue-200 font-bold text-xs rounded-xl shadow-2xs cursor-pointer flex items-center gap-1.5 px-3 py-1.5"
+              title="Preview active candidate's A4 letterhead on screen (no download)"
+            >
+              <Eye className="w-3.5 h-3.5 text-blue-600" />
+              <span className="hidden sm:inline">Preview Letter</span>
+              <span className="sm:hidden">Preview</span>
+            </Button>
+
+            <Button
+              type="button"
+              size="sm"
               disabled={isDownloadingSinglePdf}
               onClick={handleDownloadSinglePdf}
               className="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 font-bold text-xs rounded-xl shadow-2xs cursor-pointer flex items-center gap-1.5 px-3 py-1.5"
@@ -2077,17 +2143,31 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
                       </span>
                     )}
                   </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={isDownloadingSinglePdf}
-                    onClick={handleDownloadSinglePdf}
-                    className="h-7 text-[11px] font-bold bg-white text-slate-700 hover:bg-slate-50"
-                  >
-                    <Download className="w-3 h-3 mr-1 text-[#0F4C81]" />
-                    PDF
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setViewMode("PREVIEW")}
+                      className="h-7 text-[11px] font-bold bg-white text-blue-700 hover:bg-blue-50 border-blue-200 cursor-pointer"
+                      title="View full A4 letterhead on screen"
+                    >
+                      <Eye className="w-3 h-3 mr-1 text-blue-600" />
+                      Fullscreen
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={isDownloadingSinglePdf}
+                      onClick={handleDownloadSinglePdf}
+                      className="h-7 text-[11px] font-bold bg-white text-slate-700 hover:bg-slate-50 cursor-pointer"
+                      title="Download PDF file for this candidate"
+                    >
+                      <Download className="w-3 h-3 mr-1 text-[#0F4C81]" />
+                      PDF
+                    </Button>
+                  </div>
                 </div>
                 {renderLetterheadSheet(true)}
               </div>
@@ -2104,19 +2184,72 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
 
           {viewMode === "PREVIEW" && (
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-200/80 flex flex-col items-center">
-              <div className="w-full max-w-[800px] flex items-center justify-between pb-3 text-xs font-bold">
+              {/* Candidate Navigation & Action Bar for Preview Mode */}
+              <div className="w-full max-w-[800px] mb-3 bg-white p-3 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-emerald-600" />
-                  <span className="text-slate-800">
-                    Official Akash Letterhead (Active: {activeCandidate?.studentName || "Candidate"})
-                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={activeCandidateIndex <= 0}
+                    onClick={() => setActiveCandidateIndex((prev) => Math.max(0, prev - 1))}
+                    className="h-8 text-xs font-bold cursor-pointer"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-0.5" /> Prev
+                  </Button>
+                  <div className="text-center sm:text-left px-2">
+                    <span className="text-xs font-black text-slate-900 block">
+                      #{activeCandidateIndex + 1} of {candidates.length}: {activeCandidate?.salutation} {activeCandidate?.studentName}
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-medium">
+                      {activeCandidate?.internshipPosition} • {activeCandidate?.technology}
+                    </span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={activeCandidateIndex >= candidates.length - 1}
+                    onClick={() => setActiveCandidateIndex((prev) => Math.min(candidates.length - 1, prev + 1))}
+                    className="h-8 text-xs font-bold cursor-pointer"
+                  >
+                    Next <ChevronRight className="w-4 h-4 ml-0.5" />
+                  </Button>
                 </div>
-                <div className="flex items-center gap-2">
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <select
+                    value={activeCandidateIndex}
+                    onChange={(e) => setActiveCandidateIndex(Number(e.target.value))}
+                    className="text-xs font-semibold text-slate-800 bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 focus:outline-hidden"
+                  >
+                    {candidates.map((c, idx) => (
+                      <option key={c.id || idx} value={idx}>
+                        #{idx + 1}: {c.studentName} ({c.internshipPosition})
+                      </option>
+                    ))}
+                  </select>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setViewMode("ROSTER")}
+                    className="h-8 text-xs font-bold bg-white text-slate-700 hover:bg-slate-50 rounded-xl cursor-pointer"
+                  >
+                    <Users className="w-3.5 h-3.5 mr-1" />
+                    Roster
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setViewMode("SPLIT")}
+                    className="h-8 text-xs font-bold bg-white text-slate-700 hover:bg-slate-50 rounded-xl cursor-pointer"
+                  >
+                    <Columns className="w-3.5 h-3.5 mr-1" />
+                    Split Studio
+                  </Button>
                   <Button
                     size="sm"
                     disabled={isDownloadingSinglePdf}
                     onClick={handleDownloadSinglePdf}
-                    className="bg-[#0F4C81] hover:bg-[#0C3D68] text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
+                    className="h-8 bg-[#0F4C81] hover:bg-[#0C3D68] text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
                   >
                     {isDownloadingSinglePdf ? (
                       <>
@@ -2126,17 +2259,9 @@ export function BulkLetterModal({ isOpen, onClose, onSuccess }: BulkLetterModalP
                     ) : (
                       <>
                         <Download className="w-3.5 h-3.5" />
-                        <span>Download Active PDF</span>
+                        <span>Download PDF</span>
                       </>
                     )}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setViewMode("SPLIT")}
-                    className="text-xs font-bold rounded-xl cursor-pointer bg-white"
-                  >
-                    Split View
                   </Button>
                 </div>
               </div>
